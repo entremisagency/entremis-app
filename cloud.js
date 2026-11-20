@@ -26,6 +26,8 @@
     return !inClaude && (/\.github\.io$/.test(location.hostname) || /(^|\.)entremis\./.test(location.hostname));
   })();
 
+  // Arrivée par le lien d'une invitation ou d'un « mot de passe oublié » : on le note avant que la bibliothèque nettoie l'adresse
+  const LINK = (() => { const m = String(location.hash).match(/(?:^|[#&])type=(invite|recovery)/); return m ? m[1] : ""; })();
   let client = null, me = null, priv = {};
   let readyResolve; const ready = new Promise(r => { readyResolve = r; });
   const loadLib = () => new Promise((ok, ko) => {
@@ -50,6 +52,21 @@
     const i = g.querySelector('input[name="email"]'); if (i) i.focus();
   }
   const closeGate = () => { const g = document.getElementById("cloud-gate"); if (g) g.remove(); };
+  // Premier passage (invitation) ou mot de passe oublié : on choisit son mot de passe
+  function passwordGate(msg) {
+    let g = document.getElementById("cloud-gate");
+    if (!g) { g = document.createElement("div"); g.id = "cloud-gate"; document.body.appendChild(g); }
+    g.innerHTML = `<form class="cg-card" id="cloud-password">
+      <div class="cg-logo"><svg aria-hidden="true"><use href="#logo-e"/></svg><span>ENTREMIS</span></div>
+      <h1 class="cg-title">${LINK === "invite" ? "Bienvenue" : "Nouveau mot de passe"}</h1>
+      <p class="cg-sub">Choisissez votre mot de passe : 8 caractères au moins.</p>
+      <label class="field"><span>Mot de passe</span><input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+      <label class="field"><span>Encore une fois</span><input name="again" type="password" minlength="8" required autocomplete="new-password"></label>
+      ${msg ? `<p class="cg-msg" role="alert">${EM() ? EM().esc(msg) : msg}</p>` : ""}
+      <button class="btn btn-primary cg-go" type="submit">Enregistrer et entrer</button>
+    </form>`;
+    const i = g.querySelector('input[name="password"]'); if (i) i.focus();
+  }
 
   async function afterLogin(session) {
     const { data, error } = await client.from("members").select("who, role, client_id").eq("user_id", session.user.id).maybeSingle();
@@ -67,7 +84,9 @@
     try { await loadLib(); } catch (_) { gate("La base ne répond pas. Vérifiez la connexion, puis rechargez la page."); return; }
     client = window.supabase.createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true } });
     const { data } = await client.auth.getSession();
-    if (data && data.session) await afterLogin(data.session); else gate("");
+    if (data && data.session && LINK) { passwordGate(""); return; }
+    if (data && data.session) await afterLogin(data.session);
+    else gate(LINK ? "Ce lien n'est plus valable. Demandez une nouvelle invitation, ou « Mot de passe oublié »." : "");
   }
 
   document.addEventListener("submit", async e => {
@@ -78,6 +97,18 @@
     const { data, error } = await client.auth.signInWithPassword({ email: String(fd.get("email") || "").trim(), password: String(fd.get("password") || "") });
     if (error || !data.session) { gate(/invalid/i.test(error ? error.message : "") ? "Adresse ou mot de passe incorrect." : "La connexion n'a pas marché. Réessayez."); return; }
     await afterLogin(data.session);
+  }, true);
+  document.addEventListener("submit", async e => {
+    if (e.target.id !== "cloud-password") return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const fd = new FormData(e.target), pw = String(fd.get("password") || ""), again = String(fd.get("again") || "");
+    if (pw.length < 8) { passwordGate("8 caractères au moins."); return; }
+    if (pw !== again) { passwordGate("Les deux mots de passe ne sont pas les mêmes."); return; }
+    const { error } = await client.auth.updateUser({ password: pw });
+    if (error) { passwordGate("Le mot de passe n'a pas été enregistré. Réessayez."); return; }
+    history.replaceState(null, "", location.pathname + location.search);   // on retire le lien de l'adresse
+    const { data } = await client.auth.getSession();
+    if (data && data.session) await afterLogin(data.session); else gate("Mot de passe enregistré. Connectez-vous.", "ok");
   }, true);
   document.addEventListener("click", async e => {
     if (!e.target.closest("[data-cloud-forgot]")) return;
