@@ -903,6 +903,8 @@
   window.ENTREMIS_PROCESS.init(() => render());
   window.ENTREMIS_CHAT.bind(S, render);
   window.ENTREMIS_CHAT.init(() => render());
+  // Site en ligne : la personne connectée décide du portail et de l'espace
+  if (window.ENTREMIS_CLOUD.on()) window.ENTREMIS_CLOUD.ready().then(m => { if (m.who) S.who = m.who; S.space = m.role === "client" ? "client" : "team"; if (location.hash === "" || location.hash === "#accueil") location.hash = S.space === "team" ? "#equipe" : "#accueil"; render(); });
   window.ENTREMIS_SECTORS.init(() => render());
   window.ENTREMIS_CPLUS.init(() => render());
   window.ENTREMIS_GROWTH.init(() => render());

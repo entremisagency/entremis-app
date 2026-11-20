@@ -404,3 +404,5 @@
 
 /* Agence : nouvelles pages (poste d'appel, rendez-vous, zones, marge, marketing) */
 :root{ --call-queue-w:300px; --rv-when-w:88px; --rv-acts-w:240px; --zone-cell:34px; --zone-first-w:200px; --zone-art:36px; --mg-name-w:180px; --mg-res-w:200px; --mg-hyp-w:220px; --why-label-w:200px; --cr-thumb:72px; --sp-cell-w:96px; --cash-m-w:56px; }
+
+:root{ --cg-w:400px; }   /* écran de connexion du site en ligne */

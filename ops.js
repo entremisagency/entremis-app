@@ -22,6 +22,16 @@
     const saveLocal = () => { try { localStorage.setItem(key, JSON.stringify(st.list.map(x => { const c = Object.assign({}, x); delete c.localUrl; return c; }))); } catch (e) {} };
     const clean = o => { const c = Object.assign({}, o); delete c.id; delete c.localUrl; Object.keys(c).forEach(k => c[k] === undefined && delete c[k]); return c; };
     st.init = async function (onChange) {
+      // Site en ligne : la vraie base (Supabase), en temps réel, après la connexion
+      const cloud = window.ENTREMIS_CLOUD;
+      if (cloud && cloud.on()) {
+        st.cloud = cloud.collection(name); st.source = "db";
+        st.cloud.subscribe(rows => {
+          const local = {}; st.list.forEach(x => { if (x.localUrl) local[x.id] = x.localUrl; });
+          st.list = rows.map(r => local[r.id] ? Object.assign({}, r, { localUrl: local[r.id] }) : r); st.ready = true; onChange();
+        }, () => { st.ready = true; onChange(); EM().toast("La base n'a pas répondu. Rechargez la page."); });
+        return;
+      }
       const rt = typeof window.claude === "object" && window.claude && typeof window.claude.use === "function";
       if (!rt) { st.list = loadLocal(); st.ready = true; onChange(); return; }
       let done = false;
@@ -41,12 +51,14 @@
     };
     st.put = async function (row) {
       const i = st.list.findIndex(x => x.id === row.id); if (i >= 0) st.list[i] = row; else st.list.push(row);
-      if (st.source === "db") { try { await st.db.collection(name).doc(row.id).set(clean(row)); } catch (e) { EM().toast("Pas enregistré : la base n'a pas répondu. Réessayez."); } }
+      if (st.cloud) { try { await st.cloud.set(row.id, clean(row)); } catch (e) { EM().toast("Pas enregistré : la base n'a pas répondu. Réessayez."); } }
+      else if (st.source === "db") { try { await st.db.collection(name).doc(row.id).set(clean(row)); } catch (e) { EM().toast("Pas enregistré : la base n'a pas répondu. Réessayez."); } }
       else saveLocal();
     };
     st.remove = async function (id) {
       st.list = st.list.filter(x => x.id !== id);
-      if (st.source === "db") { try { await st.db.collection(name).doc(id).delete(); } catch (e) { EM().toast("Pas supprimé : la base n'a pas répondu."); } }
+      if (st.cloud) { try { await st.cloud.remove(id); } catch (e) { EM().toast("Pas supprimé : la base n'a pas répondu."); } }
+      else if (st.source === "db") { try { await st.db.collection(name).doc(id).delete(); } catch (e) { EM().toast("Pas supprimé : la base n'a pas répondu."); } }
       else saveLocal();
     };
     return st;

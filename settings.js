@@ -42,8 +42,10 @@
   ];
   // Rangé par personne : Marc ne voit que les siennes, Richard et Gianni pareil
   const key = who => "entremis-app-connect-" + who;
-  const mine = who => { try { return Object.assign({ cx: {}, auto: {} }, JSON.parse(localStorage.getItem(key(who)) || "{}")); } catch (_) { return { cx: {}, auto: {} }; } };
-  const saveMine = (who, v) => { try { localStorage.setItem(key(who), JSON.stringify(v)); } catch (_) {} };
+  // Site en ligne : rangé sur le compte de la personne connectée (table private_docs), sinon dans ce navigateur
+  const CL = () => window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on() ? window.ENTREMIS_CLOUD : null;
+  const mine = who => { const c = CL(); if (c) return Object.assign({ cx: {}, auto: {} }, c.privGet("connect", "me") || {}); try { return Object.assign({ cx: {}, auto: {} }, JSON.parse(localStorage.getItem(key(who)) || "{}")); } catch (_) { return { cx: {}, auto: {} }; } };
+  const saveMine = (who, v) => { const c = CL(); if (c) { c.privSet("connect", "me", v); return; } try { localStorage.setItem(key(who), JSON.stringify(v)); } catch (_) {} };
   const state = (c, m) => c.live ? ["Dans la version en ligne", "ok"] : c.later ? ["Étape suivante", "neutral"] : m.cx[c.id] && m.cx[c.id].on ? ["Prévu", "info"] : ["Pas branché", "neutral"];
   const ready = (a, m) => a.needs.some(id => { const c = CONNECT.find(x => x.id === id); return c && (c.live || (m.cx[id] && m.cx[id].on)); });
 
@@ -67,9 +69,10 @@
     return `<section class="set-group">
       <div class="set-me">${TM().avatar(S.who, "av av-xl")}<div><b>${esc(me.name)}</b><span>${esc(me.role || "")}</span></div>
         <div class="set-me-acts"><label class="btn btn-ghost${busy ? " is-busy" : ""}"><input class="sr" type="file" accept="image/png,image/jpeg,image/webp,image/heic" data-photo>${EM().icon("user")}${busy ? "Envoi…" : url ? "Changer la photo" : "Choisir une photo"}</label>${url ? `<button class="link" type="button" data-act="photo-remove">Retirer</button>` : ""}</div></div>
-      ${row("C'est moi", "Ton portail : tes tâches, tes clients, tes alertes, tes connexions.", seg("data-who", TD().members.map(m => [m.id, m.name]), S.who))}
+      ${CL() ? row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`)
+        : row("C'est moi", "Ton portail : tes tâches, tes clients, tes alertes, tes connexions.", seg("data-who", TD().members.map(m => [m.id, m.name]), S.who))}
     </section>
-    <p class="set-note">${EM().icon("info")}Dans la maquette, n'importe qui peut choisir son nom ici. Avec Supabase, chacun aura son compte et son mot de passe.</p>`;
+    ${CL() ? "" : `<p class="set-note">${EM().icon("info")}Dans la maquette, n'importe qui peut choisir son nom ici. Sur le site en ligne, chacun se connecte avec son compte.</p>`}`;
   }
   function secEspace(S) {
     return `<section class="set-group">${row("Espace affiché", "L'espace d'un installateur client, ou celui de l'agence.", seg("data-space", [["client", "Client"], ["team", "Agence"]], S.space))}</section>
@@ -100,7 +103,7 @@
           return `<label class="set-row set-toggle${ok ? "" : " is-off"}"><div><b>${esc(a.text)}</b>${ok ? "" : `<span>Branche d'abord : ${a.needs.map(id => CONNECT.find(c => c.id === id).name).join(", ")}</span>`}</div>
             <span class="switch"><input type="checkbox" data-auto="${a.id}" ${on ? "checked" : ""} ${ok ? "" : "disabled"}><span class="track" aria-hidden="true"></span></span></label>`; }).join("")}
       </section>
-      <p class="set-note">${EM().icon("info")}Maquette : rien n'est encore branché, aucune clé n'est demandée ni gardée. Le vrai branchement se fera à l'étape Supabase (un compte par personne, clés gardées côté serveur) et GitHub.</p>`;
+      <p class="set-note">${EM().icon("info")}${CL() ? "Rangé sur ton compte : personne d'autre ne le voit. Aucune clé n'est demandée ici : le branchement de chaque outil se fera côté serveur." : "Maquette : rien n'est encore branché, aucune clé n'est demandée ni gardée. Sur le site en ligne, tout est rangé sur ton compte."}</p>`;
   }
   function secDonnees(S) {
     return `<section class="set-group">
@@ -149,6 +152,7 @@
   }
 
   function onClick(e, S, render) {
+    if (e.target.closest("[data-cloud-out]")) { window.ENTREMIS_CLOUD.signOut(); return true; }
     const t = e.target.closest("[data-set-sec],[data-set-back],[data-set-font],[data-cx-open],[data-cx-close]"); if (!t) return false;
     const d = t.dataset;
     if (d.setSec) { X.sec = d.setSec; TM().haptic("tap"); render(); window.scrollTo(0, 0); const ap = document.querySelector(".app"); if (ap) ap.scrollTop = 0; return true; }
