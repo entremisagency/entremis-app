@@ -28,17 +28,21 @@ Ce que ça crée :
 
 ## 3. Les comptes de l'équipe
 
-Sans service d'e-mail à nous, Supabase n'envoie ses e-mails (invitation, mot de passe oublié) qu'aux membres de l'équipe Supabase, et 2 par heure au plus. Une invitation à Richard ou à Gianni ne partirait donc pas. On crée les comptes sans e-mail :
+On se connecte avec un **identifiant** (son prénom : marc, richard, gianni), pas besoin de vraie adresse e-mail. Supabase demande quand même une adresse : l'app fabrique `prenom@entremisagency.github.io`, une adresse qui ne reçoit aucun e-mail.
 
-1. Supabase → Authentication → Users → **Add user** → **Create new user** (et non « Send invitation »).
-2. L'adresse, un mot de passe provisoire, et « Auto Confirm User » coché. Pour Marc, Richard et Gianni.
-3. Marc donne lui-même leur mot de passe provisoire à Richard et Gianni (de vive voix ou par SMS).
-4. Dans SQL Editor, lancer les trois lignes `insert into public.members …` de la fin de `schema.sql`, avec les vraies adresses.
-5. Chacun se connecte sur le site, puis Réglages → Profil → Mot de passe → **Changer** pour choisir le sien.
+1. Supabase → Authentication → Users → **Add user** → **Create new user** (et non « Send invitation »), trois fois :
+   - `marc@entremisagency.github.io`
+   - `richard@entremisagency.github.io`
+   - `gianni@entremisagency.github.io`
 
-Plus tard, un compte client : même chose, puis la ligne « compte client » de la fin de `schema.sql` (rôle `client` et l'identifiant du client, par exemple `thermo`). Ce compte n'ouvre que l'espace de son entreprise, jamais celui de l'agence, et la base ne lui envoie que ses propres données.
+   Pour chacun : un mot de passe provisoire (6 caractères au moins, c'est la règle de Supabase), et « Auto Confirm User » coché.
+2. Dans SQL Editor, lancer les trois lignes `insert into public.members …` de la fin de `schema.sql` (déjà remplies avec ces adresses).
+3. Chacun se connecte avec son prénom et le mot de passe provisoire. L'app lui demande aussitôt d'en choisir un à lui (8 caractères au moins) : le provisoire ne sert qu'une fois.
+4. Plus tard, pour le changer : Réglages → Profil → Mot de passe → **Changer**.
 
-« Mot de passe oublié » ne marchera pour tout le monde qu'avec un service d'e-mail à nous (Resend, une fois un nom de domaine vérifié, branché dans Supabase → Authentication → Emails → SMTP).
+Mot de passe oublié : ces adresses ne reçoivent pas d'e-mail. Marc remet un mot de passe provisoire avec la ligne « mot de passe oublié » de la fin de `schema.sql`, puis la personne en choisit un nouveau à la connexion.
+
+Plus tard, un compte client : même chose (par exemple `thermo@entremisagency.github.io`), puis la ligne « compte client » de la fin de `schema.sql` (rôle `client` et l'identifiant du client). Ce compte n'ouvre que l'espace de son entreprise, jamais celui de l'agence, et la base ne lui envoie que ses propres données.
 
 ## 4. L'envoi d'e-mails (Resend)
 

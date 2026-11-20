@@ -111,13 +111,17 @@ create policy "fichiers : l'équipe supprime" on storage.objects
   for delete to authenticated using (bucket_id = 'files' and public.is_team());
 
 -- 7. Les comptes de l'équipe ------------------------------------------------------------
--- D'abord : Authentication > Users > Add user > « Create new user » pour Marc, Richard et Gianni,
--- avec un mot de passe provisoire et « Auto Confirm User » coché (sans service d'e-mail à nous, une invitation ne partirait
--- qu'aux membres de l'équipe Supabase). Chacun change ensuite son mot de passe dans l'app : Réglages > Profil > Mot de passe.
--- Puis remplacer les adresses ci-dessous et lancer ces trois lignes :
--- insert into public.members (user_id, who, role) select id, 'marc',    'team' from auth.users where email = 'ADRESSE_DE_MARC'    on conflict (user_id) do nothing;
--- insert into public.members (user_id, who, role) select id, 'richard', 'team' from auth.users where email = 'ADRESSE_DE_RICHARD' on conflict (user_id) do nothing;
--- insert into public.members (user_id, who, role) select id, 'gianni',  'team' from auth.users where email = 'ADRESSE_DE_GIANNI'  on conflict (user_id) do nothing;
+-- On se connecte avec son prénom (marc, richard, gianni) : l'app en fait l'adresse prenom@entremisagency.github.io,
+-- qui ne reçoit aucun e-mail. D'abord : Authentication > Users > Add user > « Create new user » avec ces trois adresses,
+-- un mot de passe provisoire (6 caractères au moins) et « Auto Confirm User » coché. Ensuite seulement, lancer ces trois lignes :
+-- insert into public.members (user_id, who, role) select id, 'marc',    'team' from auth.users where email = 'marc@entremisagency.github.io'    on conflict (user_id) do nothing;
+-- insert into public.members (user_id, who, role) select id, 'richard', 'team' from auth.users where email = 'richard@entremisagency.github.io' on conflict (user_id) do nothing;
+-- insert into public.members (user_id, who, role) select id, 'gianni',  'team' from auth.users where email = 'gianni@entremisagency.github.io'  on conflict (user_id) do nothing;
+-- À la première connexion, l'app demande à chacun de choisir son propre mot de passe (le provisoire ne sert qu'une fois).
+--
+-- Mot de passe oublié (pas encore essayé) : remettre un mot de passe provisoire, que la personne remplacera à la connexion.
+-- Remplacer PROVISOIRE et l'adresse, puis lancer :
+-- update auth.users set encrypted_password = extensions.crypt('PROVISOIRE', extensions.gen_salt('bf')), raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) - 'pw_set' where email = 'richard@entremisagency.github.io';
 --
 -- Plus tard, un compte client (il ne verra que l'espace de son entreprise, et la base ne lui enverra que ses propres données) :
--- insert into public.members (user_id, who, role, client_id) select id, null, 'client', 'IDENTIFIANT_DU_CLIENT' from auth.users where email = 'ADRESSE_DU_CLIENT' on conflict (user_id) do nothing;
+-- insert into public.members (user_id, who, role, client_id) select id, null, 'client', 'IDENTIFIANT_DU_CLIENT' from auth.users where email = 'identifiant@entremisagency.github.io' on conflict (user_id) do nothing;

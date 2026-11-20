@@ -40,6 +40,13 @@
      à droite le formulaire. Sur téléphone, la photo devient un bandeau au-dessus du formulaire.
      Pas de « créer un compte » : c'est Entremis qui crée les comptes. Pas de connexion Google pour l'instant. */
   let lastEmail = "";
+  /* Connexion par identifiant (Marc, 20 nov. 2026) : « richard » suffit, en majuscules ou non.
+     Supabase demande une adresse e-mail : on la fabrique sur l'adresse de l'app (prenom@entremisagency.github.io).
+     Cette adresse ne reçoit aucun e-mail, personne ne peut s'en servir. Une vraie adresse e-mail marche aussi. */
+  const LOGIN_DOMAIN = "entremisagency.github.io";
+  const loginEmail = id => { const v = String(id || "").trim().toLowerCase().replace(/\s+/g, ""); return !v || v.includes("@") ? v : v + "@" + LOGIN_DOMAIN; };
+  let pwMode = LINK;    // pourquoi on choisit un mot de passe : invitation, mot de passe oublié, ou premier passage
+  let pwOk = false;     // mot de passe déjà choisi pendant cette visite
   const esc_ = v => EM() ? EM().esc(v) : String(v).replace(/[&<>"']/g, "");
   const ART = `<figure class="cg-art" aria-hidden="true">
       <img src="img/connexion.jpg" alt="" decoding="async">
@@ -60,8 +67,8 @@
   function gate(msg, kind) {
     const g = shell(`<form class="cg-card" id="cloud-login" autocomplete="on">
       <svg class="cg-mark" aria-hidden="true"><use href="#logo-e"/></svg>
-      <div class="cg-head"><h1 class="cg-title">Connexion</h1><p class="cg-sub">Votre adresse e-mail et votre mot de passe.</p></div>
-      <label class="field"><span>Adresse e-mail</span><input name="email" type="email" required autocomplete="username" value="${esc_(lastEmail)}"></label>
+      <div class="cg-head"><h1 class="cg-title">Connexion</h1><p class="cg-sub">Votre identifiant et votre mot de passe.</p></div>
+      <label class="field"><span>Identifiant</span><input name="email" type="text" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc_(lastEmail)}"></label>
       ${pwField("password", "Mot de passe", "current-password")}
       ${msgLine(msg, kind)}
       <button class="btn btn-primary cg-go" type="submit">Se connecter</button>
@@ -71,11 +78,12 @@
     const i = g.querySelector(lastEmail ? 'input[name="password"]' : 'input[name="email"]'); if (i) i.focus();
   }
   const closeGate = () => { const g = document.getElementById("cloud-gate"); if (g) g.remove(); };
-  // Premier passage (invitation) ou mot de passe oublié : on choisit son mot de passe
+  // Choisir son mot de passe : au premier passage (le mot de passe provisoire ne sert qu'une fois), après une invitation ou un oubli
   function passwordGate(msg) {
+    const first = pwMode === "first";
     const g = shell(`<form class="cg-card" id="cloud-password">
       <svg class="cg-mark" aria-hidden="true"><use href="#logo-e"/></svg>
-      <div class="cg-head"><h1 class="cg-title">${LINK === "invite" ? "Bienvenue" : "Nouveau mot de passe"}</h1><p class="cg-sub">Choisissez votre mot de passe : 8 caractères au moins.</p></div>
+      <div class="cg-head"><h1 class="cg-title">${first ? "Votre mot de passe" : pwMode === "invite" ? "Bienvenue" : "Nouveau mot de passe"}</h1><p class="cg-sub">${first ? "Le mot de passe provisoire ne sert qu'une fois. Choisissez le vôtre : 8 caractères au moins." : "Choisissez votre mot de passe : 8 caractères au moins."}</p></div>
       ${pwField("password", "Mot de passe", "new-password", ' minlength="8"')}
       ${pwField("again", "Encore une fois", "new-password", ' minlength="8"')}
       ${msgLine(msg)}
@@ -100,6 +108,8 @@
     const { data, error } = await client.from("members").select("who, role, client_id").eq("user_id", session.user.id).maybeSingle();
     if (error || !data) { gate("Ce compte n'est pas encore activé. Demandez à Marc de l'ajouter à l'équipe (dernière étape du fichier schema.sql)."); return; }
     me = { id: session.user.id, email: session.user.email, who: data.who, role: data.role, client: data.client_id };
+    // Premier passage : le mot de passe provisoire donné par Marc ne sert qu'une fois, on en choisit un à soi
+    if (!pwOk && !((session.user && session.user.user_metadata) || {}).pw_set) { pwMode = "first"; passwordGate(""); return; }
     const p = await client.from("private_docs").select("collection, id, data");
     priv = {}; (p.data || []).forEach(r => { priv[r.collection + "/" + r.id] = r.data; });
     closeGate(); readyResolve(me);
@@ -123,8 +133,8 @@
     const fd = new FormData(e.target), btn = e.target.querySelector(".cg-go");
     lastEmail = String(fd.get("email") || "").trim();
     if (btn) { btn.disabled = true; btn.textContent = "Connexion…"; }
-    const { data, error } = await client.auth.signInWithPassword({ email: String(fd.get("email") || "").trim(), password: String(fd.get("password") || "") });
-    if (error || !data.session) { gate(/invalid/i.test(error ? error.message : "") ? "Adresse ou mot de passe incorrect." : "La connexion n'a pas marché. Réessayez."); return; }
+    const { data, error } = await client.auth.signInWithPassword({ email: loginEmail(fd.get("email")), password: String(fd.get("password") || "") });
+    if (error || !data.session) { gate(/invalid/i.test(error ? error.message : "") ? "Identifiant ou mot de passe incorrect." : "La connexion n'a pas marché. Réessayez."); return; }
     await afterLogin(data.session);
   }, true);
   document.addEventListener("submit", async e => {
@@ -133,9 +143,10 @@
     const fd = new FormData(e.target), pw = String(fd.get("password") || ""), again = String(fd.get("again") || "");
     if (pw.length < 8) { passwordGate("8 caractères au moins."); return; }
     if (pw !== again) { passwordGate("Les deux mots de passe ne sont pas les mêmes."); return; }
-    const { error } = await client.auth.updateUser({ password: pw });
-    if (error) { passwordGate("Le mot de passe n'a pas été enregistré. Réessayez."); return; }
-    history.replaceState(null, "", location.pathname + location.search);   // on retire le lien de l'adresse
+    const { error } = await client.auth.updateUser({ password: pw, data: { pw_set: true } });
+    if (error) { passwordGate(/same_password|different from the old/i.test(String(error.code || "") + " " + String(error.message || "")) ? "Choisissez un mot de passe différent du provisoire." : "Le mot de passe n'a pas été enregistré. Réessayez."); return; }
+    pwOk = true;
+    if (LINK) history.replaceState(null, "", location.pathname + location.search);   // on retire le lien de l'adresse
     const { data } = await client.auth.getSession();
     if (data && data.session) await afterLogin(data.session); else gate("Mot de passe enregistré. Connectez-vous.", "ok");
   }, true);
@@ -143,7 +154,8 @@
     if (!e.target.closest("[data-cloud-forgot]")) return;
     const f = document.getElementById("cloud-login"), email = f ? String(new FormData(f).get("email") || "").trim() : "";
     lastEmail = email;
-    if (!email) { gate("Écrivez d'abord votre adresse e-mail, puis « Mot de passe oublié »."); return; }
+    if (!email) { gate("Écrivez d'abord votre identifiant, puis « Mot de passe oublié »."); return; }
+    if (!email.includes("@")) { gate("Demandez à votre contact Entremis un nouveau mot de passe provisoire.", "ok"); return; }
     const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
     if (error) { gate("L'e-mail n'a pas pu partir. Demandez un nouveau mot de passe à votre contact Entremis."); return; }
     gate("Si cette adresse a un compte, un e-mail vient de partir pour choisir un nouveau mot de passe.", "ok");
@@ -189,7 +201,7 @@
     if (!client || !me) return "off";
     const a = await client.auth.signInWithPassword({ email: me.email, password: current });
     if (a.error) return "current";
-    const { error } = await client.auth.updateUser({ password: next });
+    const { error } = await client.auth.updateUser({ password: next, data: { pw_set: true } });
     if (!error) return "";
     const m = String(error.code || "") + " " + String(error.message || "");
     return /same_password|different from the old/i.test(m) ? "same" : /weak|short|at least/i.test(m) ? "weak" : "other";
