@@ -103,10 +103,13 @@
     return `<section class="set-group">${linkRow("#notifications", "Ce qui vous prévient", "Choisir les événements, et comment : dans l'app, par e-mail, par SMS.")}
       ${row("Non lues", n ? `${n} notification${n > 1 ? "s" : ""} à lire` : "Tout est lu", `<a class="btn btn-ghost" href="#notifications">${EM().icon("bell")}Voir</a>`)}</section>`;
   }
+  const HAPTIC_KEY = "entremis-app-haptics";
+  const haptics = () => { try { return localStorage.getItem(HAPTIC_KEY) === "off" ? "off" : "on"; } catch (_) { return "on"; } };
   function secApparence() {
     const f = font();
     return `<section class="set-group">${row("Police", f === "outfit" ? "Outfit, la police de la charte Entremis." : "Inter Tight, nette et serrée, comme la référence AgentOps.", seg("data-set-font", [["inter", "Inter Tight"], ["outfit", "Outfit"]], f))}
-      <div class="set-sample" aria-hidden="true"><b class="tabnum">14 700 €</b><span>Potentiel par mois</span></div></section>
+      <div class="set-sample" aria-hidden="true"><b class="tabnum">14 700 €</b><span>Potentiel par mois</span></div>
+      ${row("Vibrations", "Sur téléphone, quand on choisit, enregistre, supprime ou change de page. Sur iPhone : iOS 18 ou plus.", seg("data-set-haptics", [["on", "Oui"], ["off", "Non"]], haptics()))}</section>
       <p class="set-note">${EM().icon("info")}Gardé dans ce navigateur. Le logo reste en Outfit.</p>`;
   }
   function secConnexions(S) {
@@ -174,10 +177,11 @@
   function onClick(e, S, render) {
     if (e.target.closest("[data-pw-open]")) { X.pw = true; render(); setTimeout(() => { const i = document.querySelector('#pw-form input[name="current"]'); if (i) i.focus(); }, 60); return true; }
     if (e.target.closest("[data-pw-close]")) { X.pw = false; render(); return true; }
-    const t = e.target.closest("[data-set-sec],[data-set-back],[data-set-font],[data-cx-open],[data-cx-close]"); if (!t) return false;
+    const t = e.target.closest("[data-set-sec],[data-set-back],[data-set-font],[data-set-haptics],[data-cx-open],[data-cx-close]"); if (!t) return false;
     const d = t.dataset;
     if (d.setSec) { X.sec = d.setSec; TM().haptic("tap"); render(); window.scrollTo(0, 0); const ap = document.querySelector(".app"); if (ap) ap.scrollTop = 0; return true; }
     if ("setBack" in d) { X.sec = null; render(); return true; }
+    if (d.setHaptics) { try { localStorage.setItem(HAPTIC_KEY, d.setHaptics); } catch (_) {} if (d.setHaptics === "on") TM().haptic("done"); render(); return true; }
     if (d.setFont) { try { localStorage.setItem(FONT_KEY, d.setFont); } catch (_) {} applyFont(d.setFont); render(); return true; }
     if (d.cxOpen) { X.cx = d.cxOpen; render(); return true; }
     if ("cxClose" in d) { X.cx = null; render(); return true; }

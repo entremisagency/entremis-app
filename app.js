@@ -137,7 +137,7 @@
         </div>`;
       const done = v => { document.removeEventListener("keydown", onKey, true); wrap.remove(); resolve(v); };
       const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); done(false); } };
-      wrap.addEventListener("click", e => { const b = e.target.closest("[data-confirm]"); if (b) { e.stopPropagation(); done(b.dataset.confirm === "yes"); } });
+      wrap.addEventListener("click", e => { const b = e.target.closest("[data-confirm]"); if (b) { e.stopPropagation(); if (b.dataset.confirm === "yes") TM().haptic("warn"); done(b.dataset.confirm === "yes"); } });
       document.addEventListener("keydown", onKey, true);
       root.appendChild(wrap);
       TM().haptic("warn");
@@ -796,6 +796,7 @@
   /* ---------- Interactions ---------- */
   document.addEventListener("click", e => {
     if (e.target.closest("[data-cloud-out]")) { window.ENTREMIS_CLOUD.signOut(); return; }
+    if (e.target.closest("#tabbar a, #menu a, .ios-list a, .m-back, #crumbs a, .m-avatar-link")) TM().haptic("tap");   // changement de page
     if (e.target.closest('[data-act="toast-undo"]')) { const u = toastUndo; toastUndo = null; $("#toast").classList.remove("on"); if (u) u(); return; }
     const cp = e.target.closest("[data-copy]");
     if (cp) { copyText(cp.dataset.copy, cp); return; }

@@ -94,9 +94,26 @@
   const doneThisWeek = t => t.status === "done" && t.doneAt && t.doneAt.slice(0, 10) >= weekStart();
 
   /* Vibration courte : Android et la plupart des navigateurs de bureau tactiles. Safari sur iPhone ne la permet pas. */
+  /* Vibrations (Marc, 20 nov. 2026) : quand on choisit, enregistre, supprime ou change de page.
+     Android : la commande de vibration du navigateur. iPhone : Safari ne l'a pas ; en revanche, un interrupteur
+     (case « switch ») basculé pendant un geste de l'utilisateur fait vibrer l'iPhone (iOS 18 et plus).
+     On peut les couper dans Réglages > Apparence. */
+  const HAPTIC_KEY = "entremis-app-haptics";
+  const hapticsOn = () => { try { return localStorage.getItem(HAPTIC_KEY) !== "off"; } catch (_) { return true; } };
+  const coarse = () => { try { return window.matchMedia("(pointer: coarse)").matches; } catch (_) { return false; } };
+  function iosTick() {
+    const label = document.createElement("label"), input = document.createElement("input");
+    label.setAttribute("aria-hidden", "true"); label.style.display = "none";
+    input.type = "checkbox"; input.setAttribute("switch", ""); input.tabIndex = -1;
+    label.appendChild(input);
+    ["click", "change", "input"].forEach(ev => label.addEventListener(ev, e => e.stopPropagation()));   // ne réveille aucun autre bouton de l'app
+    document.head.appendChild(label); label.click(); label.remove();
+  }
   function haptic(kind) {
+    if (!hapticsOn()) return;
     const p = { tap: 10, done: [12, 40, 18], warn: [30, 60, 30] }[kind] || 10;
-    try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {}
+    try { if (navigator.vibrate) { navigator.vibrate(p); return; } } catch (e) {}
+    if (coarse()) { try { iosTick(); } catch (e) {} }
   }
 
   const av = (id, cls = "av av-md") => {
