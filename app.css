@@ -2591,7 +2591,7 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .sr-row.is-done{opacity:.7}
 .sr-row>div{display:grid;gap:2px;min-width:0}
 .sr-row b{font-weight:var(--weight-strong);text-transform:uppercase;letter-spacing:.01em;color:var(--color-ink)}
-.sr-row span{font-size:var(--text-caption);color:var(--color-muted)}
+.sr-row>div>span{font-size:var(--text-caption);color:var(--color-muted)}   /* les sous-lignes seulement : la pastille garde ses couleurs */
 .sr-acts{display:flex;align-items:center;gap:var(--space-2)}
 @container app (max-width:640px){
   .rv-row{grid-template-columns:minmax(0,1fr)} .rv-client,.rv-conf,.rv-res,.rv-acts{grid-column:1}
@@ -2706,3 +2706,7 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 
 /* Site en ligne : plus d'étiquettes « Exemple », les données sont les vraies */
 .is-cloud .sample:not(.sync){display:none}
+
+/* Pastilles d'état : texte blanc sur leur couleur, partout. Une règle « .bloc span » (sous-titres gris) ne doit jamais
+   les repeindre : ce sélecteur l'emporte sur toutes les règles de ce genre. */
+.state[class*="state-"]{color:var(--color-white)}

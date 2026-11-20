@@ -1,0 +1,27 @@
+# Vérification automatique à chaque envoi et à chaque pull request :
+# 1) chaque fichier JavaScript se lit sans erreur ; 2) aucune clé secrète n'est dans le code.
+name: Vérification
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Le code JavaScript se lit sans erreur
+        run: for f in *.js; do node --check "$f" || exit 1; done
+      - name: Aucune clé secrète dans le code
+        run: |
+          if grep -rnE "sb_secret_[A-Za-z0-9_-]{6,}|service_role|re_[A-Za-z0-9]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY" --exclude-dir=.git --exclude-dir=.github .; then
+            echo "Une clé secrète semble être dans le code. Retirez-la avant d'envoyer." && exit 1
+          fi
+      - name: Les fichiers appelés par index.html existent
+        run: |
+          for f in $(grep -oE '(src|href)="[a-z][a-z0-9-]*\.(js|css)' index.html | sed -E 's/.*"//'); do
+            test -f "$f" || { echo "Fichier manquant : $f"; exit 1; }
+          done

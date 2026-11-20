@@ -379,7 +379,8 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
 
   /* =================== Conformité =================== */
   const ERAS = () => store("erasures");
-  const CONSENT = "J'accepte d'être rappelé par Entremis au sujet de mon projet.";
+  // Le texte exact de la case à cocher de la page de demande (demande.html) : à changer aux deux endroits ensemble
+  const CONSENT = "J'accepte qu'Entremis me rappelle au sujet de ce projet et transmette ma demande à un installateur partenaire de ma région. Mes coordonnées ne sont pas vendues.";
   function viewConformite(S) {
     const ls = LEADS().list().slice().sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1), er = ERAS().list.slice().sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1);
     const live = ls.filter(l => !l.erased);
@@ -510,7 +511,7 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
       <section class="card"><div class="card-head"><h2 class="h2">Demandes du site <span class="muted tabnum">${SITE_.filter(s => !done(s.id)).length}</span></h2><span class="muted">rappel promis sous 24 h</span></div>
         <ul class="sr-list">${SITE_.length ? SITE_.map(s => { const due = new Date(Date.parse(s.at) + 86400000), left = Math.round((due - Date.parse(nowIso())) / 3600000), called = done(s.id);
           return `<li class="sr-row${called ? " is-done" : ""}"><div><b>${esc(s.name)}</b><span>${esc(s.trade)} – ${esc(s.zone)} – ${esc(s.volume)}</span><span>${esc(s.who)}, rappel souhaité : ${esc(s.when)}</span></div>
-            ${called ? `<span class="state state-ok">Rappelé</span>` : `<span class="state state-${left < 0 ? "danger" : left < 6 ? "warn" : "info"}">${left < 0 ? "En retard" : `Encore ${left} h`}</span><span class="sr-acts"><a class="icon-btn" href="tel:${s.phone.replace(/\s/g, "")}" aria-label="Appeler ${esc(s.who)}">${icon("phone")}</a><button class="btn btn-ghost btn-xs" type="button" data-site-done="${s.id}">Rappelé</button></span>`}${CLOUD() && !s.prospect ? `<button class="btn btn-ghost btn-xs" type="button" data-site-prospect="${s.id}">En prospect</button>` : ""}</li>`; }).join("") : `<li class="sr-row"><div><span>Aucune demande pour l'instant. Elles arrivent ici dès qu'un installateur remplit le formulaire du site.</span></div></li>`}</ul>
+            ${called ? `<span class="state state-ok">Rappelé</span>` : `<span class="state state-${left < 0 ? "danger" : left < 6 ? "warn" : "info"}">${left < 0 ? "En retard" : `Encore ${left} h`}</span><span class="sr-acts"><a class="icon-btn" href="tel:${s.phone.replace(/\s/g, "")}" aria-label="Appeler ${esc(s.who)}">${icon("phone")}</a><button class="btn btn-ghost btn-xs" type="button" data-site-done="${s.id}">Rappelé</button>${CLOUD() && !s.prospect ? `<button class="btn btn-ghost btn-xs" type="button" data-site-prospect="${s.id}">En prospect</button>` : ""}</span>`}</li>`; }).join("") : `<li class="sr-row"><div><span>Aucune demande pour l'instant. Elles arrivent ici dès qu'un installateur remplit le formulaire du site.</span></div></li>`}</ul>
         ${CLOUD() ? "" : `<p class="kpi-note">Maquette : ces deux demandes sont des exemples. En ligne, le formulaire du site les envoie ici.</p>`}</section>
       <section class="card"><div class="card-head"><h2 class="h2">Parrainages <span class="muted tabnum">${refs.length}</span></h2><span class="muted">présentés par nos clients</span></div>
         ${refs.length ? `<ul class="sr-list">${refs.map(r => { const s = RS[r.status] || RS.nouveau; return `<li class="sr-row"><div><b>${esc(r.name)}</b><span>${esc(r.trade)} – ${esc(r.city)}</span><span>De la part de ${esc(r.fromName || r.from)}${r.note ? " – " + esc(r.note) : ""}</span></div><span class="state state-${s[1]}">${s[0]}</span>

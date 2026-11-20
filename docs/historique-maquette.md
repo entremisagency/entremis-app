@@ -1,3 +1,5 @@
+> Ancien carnet de la maquette (19 novembre 2026), gardé pour mémoire. Pour le fonctionnement actuel, voir le README et docs/architecture.md.
+
 # Entremis — la webapp (maquette cliquable)
 
 Mise à jour du 19 novembre 2026. Données d'exemple, sauf les tâches de la version publiée (voir plus bas).
