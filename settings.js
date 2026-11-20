@@ -7,7 +7,7 @@
 (function () {
   "use strict";
   const EM = () => window.EM, TM = () => window.ENTREMIS_TEAM, TD = () => window.ENTREMIS_DATA.team;
-  const X = { sec: null, cx: null };   // rubrique ouverte, connexion ouverte dans la fenêtre
+  const X = { sec: null, cx: null, pw: false };   // rubrique ouverte, connexion ouverte dans la fenêtre, fenêtre du mot de passe
 
   // La police : Inter Tight (style AgentOps) ou Outfit (la charte). Gardée dans ce navigateur.
   const FONT_KEY = "entremis-app-font";
@@ -50,9 +50,9 @@
   const ready = (a, m) => a.needs.some(id => { const c = CONNECT.find(x => x.id === id); return c && (c.live || (m.cx[id] && m.cx[id].on)); });
 
   /* ---------- Les rubriques ---------- */
-  const SECS = space => (space === "team"
+  const SECS = S => (S.space === "team"
     ? [["profil", "user", "Profil"], ["espace", "swap", "Espace"], ["notifs", "bell", "Notifications"], ["apparence", "sliders", "Apparence"], ["connexions", "tool", "Connexions"], ["donnees", "shield", "Données et sécurité"], ["aide", "info", "Aide"]]
-    : [["profil", "user", "Profil"], ["espace", "swap", "Espace"], ["notifs", "bell", "Notifications"], ["apparence", "sliders", "Apparence"], ["donnees", "shield", "Données et sécurité"], ["aide", "info", "Aide"]]);
+    : [["profil", "user", "Profil"], ["espace", "swap", "Espace"], ["notifs", "bell", "Notifications"], ["apparence", "sliders", "Apparence"], ["donnees", "shield", "Données et sécurité"], ["aide", "info", "Aide"]].filter(x => !(S.lock && x[0] === "espace")));
 
   const row = (title, sub, control) => `<div class="set-row"><div><b>${title}</b>${sub ? `<span>${sub}</span>` : ""}</div>${control || ""}</div>`;
   const linkRow = (href, title, sub) => `<a class="set-row set-link" href="${href}"><div><b>${title}</b>${sub ? `<span>${sub}</span>` : ""}</div>${EM().icon("chev")}</a>`;
@@ -61,22 +61,41 @@
   function secProfil(S) {
     const esc = EM().esc, team = S.space === "team";
     if (!team) {
-      const u = window.ENTREMIS_DATA.user;
+      const u = EM().viewUser(), owner = TM().member(EM().viewClient().owner || "richard");
       return `<section class="set-group"><div class="set-me"><span class="av av-xl">${esc(u.initials)}</span><div><b>${esc(u.name)}</b><span>${esc(u.role)} – ${esc(u.company)}</span></div></div>
-        ${row("Votre contact chez Entremis", "Richard place vos rendez-vous et répond à vos questions.", `<a class="btn btn-ghost" href="#messages">${EM().icon("chat")}Écrire</a>`)}</section>`;
+        ${row("Votre contact chez Entremis", `${esc(owner.name)} place vos rendez-vous et répond à vos questions.`, `<a class="btn btn-ghost" href="#messages">${EM().icon("chat")}Écrire</a>`)}</section>
+      ${S.lock && CL() ? `<section class="set-group">${row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`)}${pwRow()}</section>` : ""}`;
     }
     const me = TM().member(S.who), url = TM().photoUrl(S.who), busy = TM().photoBusy();
     return `<section class="set-group">
       <div class="set-me">${TM().avatar(S.who, "av av-xl")}<div><b>${esc(me.name)}</b><span>${esc(me.role || "")}</span></div>
         <div class="set-me-acts"><label class="btn btn-ghost${busy ? " is-busy" : ""}"><input class="sr" type="file" accept="image/png,image/jpeg,image/webp,image/heic" data-photo>${EM().icon("user")}${busy ? "Envoi…" : url ? "Changer la photo" : "Choisir une photo"}</label>${url ? `<button class="link" type="button" data-act="photo-remove">Retirer</button>` : ""}</div></div>
-      ${CL() ? row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`)
+      ${CL() ? row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`) + pwRow()
         : row("C'est moi", "Ton portail : tes tâches, tes clients, tes alertes, tes connexions.", seg("data-who", TD().members.map(m => [m.id, m.name]), S.who))}
     </section>
     ${CL() ? "" : `<p class="set-note">${EM().icon("info")}Dans la maquette, n'importe qui peut choisir son nom ici. Sur le site en ligne, chacun se connecte avec son compte.</p>`}`;
   }
   function secEspace(S) {
-    return `<section class="set-group">${row("Espace affiché", "L'espace d'un installateur client, ou celui de l'agence.", seg("data-space", [["client", "Client"], ["team", "Agence"]], S.space))}</section>
-      <p class="set-note">${EM().icon("info")}Réglage de maquette. Dans la vraie app, un client ne voit que son espace, jamais celui de l'agence.</p>`;
+    const cur = EM().viewId();
+    return `<section class="set-group">${row("Espace affiché", "Celui de l'agence, ou l'espace d'un client tel qu'il le voit.", seg("data-space", [["client", "Client"], ["team", "Agence"]], S.space))}
+      ${row("Client affiché", "Le client dont vous ouvrez l'espace.", EM().fsel("as-pick", "Client", TD().clients.map(c => [c.id, c.name]), cur))}</section>
+      <p class="set-note">${EM().icon("info")}Un client connecté ne voit que son espace : ni ce réglage, ni l'agence.</p>`;
+  }
+  // Le mot de passe : seulement sur le site en ligne, pour la personne connectée
+  const pwRow = () => row("Mot de passe", "Remplacez le mot de passe provisoire par le vôtre.", `<button class="btn btn-ghost" type="button" data-pw-open>${EM().icon("lock")}Changer</button>`);
+  const pwField = (name, label, auto) => `<label class="field"><span>${label}</span><span class="cg-pw"><input name="${name}" type="password" required${name === "current" ? "" : ' minlength="8"'} autocomplete="${auto}"><button class="cg-eye" type="button" data-cloud-eye aria-label="Afficher le mot de passe" aria-pressed="false">${EM().icon("eye")}</button></span></label>`;
+  function pwSheet() {
+    if (!X.pw || !CL()) return "";
+    return `<div class="scrim" data-pw-close></div>
+    <form class="sheet" id="pw-form" aria-label="Changer mon mot de passe" novalidate>
+      <div class="sheet-grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="link" type="button" data-pw-close>Annuler</button><b>Mot de passe</b><button class="link strong" type="submit">Enregistrer</button></div>
+      ${pwField("current", "Mot de passe actuel", "current-password")}
+      ${pwField("next", "Nouveau mot de passe", "new-password")}
+      ${pwField("again", "Encore une fois", "new-password")}
+      <p class="cg-msg pw-msg" role="alert" hidden></p>
+      <p class="field-help">8 caractères au moins. Personne d'autre ne le voit, pas même l'équipe Entremis.</p>
+    </form>`;
   }
   function secNotifs(S) {
     const n = TM().unreadCount(S);
@@ -110,9 +129,9 @@
       ${row("Données de l'équipe", "Leads, tâches, devis, discussions : partagés entre Marc, Richard et Gianni.", `<span class="state state-ok">Partagées</span>`)}
       ${row("Ce qui reste dans ce navigateur", "Tes connexions, la police, ce que tu as déjà lu.", `<span class="state state-neutral">Ici seulement</span>`)}
       ${row("Fichiers déposés", "Rangés avec l'app, visibles par l'équipe.", "")}
-      ${row("Comptes séparés", "Un compte et un mot de passe chacun, à l'étape Supabase.", `<span class="state state-neutral">Étape suivante</span>`)}
+      ${row("Comptes séparés", "Un compte et un mot de passe chacun. Un client ne reçoit que ses propres données.", CL() ? `<span class="state state-ok">En place</span>` : `<span class="state state-neutral">Site en ligne</span>`)}
     </section>
-    <p class="set-note">${EM().icon("info")}${S.space === "team" ? "Dans la maquette, le lien de l'app ouvre aussi l'espace agence. Avant de donner des comptes aux clients, il faudra des accès séparés." : "Vos demandes et vos rendez-vous ne sont jamais revendus ni partagés."}</p>`;
+    <p class="set-note">${EM().icon("info")}${S.space === "team" ? "Un compte client n'ouvre que son espace. La base ne lui envoie que ce qui le concerne : ses résultats de visite, son avis, ses disponibilités, ses parrainages." : "Vos demandes et vos rendez-vous ne sont jamais revendus ni partagés."}</p>`;
   }
   function secAide(S) {
     const team = S.space === "team";
@@ -140,7 +159,7 @@
   }
 
   function view(S) {
-    const esc = EM().esc, icon = EM().icon, secs = SECS(S.space), narrow = EM().isNarrow();
+    const esc = EM().esc, icon = EM().icon, secs = SECS(S), narrow = EM().isNarrow();
     if (!secs.some(s => s[0] === X.sec)) X.sec = narrow ? null : "profil";
     const nav = `<nav class="set-nav" aria-label="Rubriques des réglages"><ul>${secs.map(([k, i, l]) => `<li><button type="button" data-set-sec="${k}" ${X.sec === k ? 'aria-current="page"' : ""}><span class="set-ico">${icon(i)}</span><span>${l}</span>${icon("chev")}</button></li>`).join("")}</ul></nav>`;
     const cur = secs.find(s => s[0] === X.sec);
@@ -148,11 +167,13 @@
     return `
     <div class="head"><div class="head-text"><h1 class="h1">Réglages</h1><p class="sub">${S.space === "team" ? "Ton profil, ton espace et tes connexions." : "Votre profil et votre espace."}</p></div></div>
     <div class="set${cur ? " has-main" : ""}">${narrow ? (cur ? main : nav) : nav + main}</div>
-    ${cxSheet(S)}`;
+    ${cxSheet(S)}${pwSheet()}`;
   }
 
   function onClick(e, S, render) {
     if (e.target.closest("[data-cloud-out]")) { window.ENTREMIS_CLOUD.signOut(); return true; }
+    if (e.target.closest("[data-pw-open]")) { X.pw = true; render(); setTimeout(() => { const i = document.querySelector('#pw-form input[name="current"]'); if (i) i.focus(); }, 60); return true; }
+    if (e.target.closest("[data-pw-close]")) { X.pw = false; render(); return true; }
     const t = e.target.closest("[data-set-sec],[data-set-back],[data-set-font],[data-cx-open],[data-cx-close]"); if (!t) return false;
     const d = t.dataset;
     if (d.setSec) { X.sec = d.setSec; TM().haptic("tap"); render(); window.scrollTo(0, 0); const ap = document.querySelector(".app"); if (ap) ap.scrollTop = 0; return true; }
@@ -169,6 +190,21 @@
     return true;
   }
   function onSubmit(e, S, render) {
+    if (e.target.id === "pw-form") {
+      e.preventDefault();
+      const f = e.target, fd = new FormData(f), cur = String(fd.get("current") || ""), nx = String(fd.get("next") || ""), again = String(fd.get("again") || "");
+      const say = m => { const p = f.querySelector(".pw-msg"); p.textContent = m; p.hidden = false; };
+      if (!cur) { say("Écrivez d'abord votre mot de passe actuel."); return true; }
+      if (nx.length < 8) { say("Le nouveau mot de passe doit faire 8 caractères au moins."); return true; }
+      if (nx !== again) { say("Les deux nouveaux mots de passe ne sont pas les mêmes."); return true; }
+      const go = f.querySelector('button[type="submit"]'); go.disabled = true; go.textContent = "Envoi…";
+      window.ENTREMIS_CLOUD.changePassword(cur, nx).then(code => {
+        if (!code) { X.pw = false; render(); TM().haptic("done"); EM().toast("Mot de passe changé."); return; }
+        go.disabled = false; go.textContent = "Enregistrer";
+        say({ current: "Le mot de passe actuel n'est pas le bon.", same: "Choisissez un mot de passe différent de l'ancien.", weak: "Ce mot de passe est trop simple. Mélangez lettres et chiffres.", off: "Connectez-vous d'abord." }[code] || "Le mot de passe n'a pas été changé. Réessayez.");
+      });
+      return true;
+    }
     if (e.target.id !== "cx-form") return false;
     e.preventDefault();
     const c = CONNECT.find(x => x.id === X.cx); if (!c) return true;
@@ -181,7 +217,7 @@
     X.cx = null; TM().haptic("done"); render();
     return true;
   }
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && X.cx && !document.querySelector(".confirm,.dp-pop")) { X.cx = null; EM().render(); } });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && (X.cx || X.pw) && !document.querySelector(".confirm,.dp-pop")) { X.cx = null; X.pw = false; EM().render(); } });
 
-  window.ENTREMIS_SETTINGS = { view, onClick, onChange, onSubmit, reset: () => { X.cx = null; X.sec = null; } };   // en arrivant sur la page : la liste des rubriques (téléphone), Profil (ordinateur)
+  window.ENTREMIS_SETTINGS = { view, onClick, onChange, onSubmit, reset: () => { X.cx = null; X.sec = null; X.pw = false; } };   // en arrivant sur la page : la liste des rubriques (téléphone), Profil (ordinateur)
 })();

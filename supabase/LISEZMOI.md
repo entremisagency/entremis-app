@@ -28,8 +28,17 @@ Ce que ça crée :
 
 ## 3. Les comptes de l'équipe
 
-1. Supabase → Authentication → Users → **Invite user** : l'adresse de Marc, puis Richard, puis Gianni. Chacun reçoit un e-mail et choisit son mot de passe.
-2. Ensuite, dans SQL Editor, lancer les trois lignes `insert into public.members …` de la fin de `schema.sql`, avec les vraies adresses.
+Sans service d'e-mail à nous, Supabase n'envoie ses e-mails (invitation, mot de passe oublié) qu'aux membres de l'équipe Supabase, et 2 par heure au plus. Une invitation à Richard ou à Gianni ne partirait donc pas. On crée les comptes sans e-mail :
+
+1. Supabase → Authentication → Users → **Add user** → **Create new user** (et non « Send invitation »).
+2. L'adresse, un mot de passe provisoire, et « Auto Confirm User » coché. Pour Marc, Richard et Gianni.
+3. Marc donne lui-même leur mot de passe provisoire à Richard et Gianni (de vive voix ou par SMS).
+4. Dans SQL Editor, lancer les trois lignes `insert into public.members …` de la fin de `schema.sql`, avec les vraies adresses.
+5. Chacun se connecte sur le site, puis Réglages → Profil → Mot de passe → **Changer** pour choisir le sien.
+
+Plus tard, un compte client : même chose, puis la ligne « compte client » de la fin de `schema.sql` (rôle `client` et l'identifiant du client, par exemple `thermo`). Ce compte n'ouvre que l'espace de son entreprise, jamais celui de l'agence, et la base ne lui envoie que ses propres données.
+
+« Mot de passe oublié » ne marchera pour tout le monde qu'avec un service d'e-mail à nous (Resend, une fois un nom de domaine vérifié, branché dans Supabase → Authentication → Emails → SMTP).
 
 ## 4. L'envoi d'e-mails (Resend)
 

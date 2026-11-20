@@ -67,7 +67,7 @@
     return secs;
   }
   const total = s => parse(s.body).reduce((a, x) => a + x.items.length, 0);
-  const CLIENT = () => window.ENTREMIS_DATA.user.company;
+  const CLIENT = () => window.EM.viewUser().company;   // le client affiché
   const prepFor = (client, sid) => prep().list.find(p => p.client === client && p.script === sid);
   const pct = (client, s) => { const p = prepFor(client, s.id), t = total(s); return t ? Math.round(((p && p.done.length) || 0) / t * 100) : 0; };
 

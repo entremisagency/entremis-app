@@ -17,6 +17,8 @@
     camp: params.get("camp") || store.get("camp", "b2b"),
     space: params.get("space") || store.get("space", "team"),   // "client" | "team"
     who: params.get("who") || store.get("who", "marc"),         // portail : marc | richard | gianni
+    viewAs: params.get("as") || store.get("as", "solaria"),     // le client dont l'équipe regarde l'espace
+    lock: false,                                                  // compte client connecté : enfermé dans son espace, jamais l'agence
     read: {}, taskForm: false, boardWho: null, journalWho: "all",
     preview: params.get("preview") || store.get("preview", "desktop"),
     week: 1,              // index dans D.weeks (1 = semaine en cours)
@@ -27,7 +29,61 @@
     reported: {}          // id -> { reason, note, at }
   };
   if (!D.campaigns[S.camp]) S.camp = "b2b";   // l'ancienne offre « Candidats » a été retirée
-  const C = () => D.campaigns[S.camp];
+  const baseC = () => D.campaigns[S.camp];   // la campagne d'exemple complète (Solaria Habitat)
+
+  /* ---------- Le client affiché dans l'espace client ----------
+     Un compte client voit le sien, toujours. L'équipe (Marc, Richard, Gianni) choisit le client dont elle regarde l'espace.
+     Solaria Habitat a la campagne d'exemple complète ; les autres clients ont une campagne tirée de leurs rendez-vous
+     et de leurs leads d'exemple (page Rendez-vous de l'agence, page Leads). */
+  const viewId = () => S.lock ? (S.viewAs || "") : (S.viewAs || "solaria");
+  const viewClient = () => D.team.clients.find(x => x.id === viewId()) || { id: viewId(), name: "Votre entreprise", trade: "", done: 0, target: 0, day: 0, days: 21, absences: 0 };
+  function viewUser() {
+    const c = viewClient();
+    if (c.camp && c.name === D.user.company) return D.user;
+    const name = c.contact || c.name, w = name.split(/\s+/);
+    return { name, first: w[0], initials: (w[0].charAt(0) + (w[1] ? w[1].charAt(0) : "")).toUpperCase(), role: c.contactRole || "Gérant", company: c.name };
+  }
+  const CAMP = {};
+  const MONTHS_S = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+  const LEAD_STEP = { nouveau: "targeted", rappele: "contacted", qualifie: "replied", attribue: "replied", rdv: "meeting" };
+  function campOf(id) {
+    const b = baseC(), cl = D.team.clients.find(x => x.id === id);
+    if (cl && cl.camp && D.campaigns[cl.camp]) return D.campaigns[cl.camp];
+    const c0 = cl || viewClient();
+    const rdv = window.ENTREMIS_GROWTH ? window.ENTREMIS_GROWTH.otherRdv(id) : [];
+    const leads = window.ENTREMIS_LEADS ? window.ENTREMIS_LEADS.list().filter(l => l.to === id && l.status !== "perdu") : [];
+    const key = rdv.map(a => a.id + a.state).join(",") + "|" + leads.map(l => l.id + l.status).join(",");
+    if (CAMP[id] && CAMP[id].key === key) return CAMP[id].c;   // même objet tant que rien ne change
+    const ini = n => n.split(/\s+/).map(w => w.charAt(0)).join("").slice(0, 2).toUpperCase();
+    const day = iso => { const d = new Date(String(iso || "").slice(0, 10) + "T12:00:00Z"); return isNaN(d) ? "" : d.getUTCDate() + " " + MONTHS_S[d.getUTCMonth()]; };
+    const appointments = rdv.map(a => ({ id: a.id, date: a.date, start: a.start, end: a.end, name: a.name, initials: ini(a.name), role: a.role, org: a.org || "Maison individuelle", city: a.city, mode: "Visite technique", state: a.state, reply: a.reply,
+      absence: a.state === "replaced" ? (a.absence || { reported: day(a.date) + " à " + a.end, reason: a.reply === "rien" ? "Absent, sans répondre au rappel" : "Absent" }) : undefined,
+      criteria: { besoin: a.role, budget: "À préciser au rendez-vous", decideur: "Propriétaire, à confirmer", delai: "À préciser" }, signals: [] }));
+    const accounts = leads.map(l => ({ org: l.name, sector: l.trade, city: l.city, size: l.zone || "", signal: l.source ? "Demande via " + l.source : "", step: LEAD_STEP[l.status] || "targeted", last: day(l.givenAt || l.at) }));
+    const past = appointments.filter(a => a.date < D.today.iso && a.state !== "new"), ok = past.filter(a => a.state === "ok").length, abs = c0.absences || 0;
+    const c = Object.assign({}, b, {
+      name: c0.trade || b.name,
+      goal: Object.assign({}, b.goal, { done: c0.done, target: c0.target, day: c0.day, days: c0.days }),
+      kpis: [
+        { label: "Demandes reçues", value: String(accounts.length), note: "depuis le début", ticks: [] },
+        { label: "Qualifiées", value: String(accounts.filter(a => a.step === "replied" || a.step === "meeting").length), note: "prêtes pour une visite", ticks: [] },
+        { label: "Délai de rappel", value: "—", note: "mesuré au premier appel", ticks: [] },
+        { label: "Présence aux rendez-vous", value: `${ok} / ${past.length}`, note: abs ? `${abs} absence${abs > 1 ? "s" : ""}, remplacée${abs > 1 ? "s" : ""}` : "aucune absence", ticks: [] }
+      ],
+      appointments, accounts, messages: [], absences: appointments.filter(a => a.state === "replaced").length
+    });
+    CAMP[id] = { key, c };
+    return c;
+  }
+  const C = () => S.space === "client" ? campOf(viewId()) : baseC();
+  // L'équipe passe sur l'espace d'un client (bandeau, réglages, fiche du client). Jamais pour un compte client.
+  function pickClient(id) {
+    if (S.lock || !D.team.clients.some(x => x.id === id)) return;
+    S.viewAs = id; store.set("as", id); S.space = "client"; store.set("space", "client");
+    S.step = "all"; S.filter = "all"; S.acc = null; S.mDay = D.today.iso;
+    if (!/^#(accueil|agenda|comptes|resultats|dispos|parrainage|scripts|aide|menu|notifications|reglages)$/.test(location.hash)) location.hash = "#accueil";
+    render(); toast(`Vue client : ${viewClient().name}.`);
+  }
 
   function applyTheme() {
     document.documentElement.dataset.mode = S.mode;
@@ -124,19 +180,21 @@
 
   // Le parcours de l'installateur connecté (espace client) : d'après son métier, ou ce que l'agence a choisi sur sa fiche
   function clientParcours() {
-    const me = window.ENTREMIS_DATA.team.clients.find(x => x.name === D.user.company);
-    return window.ENTREMIS_SECTORS.forClient(me ? me.id : "solaria").parcours;
+    return window.ENTREMIS_SECTORS.forClient(viewId()).parcours;
   }
   /* ---------- Cadre : barre latérale, haut, onglets ---------- */
   const TM = () => window.ENTREMIS_TEAM;
   function renderChrome(route) {
-    const c = C(), team = S.space === "team";
+    const c = C(), team = S.space === "team", U = viewUser();
     const TD_ = () => window.ENTREMIS_DATA.team;
     const section = route.name === "script" ? "scripts" : route.name === "rdv" ? "agenda" : route.name === "fiche" ? (TD_().clients.some(x => x.id === route.id) ? "clients" : "pipeline") : route.name;
     const tabSection = !team && ["messages", "scripts", "dispos", "parrainage", "notifications", "aide", "reglages", "menu"].includes(section) ? "menu" : team && ["appels", "marketing", "avancement", "notifications", "reglages", "chiffres", "scripts-equipe", "pipeline", "finances", "guide", "processus", "discussions", "secteurs", "appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite"].includes(section) ? "plus" : section === "fiche" ? "clients" : section;
     document.documentElement.dataset.zone = S.space;   // pas « data-space » : ce nom sert aux boutons, et <html> les attraperait tous
-    $("#space").innerHTML = [["client", "Client"], ["team", "Agence"]].map(([v, l]) =>
+    const campBox = $("#space").closest(".camp"); if (campBox) campBox.hidden = S.lock;
+    $("#space").innerHTML = S.lock ? "" : [["client", "Client"], ["team", "Agence"]].map(([v, l]) =>
       `<button type="button" data-space="${v}" aria-pressed="${S.space === v}">${l}</button>`).join("");
+    const bar = $("#as-bar");
+    if (bar) { bar.hidden = team || S.lock; bar.innerHTML = team || S.lock ? "" : asBar(); }
     const replies = c.messages.filter(m => m.status === "replied").length;
     const openTasks = TM().T.list.filter(t => t.status !== "done" && t.who === S.who).length;
     const unread = TM().unreadCount(S);
@@ -163,15 +221,15 @@
     const me = TM().member(S.who);
     $("#account").innerHTML = team
       ? `${TM().avatar(me.id)}<div><b>${me.name}</b><span>Mon portail – changer</span></div>`
-      : `<span class="av av-md">${D.user.initials}</span><div><b>${esc(D.user.name)}</b><span>${esc(D.user.company)} – exemple</span></div>`;
-    $("#m-avatar").outerHTML = team ? `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages">${TM().avatar(me.id, "av")}</a>` : `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages"><span class="av">${D.user.initials}</span></a>`;
+      : `<span class="av av-md">${esc(U.initials)}</span><div><b>${esc(U.name)}</b><span>${esc(U.company)}${S.lock ? "" : " – exemple"}</span></div>`;
+    $("#m-avatar").outerHTML = team ? `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages">${TM().avatar(me.id, "av")}</a>` : `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages"><span class="av">${esc(U.initials)}</span></a>`;
     document.querySelectorAll(".bell .dot").forEach(d => { d.hidden = !unread; });
     const pt = document.getElementById("promise-text"); if (pt && !team) pt.textContent = clientParcours().guarantee;
 
     const names = { accueil: "Accueil", agenda: "Agenda", comptes: c.words.accounts, messages: "Messages", equipe: "Mon portail", taches: "Tâches", clients: "Clients", pipeline: "Prospection", avancement: "Avancement", finances: "Finances", appels: "Appels", marketing: "Marketing", plus: "Plus", chiffres: "Chiffres", leads: "Leads", generer: "Nouveau document", guide: "Guide", processus: "Processus", discussions: "Discussions", secteurs: "Secteurs", appel: "Poste d'appel", "rendez-vous": "Rendez-vous", zones: "Zones", sante: "Santé et suivi", propositions: "Propositions", etudes: "Études de cas", marge: "Marge", conformite: "Conformité", aide: "Comment ça marche", resultats: "Résultats", dispos: "Disponibilités", parrainage: "Parrainage", menu: "Plus", scripts: "Scripts", "scripts-equipe": "Scripts", notifications: "Notifications", reglages: "Réglages" };
     const fe = route.name === "fiche" ? (TD_().clients.find(x => x.id === route.id) || TD_().pipeline.find(x => x.id === route.id)) : null;
     const crumbs = route.name === "script" ? ["Scripts", (window.ENTREMIS_SCRIPTS && document.title) ? "Script" : "Script"] : route.name === "rdv" ? ["Agenda", route.appt ? route.appt.name : ""] : route.name === "fiche" ? [fe && fe.camp !== undefined || (fe && TD_().clients.includes(fe)) ? "Clients" : "Prospection", fe ? fe.name : "Fiche"] : route.name === "generer" ? ["Finances", "Nouveau document"] : [names[route.name]];
-    $("#crumbs").innerHTML = `<span>${team ? "Espace agence" : esc(D.user.company) + " – " + esc(c.name)}</span>` + crumbs.map((x, i) =>
+    $("#crumbs").innerHTML = `<span>${team ? "Espace agence" : esc(U.company) + " – " + esc(c.name)}</span>` + crumbs.map((x, i) =>
       icon("chev") + (i === crumbs.length - 1 ? `<b>${esc(x)}</b>` : `<a href="#${{ Agenda: "agenda", Clients: "clients", Prospection: "pipeline", Scripts: "scripts", Finances: "finances" }[x] || "agenda"}">${esc(x)}</a>`)).join("");
 
     // En-tête mobile : retour sur la fiche et les écrans secondaires, logo ailleurs
@@ -179,6 +237,14 @@
     $("#m-left").innerHTML = back
       ? `<a class="m-back" href="${back[0]}">${icon("back")}${back[1]}</a>`
       : `<a class="logo" href="${team ? "#equipe" : "#accueil"}" aria-label="Entremis, accueil"><svg aria-hidden="true"><use href="#logo-e"/></svg><span>ENTREMIS</span></a>`;
+  }
+
+  // Le bandeau en haut de l'espace client, pour l'équipe : quel client on regarde, et le retour à l'agence
+  function asBar() {
+    const cur = viewId();
+    return `<p class="as-text">${icon("eye")}<span class="as-long">Vous voyez l'espace de</span><span class="as-short">Vue client</span></p>
+      ${fsel("as-pick", "Client", D.team.clients.map(x => [x.id, x.name]), cur)}
+      <button class="btn btn-ghost as-back" type="button" data-space="team">${icon("back")}<span class="as-long">Revenir à l'agence</span><span class="as-short">Agence</span></button>`;
   }
 
   /* ---------- Morceaux réutilisés ---------- */
@@ -216,7 +282,7 @@
         Object.assign({}, P.steps[0], { rows: [["Rappel", kv(/rappel/)], ["Reçues", kv(/reçues/)]] }),
         Object.assign({}, P.steps[1], { rows: [["Critères", "4"], ["Qualifiées", kv(/Qualifi/)]] }),
         Object.assign({}, P.steps[2], { rows: [[P.doneLabel, `${c.goal.done}/${c.goal.target}`], [P.nextLabel, next ? (next.date === window.ENTREMIS_DATA.today.iso ? "auj. " : next.date.slice(8, 10) + "/" + next.date.slice(5, 7) + " ") + next.start : "–"]] }),
-        Object.assign({}, P.steps[3], { rows: [[P.ok, kv(/Présence/).split(" ")[0].split("/")[0], "ok"], [P.bad, "1", "bad"]] })
+        Object.assign({}, P.steps[3], { rows: [[P.ok, kv(/Présence/).split(" ")[0].split("/")[0], "ok"], [P.bad, String(c.absences != null ? c.absences : 1), "bad"]] })
       ], "Comment ça marche")}
     </section>`;
     const gst = next ? window.ENTREMIS_GCAL.addState("rdv:" + next.id) : null;
@@ -224,7 +290,7 @@
     return `
     <div class="head">
       <div class="head-text">
-        <h1 class="h1">Bonjour ${esc(D.user.first)}</h1>
+        <h1 class="h1">Bonjour ${esc(viewUser().first)}</h1>
         <p class="sub">Voici où en est votre campagne « ${esc(c.name)} ».</p>
       </div>
       <div class="head-actions">${sampleTag}</div>
@@ -565,7 +631,7 @@
       </div>
       <div class="head-actions">${sampleTag}${tabsHtml("comptes")}</div>
     </div>
-    ${(() => { const mine = window.ENTREMIS_LEADS.list().filter(l => l.to === "solaria"); const src = ["Facebook", "Google", "Site"].map(s => [s, mine.filter(l => l.source === s).length]);
+    ${(() => { const mine = window.ENTREMIS_LEADS.list().filter(l => l.to === viewId()); const src = ["Facebook", "Google", "Site"].map(s => [s, mine.filter(l => l.source === s).length]);
       return `<section class="card my-leads"><div class="ml-main">${icon("shield")}<div><b>${esc((c.kpis.find(k => /reçues/.test(k.label)) || { value: mine.length }).value)} demandes, toutes à vous</b><span>Jamais revendues ni partagées. Sources des ${mine.length} dernières :</span></div></div>
         <div class="ml-src">${src.map(([s, n]) => window.ENTREMIS_LEADS.srcTag(s).replace("</span>", `<b class="tabnum">${n}</b></span>`)).join("")}</div></section>`; })()}
 
@@ -675,6 +741,8 @@
       name = "rdv"; id = h.slice(4);
       // Un lien vers une fiche de l'autre offre bascule sur cette offre
       if (!byId(id)) { const other = Object.values(D.campaigns).find(c => c.appointments.some(a => a.id === id)); if (other) S.camp = other.id; }
+      // Le rendez-vous d'un autre client : l'équipe passe sur l'espace de ce client (jamais un compte client)
+      if (!S.lock) { const owner = window.ENTREMIS_GROWTH && window.ENTREMIS_GROWTH.rdvClient(id); if (owner && owner !== viewId()) { S.viewAs = owner; store.set("as", owner); } }
     }
     else if (h.startsWith("message-")) { name = "messages"; id = h.slice(8); }
     else if (h.startsWith("fiche-")) { name = "fiche"; id = h.slice(6); }
@@ -682,7 +750,13 @@
     const GROWTH_ROUTES = ["appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite"];
     const CLIENT_ROUTES = ["accueil", "agenda", "rdv", "comptes", "messages", "scripts", "script", "aide", "resultats", "dispos", "parrainage", "menu"];
     const OPS = window.ENTREMIS_OPS;
-    if (TM().TEAM_ROUTES.includes(name) || OPS.ROUTES.includes(name) || name === "chiffres" || name === "fiche" || name === "scripts-equipe" || name === "leads" || name === "generer" || name === "guide" || name === "processus" || name === "discussions" || name === "secteurs" || GROWTH_ROUTES.includes(name)) S.space = "team";
+    if (S.lock) {
+      // Compte client : jamais l'agence. Une autre adresse ramène à son accueil.
+      S.space = "client";
+      if (!CLIENT_ROUTES.includes(name) && !TM().SHARED_ROUTES.includes(name)) { name = "accueil"; id = undefined; history.replaceState(null, "", location.pathname + location.search + "#accueil"); }
+      else if (name === "rdv" && !byId(id)) { name = "agenda"; id = undefined; history.replaceState(null, "", location.pathname + location.search + "#agenda"); }
+    }
+    else if (TM().TEAM_ROUTES.includes(name) || OPS.ROUTES.includes(name) || name === "chiffres" || name === "fiche" || name === "scripts-equipe" || name === "leads" || name === "generer" || name === "guide" || name === "processus" || name === "discussions" || name === "secteurs" || GROWTH_ROUTES.includes(name)) S.space = "team";
     else if (CLIENT_ROUTES.includes(name)) S.space = "client";
     else if (!TM().SHARED_ROUTES.includes(name) && name !== "scripts-equipe" && name !== "leads" && name !== "generer" && name !== "guide" && name !== "processus" && name !== "discussions" && name !== "secteurs" && !GROWTH_ROUTES.includes(name)) name = S.space === "team" ? "equipe" : "accueil";
     return { name, id, appt: name === "rdv" ? byId(id) : null };
@@ -737,6 +811,8 @@
     if (window.ENTREMIS_SETTINGS.onClick(e, S, render)) return;
     if (window.ENTREMIS_GROWTH.onClick(e, S, render)) return;
     if (TM().onClick(e, S, render)) return;
+    const ap = e.target.closest("[data-as-pick]");
+    if (ap) { pickClient(ap.dataset.asPick); return; }
     const acc = e.target.closest("[data-acc-open]");
     if (acc && !e.target.closest("button,a")) { S.acc = acc.dataset.accOpen; render(); return; }
     if (e.target.closest("[data-acc-close]")) { S.acc = null; render(); return; }
@@ -886,7 +962,7 @@
     setTimeout(() => el.classList.add("out"), 1250);
     setTimeout(() => el.remove(), 1700);
   }
-  window.EM = { D, S, C, esc, icon, fileIcon, brand, cline, confirm: o => askConfirm(o), toast, store, isNarrow: () => isNarrow(), sampleTag, loader, nodeFlow, tickRing, fsel, render: () => render() };
+  window.EM = { D, S, C, baseC, viewId, viewClient, viewUser, pickClient, esc, icon, fileIcon, brand, cline, confirm: o => askConfirm(o), toast, store, isNarrow: () => isNarrow(), sampleTag, loader, nodeFlow, tickRing, fsel, render: () => render() };
   splash();
 
   applyTheme();
@@ -904,7 +980,16 @@
   window.ENTREMIS_CHAT.bind(S, render);
   window.ENTREMIS_CHAT.init(() => render());
   // Site en ligne : la personne connectée décide du portail et de l'espace
-  if (window.ENTREMIS_CLOUD.on()) window.ENTREMIS_CLOUD.ready().then(m => { if (m.who) S.who = m.who; S.space = m.role === "client" ? "client" : "team"; if (location.hash === "" || location.hash === "#accueil") location.hash = S.space === "team" ? "#equipe" : "#accueil"; render(); });
+  if (window.ENTREMIS_CLOUD.on()) window.ENTREMIS_CLOUD.ready().then(m => {
+    if (m.role === "client") {
+      // Compte client : son espace seulement, sur son entreprise (la base ne lui envoie que ses propres données)
+      S.lock = true; S.space = "client"; S.viewAs = m.client || ""; document.documentElement.classList.add("is-locked");
+    } else {
+      if (m.who) S.who = m.who; S.space = "team";
+      if (location.hash === "" || location.hash === "#accueil") location.hash = "#equipe";
+    }
+    render();
+  });
   window.ENTREMIS_SECTORS.init(() => render());
   window.ENTREMIS_CPLUS.init(() => render());
   window.ENTREMIS_GROWTH.init(() => render());

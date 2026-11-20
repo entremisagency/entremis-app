@@ -95,7 +95,7 @@
             <button class="btn btn-ghost" type="button" data-ops-sheet="call">${icon("phone")}Noter un appel</button>
             <button class="btn btn-ghost" type="button" data-act="new-task">${icon("check")}Nouvelle tâche</button>
             <a class="btn btn-ghost" href="#generer" data-gen-for="${e.id}">${icon("euro")}Faire un devis</a>
-            ${e.c && e.c.camp ? `<button class="btn btn-ghost" type="button" data-open-client="${e.id}">${icon("home")}Voir son espace client</button>` : ""}
+            ${e.c ? `<button class="btn btn-ghost" type="button" data-open-client="${e.id}">${icon("eye")}Voir son espace client</button>` : ""}
           </div>
         </section>
         <section class="card">

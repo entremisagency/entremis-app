@@ -498,15 +498,10 @@
     if (t.dataset.taskDel) { if (S.taskEdit) { S.taskForm = false; S.taskEdit = null; render(); } deleteTask(t.dataset.taskDel, render); return true; }
     if (t.dataset.boardWho) { S.boardWho = t.dataset.boardWho; haptic("tap"); render(); return true; }
     if (t.dataset.journal) { S.journalWho = t.dataset.journal; render(); return true; }
-    if (t.dataset.who) { S.who = t.dataset.who; S.boardWho = null; EM().store.set("who", S.who); haptic("tap"); render(); toast(`Portail de ${member(S.who).name}.`); return true; }
-    if (t.dataset.space) { S.space = t.dataset.space; EM().store.set("space", S.space); haptic("tap"); location.hash = S.space === "team" ? "#equipe" : "#accueil"; render(); return true; }
+    if (t.dataset.who) { if (S.lock) return true; S.who = t.dataset.who; S.boardWho = null; EM().store.set("who", S.who); haptic("tap"); render(); toast(`Portail de ${member(S.who).name}.`); return true; }
+    if (t.dataset.space) { if (S.lock) return true; S.space = t.dataset.space; EM().store.set("space", S.space); haptic("tap"); location.hash = S.space === "team" ? "#equipe" : "#accueil"; render(); return true; }
     if (t.dataset.read) { S.read = Object.assign({}, S.read, { [t.dataset.read]: true }); render(); return true; }
-    if (t.dataset.openClient) {
-      const c = TD().clients.find(x => x.id === t.dataset.openClient);
-      if (c && c.camp) { e.preventDefault(); S.space = "client"; S.camp = c.camp; EM().store.set("space", "client"); EM().store.set("camp", c.camp); location.hash = "#accueil"; render(); toast(`Vue client de ${c.name}.`); }
-      else if (c) { e.preventDefault(); toast("Maquette : seule Solaria Habitat a une vue client d'exemple."); }
-      return true;
-    }
+    if (t.dataset.openClient) { e.preventDefault(); EM().pickClient(t.dataset.openClient); return true; }   // l'équipe ouvre l'espace de ce client
     const act = t.dataset.act;
     if (act === "new-task") { S.taskForm = true; S.taskEdit = null; render(); setTimeout(() => { const i = document.getElementById("task-title"); if (i) i.focus(); }, 60); return true; }
     if (act === "close-task") { S.taskForm = false; S.taskEdit = null; render(); return true; }

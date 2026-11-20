@@ -111,8 +111,13 @@ create policy "fichiers : l'équipe supprime" on storage.objects
   for delete to authenticated using (bucket_id = 'files' and public.is_team());
 
 -- 7. Les comptes de l'équipe ------------------------------------------------------------
--- D'abord : Authentication > Users > « Invite user » pour Marc, Richard et Gianni (chacun choisit son mot de passe).
--- Puis, une fois les trois invitations acceptées, remplacer les adresses ci-dessous et lancer ces trois lignes :
+-- D'abord : Authentication > Users > Add user > « Create new user » pour Marc, Richard et Gianni,
+-- avec un mot de passe provisoire et « Auto Confirm User » coché (sans service d'e-mail à nous, une invitation ne partirait
+-- qu'aux membres de l'équipe Supabase). Chacun change ensuite son mot de passe dans l'app : Réglages > Profil > Mot de passe.
+-- Puis remplacer les adresses ci-dessous et lancer ces trois lignes :
 -- insert into public.members (user_id, who, role) select id, 'marc',    'team' from auth.users where email = 'ADRESSE_DE_MARC'    on conflict (user_id) do nothing;
 -- insert into public.members (user_id, who, role) select id, 'richard', 'team' from auth.users where email = 'ADRESSE_DE_RICHARD' on conflict (user_id) do nothing;
 -- insert into public.members (user_id, who, role) select id, 'gianni',  'team' from auth.users where email = 'ADRESSE_DE_GIANNI'  on conflict (user_id) do nothing;
+--
+-- Plus tard, un compte client (il ne verra que l'espace de son entreprise, et la base ne lui enverra que ses propres données) :
+-- insert into public.members (user_id, who, role, client_id) select id, null, 'client', 'IDENTIFIANT_DU_CLIENT' from auth.users where email = 'ADRESSE_DU_CLIENT' on conflict (user_id) do nothing;

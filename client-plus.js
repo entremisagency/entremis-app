@@ -32,7 +32,10 @@
   const prevDay = iso => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
   const euros = n => Math.round(n).toLocaleString("fr-FR").replace(/ | /g, " ") + " €";
   const result = id => RESULTS().list.find(r => r.id === id);
-  const me = () => { const c = TD().clients.find(x => x.name === D().user.company); return c ? c.id : "solaria"; };
+  const me = () => EM().viewId();   // le client affiché : le compte client connecté, ou celui que l'équipe regarde
+  // Chaque ligne porte le client concerné (client_id) : sur le site en ligne, ce client la voit, et seulement lui.
+  const clientOf = rdvId => (window.ENTREMIS_GROWTH && window.ENTREMIS_GROWTH.rdvClient(rdvId)) || me();
+  const companyOf = a => { const c = TD().clients.find(x => x.id === clientOf(a.id)); return c ? c.name : EM().viewUser().company; };
 
   /* ---------- Confirmations au particulier (partagé avec la page Rendez-vous de l'agence) ---------- */
   // Deux SMS : la veille à 18 h, le matin à 8 h. « Envoyé » si l'heure est passée, sinon « Prévu ». La réponse vient de la fiche du rendez-vous.
@@ -55,7 +58,7 @@
   }
   function confirmCard(a) {
     if (a.state === "replaced") return "";
-    const icon = EM().icon, esc = EM().esc, c = confirmations(a), t = smsTexts(a, D().user.company);
+    const icon = EM().icon, esc = EM().esc, c = confirmations(a), t = smsTexts(a, companyOf(a));
     const item = (k, label, x) => `<li class="${x.sent ? "is-sent" : ""}"><span class="cf-dot">${x.sent ? icon("check") : ""}</span><div><b>${label} – ${x.sent ? "envoyé" : "prévu"} ${short(x.at.slice(0, 10))} à ${x.at.slice(11)}</b><span>« ${esc(t[k])} »</span></div></li>`;
     return `<section class="card f-conf"><div class="card-head"><h2 class="h2">Rappels au particulier</h2>${c.reply ? `<span class="state state-${c.reply === "confirmé" ? "ok" : c.reply === "pas de réponse" ? "warn" : "neutral"}">${c.reply === "confirmé" ? "Confirmé" : c.reply === "pas de réponse" ? "Pas de réponse" : "En attente"}</span>` : ""}</div>
       <ol class="cf-list">${item("veille", "SMS la veille", c.veille)}${item("matin", "SMS le matin", c.matin)}</ol>
@@ -134,7 +137,7 @@
           <button class="btn btn-ghost" type="submit">${icon("plus")}Ajouter</button></form></section>
     </div>`;
   }
-  const saveDispos = d => DISPOS().put(Object.assign({}, d, { updatedAt: new Date().toISOString().slice(0, 16) }));
+  const saveDispos = d => DISPOS().put(Object.assign({}, d, { client_id: d.id, updatedAt: new Date().toISOString().slice(0, 16) }));
 
   /* ---------- #parrainage ---------- */
   function viewParrainage(S) {
@@ -166,7 +169,7 @@
     if (d.resSet) {
       const [id, out] = d.resSet.split(":");
       if (out === "signe") { X.res = id; X.pick = "signe"; render(); const i = document.querySelector('#res-form input[name="amount"]'); if (i) i.focus(); return true; }
-      RESULTS().put({ id, outcome: out, amount: 0, at: today(), by: "client" }); X.res = null; X.pick = null; TM().haptic("done"); render();
+      RESULTS().put({ id, client_id: clientOf(id), outcome: out, amount: 0, at: today(), by: "client" }); X.res = null; X.pick = null; TM().haptic("done"); render();
       EM().toast(out === "devis" ? "Noté : devis envoyé. Dites-nous s'il signe." : "Noté. Merci, ça nous aide à mieux cibler.");
       return true;
     }
@@ -184,7 +187,7 @@
       e.preventDefault();
       const amount = Number(String(new FormData(f).get("amount") || "").replace(/\s/g, "").replace(",", ".")) || 0;
       if (!amount) { EM().toast("Indiquez le montant signé."); return true; }
-      RESULTS().put({ id: f.dataset.resId, outcome: "signe", amount, at: today(), by: "client" }); X.res = null; X.pick = null; TM().haptic("done"); render();
+      RESULTS().put({ id: f.dataset.resId, client_id: clientOf(f.dataset.resId), outcome: "signe", amount, at: today(), by: "client" }); X.res = null; X.pick = null; TM().haptic("done"); render();
       EM().toast(`Bravo : ${euros(amount)} signés. C'est noté.`);
       return true;
     }
@@ -192,7 +195,7 @@
       e.preventDefault();
       const fd = new FormData(f), av = AVIS().list.find(x => x.id === me()), note = X.star || (av && av.note) || 0;
       if (!note) { EM().toast("Choisissez une note, de 1 à 5."); return true; }
-      AVIS().put({ id: me(), note, text: String(fd.get("text") || "").trim(), publish: !!fd.get("publish"), at: today() }); X.avisEdit = false; X.star = 0; TM().haptic("done"); render();
+      AVIS().put({ id: me(), client_id: me(), note, text: String(fd.get("text") || "").trim(), publish: !!fd.get("publish"), at: today() }); X.avisEdit = false; X.star = 0; TM().haptic("done"); render();
       EM().toast("Merci pour votre avis. Richard le lit aujourd'hui.");
       return true;
     }
@@ -206,7 +209,7 @@
     }
     if (id === "ref-form") {
       e.preventDefault();
-      const fd = new FormData(f), r = { id: "r" + Date.now().toString(36), from: me(), fromName: D().user.company, name: String(fd.get("name") || "").trim(), trade: String(fd.get("trade") || ""), city: String(fd.get("city") || "").trim(), phone: String(fd.get("phone") || "").trim(), note: String(fd.get("note") || "").trim(), at: new Date().toISOString().slice(0, 16), status: "nouveau" };
+      const fd = new FormData(f), r = { id: "r" + Date.now().toString(36), client_id: me(), from: me(), fromName: EM().viewUser().company, name: String(fd.get("name") || "").trim(), trade: String(fd.get("trade") || ""), city: String(fd.get("city") || "").trim(), phone: String(fd.get("phone") || "").trim(), note: String(fd.get("note") || "").trim(), at: new Date().toISOString().slice(0, 16), status: "nouveau" };
       if (!r.name || !r.city || !r.phone) return true;
       REFS().put(r); f.reset(); TM().haptic("done"); render();
       EM().toast(`Merci. Richard appelle ${r.name} de votre part dans la semaine.`);

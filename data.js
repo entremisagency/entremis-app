@@ -109,12 +109,12 @@ window.ENTREMIS_DATA.team = {
   ],
   // Campagnes clients en cours. pace : ahead | ontrack | late. camp : la campagne qui s'ouvre en « vue client ».
   clients: [
-    { id: "solaria", name: "Solaria Habitat", trade: "Pompes à chaleur et solaire", offer: "Rendez-vous", camp: "b2b", done: 8, target: 10, day: 17, days: 21, owner: "richard", pace: "ontrack", next: "Hugo Lambert – aujourd'hui 15:00", absences: 0 },
-    { id: "thermo", name: "Thermo Rhône", trade: "Climatisation et pompes à chaleur", offer: "Rendez-vous", done: 12, target: 15, day: 17, days: 21, owner: "gianni", pace: "ontrack", next: "Bruno Petit – aujourd'hui 16:00", absences: 0 },
-    { id: "ecotoit", name: "Éco Toit Bretagne", trade: "Panneaux solaires", offer: "Rendez-vous", done: 3, target: 12, day: 12, days: 21, owner: "richard", pace: "late", next: "À placer", absences: 1 },
-    { id: "isolea", name: "Isoléa", trade: "Isolation", offer: "Rendez-vous", done: 9, target: 12, day: 9, days: 21, owner: "gianni", pace: "ahead", next: "Lina Martin – demain 09:30", absences: 0 },
-    { id: "delmas", name: "Plomberie Delmas", trade: "Plomberie et chauffe-eau", offer: "Rendez-vous", done: 1, target: 10, day: 3, days: 21, owner: "marc", pace: "ontrack", next: "Paul Rivière – lun. 14:00", absences: 0 },
-    { id: "blindex", name: "Blindex Lyon", trade: "Serrurerie et portes blindées", offer: "Rendez-vous", done: 6, target: 10, day: 10, days: 21, owner: "richard", pace: "ahead", next: "Nadia Ferhat – demain 18:00", absences: 0 }
+    { id: "solaria", name: "Solaria Habitat", contact: "Julie Arnaud", contactRole: "Gérante", trade: "Pompes à chaleur et solaire", offer: "Rendez-vous", camp: "b2b", done: 8, target: 10, day: 17, days: 21, owner: "richard", pace: "ontrack", next: "Hugo Lambert – aujourd'hui 15:00", absences: 0 },
+    { id: "thermo", name: "Thermo Rhône", contact: "Olivier Roux", contactRole: "Gérant", trade: "Climatisation et pompes à chaleur", offer: "Rendez-vous", done: 12, target: 15, day: 17, days: 21, owner: "gianni", pace: "ontrack", next: "Bruno Petit – aujourd'hui 16:00", absences: 0 },
+    { id: "ecotoit", name: "Éco Toit Bretagne", contact: "Yann Le Bihan", contactRole: "Gérant", trade: "Panneaux solaires", offer: "Rendez-vous", done: 3, target: 12, day: 12, days: 21, owner: "richard", pace: "late", next: "À placer", absences: 1 },
+    { id: "isolea", name: "Isoléa", contact: "Sandrine Morel", contactRole: "Gérante", trade: "Isolation", offer: "Rendez-vous", done: 9, target: 12, day: 9, days: 21, owner: "gianni", pace: "ahead", next: "Lina Martin – demain 09:30", absences: 0 },
+    { id: "delmas", name: "Plomberie Delmas", contact: "Jean Delmas", contactRole: "Artisan plombier", trade: "Plomberie et chauffe-eau", offer: "Rendez-vous", done: 1, target: 10, day: 3, days: 21, owner: "marc", pace: "ontrack", next: "Paul Rivière – lun. 14:00", absences: 0 },
+    { id: "blindex", name: "Blindex Lyon", contact: "Mehdi Saïdi", contactRole: "Gérant", trade: "Serrurerie et portes blindées", offer: "Rendez-vous", done: 6, target: 10, day: 10, days: 21, owner: "richard", pace: "ahead", next: "Nadia Ferhat – demain 18:00", absences: 0 }
   ],
   replacements: [
     { client: "Éco Toit Bretagne", person: "Gaëlle Le Goff, solaire 6 kWc, Vannes", reported: "18 nov.", due: "25 nov.", owner: "richard", status: "searching" },

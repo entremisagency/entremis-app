@@ -2627,3 +2627,54 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .cg-msg.is-ok{background:var(--color-card);color:var(--color-body)}
 .cg-go{height:var(--button-h);justify-content:center}
 .cg-forgot{justify-self:center}
+
+
+/* ===== Connexion en deux colonnes, mot de passe, vue client de l'équipe (Marc, 20 nov. 2026) =====
+   Mise en page reprise de la référence de Marc (photo à gauche, formulaire à droite, œil sur le mot de passe),
+   mais la couleur vient d'une vraie photo d'installateur dans le bleu d'Entremis : pas de dégradé violet ni de halo (CLAUDE.md, §4). */
+#cloud-gate{place-items:initial;overflow:auto}
+.cg-shell{display:grid;grid-template-columns:var(--cg-art-w) minmax(0,1fr);gap:var(--space-3);width:min(var(--cg-shell-w),100%);min-height:min(var(--cg-shell-h),calc(100dvh - var(--space-4) * 2));margin:auto;padding:var(--space-3);border-radius:var(--radius-xl);background:var(--color-white);box-shadow:var(--shadow-sheet),0 0 0 1px var(--color-hairline)}
+.cg-art{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;gap:var(--space-5);margin:0;padding:var(--space-5);overflow:hidden;border-radius:var(--radius-lg);background:var(--cg-art-bg);color:var(--color-white)}
+.cg-art img{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
+.cg-art::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--cg-scrim)}
+.cg-art-logo{display:flex;align-items:center;gap:var(--space-3)}
+.cg-art-logo svg{width:var(--logo);height:var(--logo)}
+.cg-art-logo span{font-family:var(--font-charte);font-weight:var(--weight-strong);font-size:var(--text-caption);letter-spacing:.2em}
+.cg-art figcaption{display:grid;gap:var(--space-2);max-width:var(--cg-art-cap)}
+.cg-art figcaption span{font-size:var(--text-small);color:var(--cg-art-soft)}
+.cg-art figcaption b{font-size:var(--cg-art-title);font-weight:var(--weight-strong);line-height:1.15;letter-spacing:-0.02em;text-wrap:balance}
+.cg-shell .cg-card{align-self:center;justify-self:center;width:min(var(--cg-form-w),100%);padding:var(--space-6) var(--space-4);border-radius:0;background:none;box-shadow:none}
+.cg-mark{width:var(--cg-mark);height:var(--cg-mark);color:var(--color-ink)}
+.cg-head{display:grid;gap:var(--space-2)}
+.cg-head .cg-sub{margin:0}
+.cg-pw{position:relative;display:block}
+.cg-pw input{padding-right:calc(var(--cg-eye) + var(--space-2))}
+.cg-eye{position:absolute;top:50%;right:var(--space-1);display:grid;place-items:center;width:var(--cg-eye);height:var(--cg-eye);padding:0;border:0;border-radius:var(--radius-sm);background:none;color:var(--color-muted);cursor:pointer;transform:translateY(-50%)}
+.cg-eye:hover{color:var(--color-ink)}
+.cg-eye:focus-visible{outline:2px solid var(--color-action);outline-offset:0}
+.cg-foot{margin:0;text-align:center;font-size:var(--text-small);color:var(--color-muted);text-wrap:balance}
+.pw-msg[hidden]{display:none}
+@media (max-width:640px){
+  #cloud-gate{padding:var(--space-3)}
+  .cg-shell{grid-template-columns:minmax(0,1fr);min-height:0}
+  .cg-art{min-height:var(--cg-art-band);padding:var(--space-4)}
+  .cg-art figcaption b{font-size:var(--cg-art-title-sm)}
+  .cg-shell .cg-card{padding:var(--space-4) var(--space-2) var(--space-3)}
+  .cg-shell .cg-mark{display:none}   /* le logo est déjà sur la photo */
+}
+
+/* Le bandeau de l'équipe dans l'espace d'un client : quel client, et le retour à l'agence. Calme : gris clair, une ligne. */
+.as-bar{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-5);border-bottom:1px solid var(--color-hairline);background:var(--color-card);font-size:var(--text-small);color:var(--color-body)}
+.as-bar[hidden],.camp[hidden]{display:none}
+.as-text{display:flex;align-items:center;gap:var(--space-2);margin:0;white-space:nowrap}
+.as-text .icon{color:var(--color-muted)}
+.as-bar .fsel{min-width:0}
+.as-back{flex:none;margin-left:auto}
+.as-short{display:none}
+@container app (max-width:640px){
+  .as-bar{gap:var(--space-2);padding:var(--space-2) var(--space-4)}
+  .as-long{display:none}
+  .as-short{display:inline}
+}
+/* Sur le site en ligne, le réglage d'aperçu de la maquette (ordinateur / téléphone) n'a pas sa place */
+.is-cloud .tweak{display:none}

@@ -406,3 +406,11 @@
 :root{ --call-queue-w:300px; --rv-when-w:88px; --rv-acts-w:240px; --zone-cell:34px; --zone-first-w:200px; --zone-art:36px; --mg-name-w:180px; --mg-res-w:200px; --mg-hyp-w:220px; --why-label-w:200px; --cr-thumb:72px; --sp-cell-w:96px; --cash-m-w:56px; }
 
 :root{ --cg-w:400px; }   /* écran de connexion du site en ligne */
+/* Connexion en deux colonnes : la photo à gauche, le formulaire à droite ; bandeau « Vue client » de l'équipe */
+:root{
+  --cg-shell-w:980px; --cg-shell-h:620px; --cg-art-w:46%; --cg-art-band:208px; --cg-art-cap:30ch; --cg-form-w:380px;
+  --cg-eye:40px; --cg-mark:28px; --cg-art-title:28px; --cg-art-title-sm:20px;
+  --cg-art-bg:color-mix(in srgb,var(--color-action) 40%,var(--color-ink));                                     /* avant que la photo arrive */
+  --cg-scrim:linear-gradient(to top,color-mix(in srgb,var(--color-ink) 80%,transparent) 0%,transparent 60%);  /* lisibilité du texte sur la photo */
+  --cg-art-soft:color-mix(in srgb,var(--color-white) 82%,transparent);
+}

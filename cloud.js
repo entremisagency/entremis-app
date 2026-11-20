@@ -35,38 +35,66 @@
     const s = document.createElement("script"); s.src = LIB; s.onload = ok; s.onerror = () => ko(new Error("lib")); document.head.appendChild(s);
   });
 
-  /* ---------- L'écran de connexion ---------- */
-  function gate(msg, kind) {
+  /* ---------- L'écran de connexion ----------
+     Deux colonnes (Marc, 20 nov. 2026) : à gauche la photo d'un installateur, dans le bleu d'Entremis, avec ce que contient l'espace ;
+     à droite le formulaire. Sur téléphone, la photo devient un bandeau au-dessus du formulaire.
+     Pas de « créer un compte » : c'est Entremis qui crée les comptes. Pas de connexion Google pour l'instant. */
+  let lastEmail = "";
+  const esc_ = v => EM() ? EM().esc(v) : String(v).replace(/[&<>"']/g, "");
+  const ART = `<figure class="cg-art" aria-hidden="true">
+      <img src="img/connexion.jpg" alt="" decoding="async">
+      <div class="cg-art-logo"><svg aria-hidden="true"><use href="#logo-e"/></svg><span>ENTREMIS</span></div>
+      <figcaption><span>Votre espace Entremis</span><b>Vos rendez-vous, vos demandes et vos résultats, au même endroit.</b></figcaption>
+    </figure>`;
+  function shell(form) {
     let g = document.getElementById("cloud-gate");
     if (!g) { g = document.createElement("div"); g.id = "cloud-gate"; document.body.appendChild(g); }
-    g.innerHTML = `<form class="cg-card" id="cloud-login" autocomplete="on">
-      <div class="cg-logo"><svg aria-hidden="true"><use href="#logo-e"/></svg><span>ENTREMIS</span></div>
-      <h1 class="cg-title">Connexion</h1>
-      <p class="cg-sub">Votre adresse e-mail et votre mot de passe.</p>
-      <label class="field"><span>Adresse e-mail</span><input name="email" type="email" required autocomplete="username"></label>
-      <label class="field"><span>Mot de passe</span><input name="password" type="password" required autocomplete="current-password"></label>
-      ${msg ? `<p class="cg-msg${kind === "ok" ? " is-ok" : ""}" role="alert">${EM() ? EM().esc(msg) : msg}</p>` : ""}
+    g.innerHTML = `<div class="cg-shell">${ART}${form}</div>`;
+    return g;
+  }
+  // Un champ mot de passe avec l'œil pour l'afficher
+  const pwField = (name, label, auto, extra) => `<label class="field"><span>${label}</span><span class="cg-pw">
+      <input name="${name}" type="password" required autocomplete="${auto}"${extra || ""}>
+      <button class="cg-eye" type="button" data-cloud-eye aria-label="Afficher le mot de passe" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></button></span></label>`;
+  const msgLine = (msg, kind) => msg ? `<p class="cg-msg${kind === "ok" ? " is-ok" : ""}" role="alert">${esc_(msg)}</p>` : "";
+  function gate(msg, kind) {
+    const g = shell(`<form class="cg-card" id="cloud-login" autocomplete="on">
+      <svg class="cg-mark" aria-hidden="true"><use href="#logo-e"/></svg>
+      <div class="cg-head"><h1 class="cg-title">Connexion</h1><p class="cg-sub">Votre adresse e-mail et votre mot de passe.</p></div>
+      <label class="field"><span>Adresse e-mail</span><input name="email" type="email" required autocomplete="username" value="${esc_(lastEmail)}"></label>
+      ${pwField("password", "Mot de passe", "current-password")}
+      ${msgLine(msg, kind)}
       <button class="btn btn-primary cg-go" type="submit">Se connecter</button>
       <button class="link cg-forgot" type="button" data-cloud-forgot>Mot de passe oublié</button>
-    </form>`;
-    const i = g.querySelector('input[name="email"]'); if (i) i.focus();
+      <p class="cg-foot">Pas de compte ? Votre contact Entremis vous le crée.</p>
+    </form>`);
+    const i = g.querySelector(lastEmail ? 'input[name="password"]' : 'input[name="email"]'); if (i) i.focus();
   }
   const closeGate = () => { const g = document.getElementById("cloud-gate"); if (g) g.remove(); };
   // Premier passage (invitation) ou mot de passe oublié : on choisit son mot de passe
   function passwordGate(msg) {
-    let g = document.getElementById("cloud-gate");
-    if (!g) { g = document.createElement("div"); g.id = "cloud-gate"; document.body.appendChild(g); }
-    g.innerHTML = `<form class="cg-card" id="cloud-password">
-      <div class="cg-logo"><svg aria-hidden="true"><use href="#logo-e"/></svg><span>ENTREMIS</span></div>
-      <h1 class="cg-title">${LINK === "invite" ? "Bienvenue" : "Nouveau mot de passe"}</h1>
-      <p class="cg-sub">Choisissez votre mot de passe : 8 caractères au moins.</p>
-      <label class="field"><span>Mot de passe</span><input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
-      <label class="field"><span>Encore une fois</span><input name="again" type="password" minlength="8" required autocomplete="new-password"></label>
-      ${msg ? `<p class="cg-msg" role="alert">${EM() ? EM().esc(msg) : msg}</p>` : ""}
+    const g = shell(`<form class="cg-card" id="cloud-password">
+      <svg class="cg-mark" aria-hidden="true"><use href="#logo-e"/></svg>
+      <div class="cg-head"><h1 class="cg-title">${LINK === "invite" ? "Bienvenue" : "Nouveau mot de passe"}</h1><p class="cg-sub">Choisissez votre mot de passe : 8 caractères au moins.</p></div>
+      ${pwField("password", "Mot de passe", "new-password", ' minlength="8"')}
+      ${pwField("again", "Encore une fois", "new-password", ' minlength="8"')}
+      ${msgLine(msg)}
       <button class="btn btn-primary cg-go" type="submit">Enregistrer et entrer</button>
-    </form>`;
+    </form>`);
     const i = g.querySelector('input[name="password"]'); if (i) i.focus();
   }
+  // L'œil : afficher ou masquer le mot de passe (écran de connexion et réglages)
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-cloud-eye]"); if (!b) return;
+    e.preventDefault();
+    const i = b.parentElement.querySelector("input"); if (!i) return;
+    const show = i.type === "password";
+    i.type = show ? "text" : "password";
+    b.setAttribute("aria-pressed", String(show));
+    b.setAttribute("aria-label", show ? "Masquer le mot de passe" : "Afficher le mot de passe");
+    const u = b.querySelector("use"); if (u) u.setAttribute("href", show ? "#i-eye-off" : "#i-eye");
+    i.focus();
+  });
 
   async function afterLogin(session) {
     const { data, error } = await client.from("members").select("who, role, client_id").eq("user_id", session.user.id).maybeSingle();
@@ -93,6 +121,7 @@
     if (e.target.id !== "cloud-login") return;
     e.preventDefault(); e.stopImmediatePropagation();
     const fd = new FormData(e.target), btn = e.target.querySelector(".cg-go");
+    lastEmail = String(fd.get("email") || "").trim();
     if (btn) { btn.disabled = true; btn.textContent = "Connexion…"; }
     const { data, error } = await client.auth.signInWithPassword({ email: String(fd.get("email") || "").trim(), password: String(fd.get("password") || "") });
     if (error || !data.session) { gate(/invalid/i.test(error ? error.message : "") ? "Adresse ou mot de passe incorrect." : "La connexion n'a pas marché. Réessayez."); return; }
@@ -113,8 +142,10 @@
   document.addEventListener("click", async e => {
     if (!e.target.closest("[data-cloud-forgot]")) return;
     const f = document.getElementById("cloud-login"), email = f ? String(new FormData(f).get("email") || "").trim() : "";
+    lastEmail = email;
     if (!email) { gate("Écrivez d'abord votre adresse e-mail, puis « Mot de passe oublié »."); return; }
-    await client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) { gate("L'e-mail n'a pas pu partir. Demandez un nouveau mot de passe à votre contact Entremis."); return; }
     gate("Si cette adresse a un compte, un e-mail vient de partir pour choisir un nouveau mot de passe.", "ok");
   });
 
@@ -154,8 +185,18 @@
     if (error && EM()) EM().toast("Pas enregistré : la base n'a pas répondu. Réessayez.");
   }
 
+  async function changePassword(current, next) {
+    if (!client || !me) return "off";
+    const a = await client.auth.signInWithPassword({ email: me.email, password: current });
+    if (a.error) return "current";
+    const { error } = await client.auth.updateUser({ password: next });
+    if (!error) return "";
+    const m = String(error.code || "") + " " + String(error.message || "");
+    return /same_password|different from the old/i.test(m) ? "same" : /weak|short|at least/i.test(m) ? "weak" : "other";
+  }
+
   async function signOut() { if (client) await client.auth.signOut(); try { sessionStorage.removeItem("entremis-cloud"); } catch (_) {} location.reload(); }
 
-  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, collection, privGet, privSet, signOut, start };
+  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, collection, privGet, privSet, changePassword, signOut, start };
   if (on) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start(); }
 })();

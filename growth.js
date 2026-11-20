@@ -95,7 +95,7 @@
     { id: "x-nadia-ferhat", client: "blindex", name: "Nadia Ferhat", role: "Porte blindée", city: "Lyon 3e", date: "2026-11-20", start: "18:00", end: "18:45", state: "new" },
     { id: "x-paul-riviere", client: "delmas", name: "Paul Rivière", role: "Chauffe-eau", city: "Grenoble", date: "2026-11-23", start: "14:00", end: "15:00", state: "new" }
   ];
-  const allRdv = () => EM().C().appointments.map(a => Object.assign({ client: "solaria" }, a)).concat(OTHER_RDV).sort((a, b) => (a.date + a.start) < (b.date + b.start) ? -1 : 1);
+  const allRdv = () => EM().baseC().appointments.map(a => Object.assign({ client: "solaria" }, a)).concat(OTHER_RDV).sort((a, b) => (a.date + a.start) < (b.date + b.start) ? -1 : 1);
   const resultOf = a => CP().result(a.id) || a.result || null;
   function viewRdvs(S) {
     const all = allRdv(), wk0 = addDays(today(), -((new Date(today() + "T12:00:00Z").getUTCDay() + 6) % 7)), wk1 = addDays(wk0, 6);
@@ -305,7 +305,7 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
   /* =================== Études de cas =================== */
   const CASES = () => store("cases");
   function caseOf(c) {
-    const rs = c.id === "solaria" ? EM().C().appointments.map(a => CP().result(a.id)).filter(Boolean) : OTHER_RDV.filter(a => a.client === c.id).map(resultOf).filter(Boolean);
+    const rs = c.id === "solaria" ? EM().baseC().appointments.map(a => CP().result(a.id)).filter(Boolean) : OTHER_RDV.filter(a => a.client === c.id).map(resultOf).filter(Boolean);
     const signed = rs.filter(r => r.outcome === "signe"), amount = signed.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const mrr = (rows().find(x => x.c.id === c.id) || {}).mrr || 2400, sec = SEC().sectorOf(c.trade), f = window.ENTREMIS_FICHE.info(c.id) || {};
     const av = CP().avis().find(a => a.id === c.id && a.publish);
@@ -507,7 +507,8 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
   /* =================== Clics et formulaires =================== */
   function onClick(e, S, render) {
     const t = e.target.closest("[data-call-lead],[data-call-out],[data-call-why],[data-rv-f],[data-rv-ask],[data-zone],[data-zone-close],[data-prop-for],[data-prop-pdf],[data-prop-open],[data-case-ok],[data-seo],[data-sim],[data-sim-back],[data-sim-done],[data-ct],[data-goal],[data-site-done],[data-ref-step]");
-    if (!t) return false;
+    // <html> porte data-zone (l'espace affiché) : ce n'est pas une zone. Sans ce garde-fou, ce module avalait tous les clics de l'équipe.
+    if (!t || t === document.documentElement) return false;
     const d = t.dataset;
     if (d.callLead) { G.lead = d.callLead; G.why = null; render(); return true; }
     if (d.callOut) { if (d.callOut === "ecarter") { G.why = G.why ? null : G.lead; render(); } else callOutcome(d.callOut, "", S, render); return true; }
@@ -567,6 +568,8 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
     views: { appel: viewAppel, "rendez-vous": viewRdvs, zones: viewZones, sante: viewSante, propositions: viewPropositions, etudes: viewEtudes, marge: viewMarge, conformite: viewConformite },
     leadReasons, creatives, seoPages, simulator, contracts, cashflow, goals, prospectExtras, onClick, onSubmit,
     riskCount: () => TD().clients.filter(c => health(c).level === 2).length,
+    otherRdv: id => OTHER_RDV.filter(a => a.client === id),                                  // les rendez-vous d'exemple d'un client (sa vue client)
+    rdvClient: id => { const a = allRdv().find(x => x.id === id); return a ? a.client : null; },   // à quel client appartient ce rendez-vous
     reset: () => { G.zone = null; G.why = null; },
     init: render => [ZONES, PROPS, CASES, ERAS, SEOP, CTS, GOALS, SITEST].forEach(f => f().init(render))
   };
