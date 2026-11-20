@@ -11,7 +11,7 @@
      et chaque rendez-vous qu'il place part tout seul dans son agenda. Le jeton reste dans la page, jamais dans la base. */
 (function () {
   "use strict";
-  const GOOGLE_CLIENT_ID = "";   // ex. « 1234-abcd.apps.googleusercontent.com » : à coller ici quand Marc l'a créé
+  const GOOGLE_CLIENT_ID = "186087805232-jlvnsq102362di6vgvfgokkc6157l4db.apps.googleusercontent.com";   // identifiant d'application Google (public), créé par Marc le 20 nov. 2026
   const SERVER = "Google Calendar";
   const G = { state: "idle", events: [], error: null, storedAt: 0, unwatch: null, mcp: null, adding: {} };
   const EM = () => window.EM;
