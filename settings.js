@@ -128,7 +128,7 @@
   function secDonnees(S) {
     return `<section class="set-group">
       ${row("Données de l'équipe", "Leads, tâches, devis, discussions : partagés entre Marc, Richard et Gianni.", `<span class="state state-ok">Partagées</span>`)}
-      ${row("Ce qui reste dans ce navigateur", "Tes connexions, la police, ce que tu as déjà lu.", `<span class="state state-neutral">Ici seulement</span>`)}
+      ${row("Ce qui reste dans ce navigateur", CL() ? "La police et ce que tu as déjà lu. Tes connexions sont rangées sur ton compte." : "Tes connexions, la police, ce que tu as déjà lu.", `<span class="state state-neutral">Ici seulement</span>`)}
       ${row("Fichiers déposés", "Rangés avec l'app, visibles par l'équipe.", "")}
       ${row("Comptes séparés", "Un compte et un mot de passe chacun. Un client ne reçoit que ses propres données.", CL() ? `<span class="state state-ok">En place</span>` : `<span class="state state-neutral">Site en ligne</span>`)}
     </section>
@@ -172,7 +172,6 @@
   }
 
   function onClick(e, S, render) {
-    if (e.target.closest("[data-cloud-out]")) { window.ENTREMIS_CLOUD.signOut(); return true; }
     if (e.target.closest("[data-pw-open]")) { X.pw = true; render(); setTimeout(() => { const i = document.querySelector('#pw-form input[name="current"]'); if (i) i.focus(); }, 60); return true; }
     if (e.target.closest("[data-pw-close]")) { X.pw = false; render(); return true; }
     const t = e.target.closest("[data-set-sec],[data-set-back],[data-set-font],[data-cx-open],[data-cx-close]"); if (!t) return false;

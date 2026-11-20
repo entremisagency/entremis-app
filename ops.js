@@ -327,7 +327,7 @@
     ];
     return `<div class="head"><div class="head-text"><h1 class="h1">Plus</h1><p class="sub">Toutes les pages.</p></div></div>
       ${quickCreate()}
-      ${groups.map(([t, items]) => `<section class="ios-group"><p class="ios-title">${t}</p><div class="card ios-list">${items.map(([r, i, l]) => `<a href="#${r}"><span class="ios-ico">${icon(i)}</span><span>${l}</span>${icon("chev")}</a>`).join("")}</div></section>`).join("")}`;
+      ${groups.map(([t, items]) => `<section class="ios-group"><p class="ios-title">${t}</p><div class="card ios-list">${items.map(([r, i, l]) => `<a href="#${r}"><span class="ios-ico">${icon(i)}</span><span>${l}</span>${icon("chev")}</a>`).join("")}</div></section>`).join("")}${window.ENTREMIS_CLOUD.on() ? `<section class="ios-group ios-out-group"><div class="card ios-list"><button class="ios-out" type="button" data-cloud-out><span class="ios-ico">${icon("logout")}</span><span>Se déconnecter</span></button></div></section>` : ""}`;
   }
 
   /* ---------- Feuilles : déposer un document, noter un appel ---------- */

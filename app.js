@@ -224,6 +224,7 @@
     $("#account").innerHTML = team
       ? `${TM().avatar(me.id)}<div><b>${me.name}</b><span>Mon portail – changer</span></div>`
       : `<span class="av av-md">${esc(U.initials)}</span><div><b>${esc(U.name)}</b><span>${esc(U.company)}${S.lock ? "" : " – exemple"}</span></div>`;
+    const so = $("#side-out"); if (so) so.innerHTML = window.ENTREMIS_CLOUD.on() ? `<button class="side-out" type="button" data-cloud-out>${icon("logout")}<span>Se déconnecter</span></button>` : "";
     $("#m-avatar").outerHTML = team ? `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages">${TM().avatar(me.id, "av")}</a>` : `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages"><span class="av">${esc(U.initials)}</span></a>`;
     document.querySelectorAll(".bell .dot").forEach(d => { d.hidden = !unread; });
     const pt = document.getElementById("promise-text"); if (pt && !team) pt.textContent = clientParcours().guarantee;
@@ -668,7 +669,7 @@
       ["Votre organisation", [["dispos", "clock", "Disponibilités"], ["parrainage", "users", "Parrainer un installateur"]]],
       ["Compte", [["notifications", "bell", "Notifications", unread], ["reglages", "user", "Réglages"], ["aide", "info", "Comment ça marche"]]]];
     return `<div class="head"><div class="head-text"><h1 class="h1">Plus</h1><p class="sub">Toutes vos pages.</p></div></div>
-      ${groups.map(([t, items]) => `<section class="ios-group"><p class="ios-title">${t}</p><div class="card ios-list">${items.map(([r, i, l, n]) => `<a href="#${r}"><span class="ios-ico">${icon(i)}</span><span>${l}</span>${n ? `<span class="count">${n}</span>` : ""}${icon("chev")}</a>`).join("")}</div></section>`).join("")}`;
+      ${groups.map(([t, items]) => `<section class="ios-group"><p class="ios-title">${t}</p><div class="card ios-list">${items.map(([r, i, l, n]) => `<a href="#${r}"><span class="ios-ico">${icon(i)}</span><span>${l}</span>${n ? `<span class="count">${n}</span>` : ""}${icon("chev")}</a>`).join("")}</div></section>`).join("")}${window.ENTREMIS_CLOUD.on() ? `<section class="ios-group ios-out-group"><div class="card ios-list"><button class="ios-out" type="button" data-cloud-out><span class="ios-ico">${icon("logout")}</span><span>Se déconnecter</span></button></div></section>` : ""}`;
   }
   // Une demande ouverte : tout ce qu'on sait d'elle, et ce qui se passe ensuite
   function accountPanel() {
@@ -794,6 +795,7 @@
 
   /* ---------- Interactions ---------- */
   document.addEventListener("click", e => {
+    if (e.target.closest("[data-cloud-out]")) { window.ENTREMIS_CLOUD.signOut(); return; }
     if (e.target.closest('[data-act="toast-undo"]')) { const u = toastUndo; toastUndo = null; $("#toast").classList.remove("on"); if (u) u(); return; }
     const cp = e.target.closest("[data-copy]");
     if (cp) { copyText(cp.dataset.copy, cp); return; }
