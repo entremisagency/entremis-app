@@ -103,7 +103,7 @@
   function liveActs(a, past) {
     const icon = EM().icon;
     if (a.state === "replaced") return a.replacedBy ? "" : `<button class="btn btn-primary btn-xs" type="button" data-live-replace="${a.id}">${icon("swap")}Placer un remplaçant</button>`;
-    return `${past && a.state !== "ok" ? `<button class="btn btn-ghost btn-xs" type="button" data-rdv-state="${a.id}:ok">${icon("check")}Visite faite</button><button class="btn btn-ghost btn-xs" type="button" data-rdv-state="${a.id}:replaced">Absent</button>` : ""}<button class="btn btn-ghost btn-xs" type="button" data-live-edit="rdv:${a.id}">Modifier</button>`;
+    return `${past && a.state !== "ok" ? `<button class="btn btn-ghost btn-xs" type="button" data-rdv-state="${a.id}:ok">${icon("check")}Visite faite</button><button class="btn btn-ghost btn-xs" type="button" data-rdv-state="${a.id}:replaced">Absent</button>` : ""}<button class="btn btn-ghost btn-xs" type="button" data-gcal-rdv="${a.id}" aria-label="Ajouter à Google Agenda">${EM().brand("gcal", "Google Agenda")}Agenda</button><button class="btn btn-ghost btn-xs" type="button" data-live-edit="rdv:${a.id}">Modifier</button>`;
   }
   function viewRdvs(S) {
     const all = allRdv(), wk0 = addDays(today(), -((new Date(today() + "T12:00:00Z").getUTCDay() + 6) % 7)), wk1 = addDays(wk0, 6);

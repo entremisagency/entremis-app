@@ -4,8 +4,14 @@
    - lire : les événements des 7 prochains jours (list_events), rafraîchis toutes les 5 minutes ;
    - écrire : ajouter une tâche ou un rendez-vous à son agenda (create_event), seulement sur un clic.
    En aperçu local, il n'y a pas de connecteur : le bloc explique qu'il marche dans la version publiée. */
+/* Sur le site en ligne (Marc, 20 nov. 2026), deux façons :
+   - sans aucun réglage : « Ajouter à Google Agenda » ouvre son agenda avec l'événement déjà rempli, on clique sur Enregistrer ;
+   - avec l'identifiant d'application Google (GOOGLE_CLIENT_ID, public, créé une fois dans la console Google) :
+     chacun relie SON agenda (connexion Google, autorisation « événements »), voit sa semaine dans l'app,
+     et chaque rendez-vous qu'il place part tout seul dans son agenda. Le jeton reste dans la page, jamais dans la base. */
 (function () {
   "use strict";
+  const GOOGLE_CLIENT_ID = "";   // ex. « 1234-abcd.apps.googleusercontent.com » : à coller ici quand Marc l'a créé
   const SERVER = "Google Calendar";
   const G = { state: "idle", events: [], error: null, storedAt: 0, unwatch: null, mcp: null, adding: {} };
   const EM = () => window.EM;
@@ -18,6 +24,41 @@
   const p2 = n => String(n).padStart(2, "0");
   const localIso = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}:00`;
   function range() { const s = new Date(); s.setHours(0, 0, 0, 0); const e = new Date(s); e.setDate(e.getDate() + 7); return { startTime: localIso(s), endTime: localIso(e), orderBy: "startTime", pageSize: 25 }; }
+
+  /* ---------- Le site en ligne : Google directement ---------- */
+  const W = { token: null, until: 0, client: null, pending: null };
+  const web = () => !hasRuntime();
+  const webReady = () => !!GOOGLE_CLIENT_ID;
+  const loadGis = () => new Promise((ok, ko) => {
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) return ok();
+    const s = document.createElement("script"); s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.onload = ok; s.onerror = () => ko(new Error("gis")); document.head.appendChild(s);
+  });
+  // Demande (ou renouvelle) l'accès : à appeler pendant un clic, sinon le navigateur bloque la fenêtre Google
+  function token() {
+    if (W.token && Date.now() < W.until - 60000) return Promise.resolve(W.token);
+    return loadGis().then(() => new Promise((ok, ko) => {
+      if (!W.client) W.client = window.google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: "https://www.googleapis.com/auth/calendar.events",
+        callback: r => { const p = W.pending; W.pending = null; if (r && r.access_token) { W.token = r.access_token; W.until = Date.now() + (Number(r.expires_in) || 3600) * 1000; p && p.ok(W.token); } else p && p.ko(r); },
+        error_callback: e => { const p = W.pending; W.pending = null; p && p.ko(e); } });
+      W.pending = { ok, ko }; W.client.requestAccessToken({ prompt: remembered() ? "" : "consent" });
+    }));
+  }
+  const api = (path, opts) => token().then(t => fetch("https://www.googleapis.com/calendar/v3/" + path, Object.assign({}, opts, { headers: Object.assign({ Authorization: "Bearer " + t, "Content-Type": "application/json" }, (opts || {}).headers) })))
+    .then(r => r.ok ? r.json() : r.json().then(j => { throw Object.assign(new Error((j.error && j.error.message) || "Google"), { status: r.status }); }));
+  async function webList() {
+    const s = new Date(); s.setHours(0, 0, 0, 0); const e = new Date(s); e.setDate(e.getDate() + 7);
+    const j = await api(`calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=25&timeMin=${encodeURIComponent(s.toISOString())}&timeMax=${encodeURIComponent(e.toISOString())}`);
+    return readEvents({ payload: { events: j.items || [] } });
+  }
+  // L'événement au format de Google (heure de Paris)
+  const gEvent = input => input.allDay ? { summary: input.summary, description: input.description || "", location: input.location || "", start: { date: input.startTime.slice(0, 10) }, end: { date: input.endTime.slice(0, 10) } }
+    : { summary: input.summary, description: input.description || "", location: input.location || "", start: { dateTime: input.startTime, timeZone: "Europe/Paris" }, end: { dateTime: input.endTime, timeZone: "Europe/Paris" } };
+  // Sans branchement : Google Agenda s'ouvre avec l'événement déjà rempli
+  function templateUrl(input) {
+    const f = x => input.allDay ? x.slice(0, 10).replace(/-/g, "") : x.replace(/[-:]/g, "").slice(0, 15);
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(input.summary) + "&dates=" + f(input.startTime) + "/" + f(input.endTime)
+      + "&ctz=Europe%2FParis&details=" + encodeURIComponent(input.description || "") + "&location=" + encodeURIComponent(input.location || "");
+  }
 
   async function getMcp() {
     if (G.mcp) return G.mcp;
@@ -67,6 +108,13 @@
 
   // Premier branchement : un clic, qui fait un appel direct (c'est lui qui fait apparaître la demande d'autorisation)
   async function connect() {
+    if (web()) {
+      if (!webReady()) { G.state = "setup"; EM().render(); return; }
+      G.state = "loading"; G.error = null; EM().render();
+      try { G.events = await webList(); G.state = "ready"; G.storedAt = Date.now(); remember(true); }
+      catch (err) { G.error = { code: err && err.status === 401 ? "needs_reauth" : err && err.type === "popup_closed" ? "consent_required" : "web", message: err && err.message }; G.state = "error"; }
+      EM().render(); return;
+    }
     const mcp = await getMcp();
     if (!mcp) { G.state = "unavailable"; EM().render(); return; }
     G.state = "loading"; G.error = null; EM().render();
@@ -80,17 +128,24 @@
 
   function disconnect() {
     if (G.unwatch) { G.unwatch(); G.unwatch = null; }
-    remember(false); G.events = []; G.state = "idle"; G.error = null; EM().render();
+    remember(false); G.events = []; G.state = web() && !webReady() ? "setup" : "idle"; G.error = null; W.token = null; EM().render();
   }
 
   async function init() {
-    if (!hasRuntime()) { G.state = "preview"; EM().render(); return; }
+    if (web()) { G.state = webReady() ? (remembered() ? "again" : "idle") : "setup"; EM().render(); return; }
     if (remembered()) { const mcp = await getMcp(); if (mcp) startWatch(); else G.state = "unavailable"; EM().render(); }
   }
 
   /* ---------- Ajouter à Google Agenda (un clic = un appel, jamais rejoué tout seul) ---------- */
   async function add(key, input) {
     if (G.adding[key] === "busy" || G.adding[key] === "done") return;
+    if (web()) {
+      if (!webReady() || !remembered()) { window.open(templateUrl(input), "_blank", "noopener"); EM().toast("Google Agenda s'ouvre avec l'événement rempli : cliquez sur Enregistrer."); return; }
+      G.adding[key] = "busy"; EM().render();
+      try { await api("calendars/primary/events", { method: "POST", body: JSON.stringify(gEvent(input)) }); G.adding[key] = "done"; window.ENTREMIS_TEAM.haptic("done"); EM().toast("Ajouté à votre Google Agenda."); if (G.state === "ready") webList().then(l => { G.events = l; EM().render(); }).catch(() => {}); }
+      catch (err) { G.adding[key] = null; window.open(templateUrl(input), "_blank", "noopener"); EM().toast("Google n'a pas répondu : l'agenda s'ouvre avec l'événement rempli, cliquez sur Enregistrer."); }
+      EM().render(); return;
+    }
     const mcp = await getMcp();
     if (!mcp) { EM().toast(hasRuntime() ? "Google Agenda n'est pas disponible dans cette vue." : "Aperçu local : l'ajout à Google Agenda marche dans la version publiée."); return; }
     G.adding[key] = "busy"; EM().render();
@@ -119,6 +174,12 @@
     return add("rdv:" + a.id, { summary: `${a.mode} – ${a.name} (${a.role})`, startTime: `${a.date}T${a.start}:00`, endTime: `${a.date}T${a.end}:00`,
       location: a.city, description: c.criteria.map(k => `${k.label} : ${a.criteria[k.key]}`).join("\n") + (a.note ? `\n\nLe mot de Richard : ${a.note}` : "") + "\n\nRendez-vous livré par Entremis." });
   }
+  function addLive(r, clientName) {
+    const end = r.end || r.start;
+    return add("rdv:" + r.id, { summary: `Visite – ${r.name}${r.role ? " (" + r.role + ")" : ""}`, startTime: `${r.date}T${r.start}:00`, endTime: `${r.date}T${end}:00`,
+      location: [r.address, r.city].filter(Boolean).join(", "), description: `Client : ${clientName || ""}${r.phone ? "\nTéléphone : " + r.phone : ""}${r.note ? "\n\n" + r.note : ""}\n\nRendez-vous placé dans l'app Entremis.` });
+  }
+  const linked = () => web() && webReady() && remembered();
   const addState = key => G.adding[key] || null;
 
   /* ---------- Le bloc « Mon agenda Google » ---------- */
@@ -134,6 +195,10 @@
   function panel() {
     const esc = EM().esc, icon = EM().icon;
     const head = `<div class="card-head"><h2 class="h2 h2-brand">${EM().brand("gcal", "Google Agenda")}Mon agenda Google</h2>${G.state === "ready" ? `<button class="link" type="button" data-gcal="off">Déconnecter</button>` : ""}</div>`;
+    if (G.state === "setup") return `<section class="card gcal">${head}
+      <div class="gcal-empty"><p>Pour l'instant, « Ajouter à Google Agenda » ouvre votre agenda avec l'événement rempli. Pour un vrai lien (votre semaine ici, et chaque rendez-vous placé envoyé tout seul), il reste un réglage chez Google à faire par Marc.</p></div></section>`;
+    if (G.state === "again") return `<section class="card gcal">${head}
+      <div class="gcal-empty"><p>Votre agenda est relié.</p><button class="btn btn-ghost" type="button" data-gcal="on">${EM().brand("gcal", "Google Agenda")}Afficher ma semaine</button></div></section>`;
     if (G.state === "preview") return `<section class="card gcal">${head}
       <div class="gcal-empty"><p>Disponible dans la version en ligne. Chacun relie son agenda.</p></div></section>`;
     if (G.state === "idle") return `<section class="card gcal">${head}
@@ -165,9 +230,13 @@
     if (t.dataset.gcal === "on") { connect(); return true; }
     if (t.dataset.gcal === "off") { disconnect(); return true; }
     if (t.dataset.gcalTask) { const task = window.ENTREMIS_TEAM.T.list.find(x => x.id === t.dataset.gcalTask); if (task) addTask(task); return true; }
-    if (t.dataset.gcalRdv) { const c = EM().C(); const a = c.appointments.find(x => x.id === t.dataset.gcalRdv); if (a) addAppt(a, c); return true; }
+    if (t.dataset.gcalRdv) {
+      const L = window.ENTREMIS_LIVE, r = L && L.rdvs().find(x => x.id === t.dataset.gcalRdv);
+      if (r) { const c = EM().allClients().find(x => x.id === r.client_id); addLive(r, c ? c.name : r.client_id); return true; }
+      const c = EM().C(); const a = c.appointments.find(x => x.id === t.dataset.gcalRdv); if (a) addAppt(a, c); return true;
+    }
     return false;
   }
 
-  window.ENTREMIS_GCAL = { init, panel, onClick, addState, addTask };
+  window.ENTREMIS_GCAL = { init, panel, onClick, addState, addTask, addLive, linked };
 })();

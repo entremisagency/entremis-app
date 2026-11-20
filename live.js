@@ -230,6 +230,8 @@
       if (!v("date") || !v("start")) return say("Choisissez la date et l'heure."), true;
       const [h, mn] = v("start").split(":").map(Number), end = p2(Math.min(23, h + 1)) + ":" + p2(mn || 0);
       const row = Object.assign({}, d, { id: d.id || "r" + Date.now().toString(36), client_id: v("client_id"), name: v("name"), phone: v("phone"), role: v("role"), address: v("address"), city: v("city"), date: v("date"), start: v("start"), end: d.end && d.start === v("start") ? d.end : end, note: v("note"), state: d.state || "new", mode: "Visite technique", by: d.by || S.who, at: d.at || now });
+      // Agenda Google relié : le rendez-vous y part tout seul (lancé pendant le clic, sinon Google bloque sa fenêtre)
+      if (!d.id && window.ENTREMIS_GCAL && window.ENTREMIS_GCAL.linked()) { const c = EM().allClients().find(x => x.id === row.client_id); window.ENTREMIS_GCAL.addLive(row, c ? c.name : row.client_id); }
       await RDV().put(row);
       // Le rendez-vous qui remplace une absence : on le note sur l'absence
       if (d.replaces) { const old = RDV().list.find(x => x.id === d.replaces); if (old) RDV().put(Object.assign({}, old, { replacedBy: row.id })); }
