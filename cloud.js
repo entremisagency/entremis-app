@@ -209,8 +209,12 @@
     return /same_password|different from the old/i.test(m) ? "same" : /weak|short|at least/i.test(m) ? "weak" : "other";
   }
 
+  // Pour la page Accès clients (équipe) : les comptes, et les fonctions de la base (créer, réinitialiser, retirer un accès)
+  async function listMembers() { await ready; if (!client) return []; const { data, error } = await client.from("members").select("user_id, who, role, client_id, created_at"); return error ? [] : (data || []); }
+  async function rpc(fn, args) { if (!client) return { error: { message: "Pas connecté." } }; return client.rpc(fn, args); }
+
   async function signOut() { if (client) await client.auth.signOut(); try { sessionStorage.removeItem("entremis-cloud"); } catch (_) {} location.reload(); }
 
-  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, collection, privGet, privSet, changePassword, signOut, start };
+  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start };
   if (on) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start(); }
 })();

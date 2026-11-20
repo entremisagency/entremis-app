@@ -79,7 +79,7 @@
   function secEspace(S) {
     const cur = EM().viewId();
     return `<section class="set-group">${row("Espace affiché", "Celui de l'agence, ou l'espace d'un client tel qu'il le voit.", seg("data-space", [["client", "Client"], ["team", "Agence"]], S.space))}
-      ${row("Client affiché", "Le client dont vous ouvrez l'espace.", EM().fsel("as-pick", "Client", TD().clients.map(c => [c.id, c.name]), cur))}</section>
+      ${row("Client affiché", "Le client dont vous ouvrez l'espace.", EM().fsel("as-pick", "Client", EM().allClients().map(c => [c.id, c.name]), cur))}</section>
       <p class="set-note">${EM().icon("info")}Un client connecté ne voit que son espace : ni ce réglage, ni l'agence.</p>`;
   }
   // Le mot de passe : seulement sur le site en ligne, pour la personne connectée

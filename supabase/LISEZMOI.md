@@ -42,7 +42,13 @@ On se connecte avec un **identifiant** (son prénom : marc, richard, gianni), pa
 
 Mot de passe oublié : ces adresses ne reçoivent pas d'e-mail. Marc remet un mot de passe provisoire avec la ligne « mot de passe oublié » de la fin de `schema.sql`, puis la personne en choisit un nouveau à la connexion.
 
-Plus tard, un compte client : même chose (par exemple `thermo@entremisagency.github.io`), puis la ligne « compte client » de la fin de `schema.sql` (rôle `client` et l'identifiant du client). Ce compte n'ouvre que l'espace de son entreprise, jamais celui de l'agence, et la base ne lui envoie que ses propres données.
+**Compte agence partagé (pour les essais)** : une vraie adresse e-mail, créée de la même façon (« Create new user »), puis activée par la ligne « compte de l'agence » que Claude donne à coller. Avec une vraie adresse, pas de changement de mot de passe forcé. Dans Réglages → Profil, « C'est moi » permet de choisir son portail (Marc, Richard, Gianni).
+
+**Accès des clients : depuis l'app**, page Clients → **Accès clients** (réservée à l'équipe). On choisit le client (ou un nouveau : nom, métier, personne à contacter), son identifiant et un mot de passe provisoire. L'app propose ensuite d'envoyer le lien de connexion par SMS, WhatsApp ou e-mail ; le mot de passe se donne à part. Depuis la même page : nouveau mot de passe provisoire, retrait de l'accès, et « Son espace » pour voir ce que voit le client. Cela passe par trois fonctions de la base (section « 6 bis » de `schema.sql`), qui refusent tout compte qui n'est pas de l'équipe.
+
+**Vérifier les droits** : coller `test-droits.sql` dans SQL Editor et lancer. Le tableau final doit dire « oui » sur chaque ligne (ce que voit un client, ce que voit l'équipe, ce que voit quelqu'un qui n'est pas connecté, la création d'un accès).
+
+À la main, sans l'app, un compte client : même chose (par exemple `thermo@entremisagency.github.io`), puis la ligne « compte client » de la fin de `schema.sql` (rôle `client` et l'identifiant du client). Ce compte n'ouvre que l'espace de son entreprise, jamais celui de l'agence, et la base ne lui envoie que ses propres données.
 
 ## 4. L'envoi d'e-mails (Resend)
 

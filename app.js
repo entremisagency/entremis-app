@@ -35,19 +35,21 @@
      Un compte client voit le sien, toujours. L'équipe (Marc, Richard, Gianni) choisit le client dont elle regarde l'espace.
      Solaria Habitat a la campagne d'exemple complète ; les autres clients ont une campagne tirée de leurs rendez-vous
      et de leurs leads d'exemple (page Rendez-vous de l'agence, page Leads). */
+  const allClients = () => D.team.clients.concat((window.ENTREMIS_ACCESS ? window.ENTREMIS_ACCESS.extra() : [])
+    .filter(x => !D.team.clients.some(c => c.id === x.id)).map(x => Object.assign({ trade: "", done: 0, target: 0, day: 0, days: 21, absences: 0, owner: "marc" }, x)));
   const viewId = () => S.lock ? (S.viewAs || "") : (S.viewAs || "solaria");
-  const viewClient = () => D.team.clients.find(x => x.id === viewId()) || { id: viewId(), name: "Votre entreprise", trade: "", done: 0, target: 0, day: 0, days: 21, absences: 0 };
+  const viewClient = () => allClients().find(x => x.id === viewId()) || { id: viewId(), name: "Votre entreprise", trade: "", done: 0, target: 0, day: 0, days: 21, absences: 0 };
   function viewUser() {
     const c = viewClient();
     if (c.camp && c.name === D.user.company) return D.user;
     const name = c.contact || c.name, w = name.split(/\s+/);
-    return { name, first: w[0], initials: (w[0].charAt(0) + (w[1] ? w[1].charAt(0) : "")).toUpperCase(), role: c.contactRole || "Gérant", company: c.name };
+    return { name, first: c.contact ? w[0] : c.name, initials: (w[0].charAt(0) + (w[1] ? w[1].charAt(0) : "")).toUpperCase(), role: c.contactRole || "Gérant", company: c.name };
   }
   const CAMP = {};
   const MONTHS_S = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
   const LEAD_STEP = { nouveau: "targeted", rappele: "contacted", qualifie: "replied", attribue: "replied", rdv: "meeting" };
   function campOf(id) {
-    const b = baseC(), cl = D.team.clients.find(x => x.id === id);
+    const b = baseC(), cl = allClients().find(x => x.id === id);
     if (cl && cl.camp && D.campaigns[cl.camp]) return D.campaigns[cl.camp];
     const c0 = cl || viewClient();
     const rdv = window.ENTREMIS_GROWTH ? window.ENTREMIS_GROWTH.otherRdv(id) : [];
@@ -78,7 +80,7 @@
   const C = () => S.space === "client" ? campOf(viewId()) : baseC();
   // L'équipe passe sur l'espace d'un client (bandeau, réglages, fiche du client). Jamais pour un compte client.
   function pickClient(id) {
-    if (S.lock || !D.team.clients.some(x => x.id === id)) return;
+    if (S.lock || !allClients().some(x => x.id === id)) return;
     S.viewAs = id; store.set("as", id); S.space = "client"; store.set("space", "client");
     S.step = "all"; S.filter = "all"; S.acc = null; S.mDay = D.today.iso;
     if (!/^#(accueil|agenda|comptes|resultats|dispos|parrainage|scripts|aide|menu|notifications|reglages)$/.test(location.hash)) location.hash = "#accueil";
@@ -188,7 +190,7 @@
     const c = C(), team = S.space === "team", U = viewUser();
     const TD_ = () => window.ENTREMIS_DATA.team;
     const section = route.name === "script" ? "scripts" : route.name === "rdv" ? "agenda" : route.name === "fiche" ? (TD_().clients.some(x => x.id === route.id) ? "clients" : "pipeline") : route.name;
-    const tabSection = !team && ["messages", "scripts", "dispos", "parrainage", "notifications", "aide", "reglages", "menu"].includes(section) ? "menu" : team && ["appels", "marketing", "avancement", "notifications", "reglages", "chiffres", "scripts-equipe", "pipeline", "finances", "guide", "processus", "discussions", "secteurs", "appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite"].includes(section) ? "plus" : section === "fiche" ? "clients" : section;
+    const tabSection = !team && ["messages", "scripts", "dispos", "parrainage", "notifications", "aide", "reglages", "menu"].includes(section) ? "menu" : team && ["appels", "marketing", "avancement", "notifications", "reglages", "chiffres", "scripts-equipe", "pipeline", "finances", "guide", "processus", "discussions", "secteurs", "acces", "appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite"].includes(section) ? "plus" : section === "fiche" ? "clients" : section;
     document.documentElement.dataset.zone = S.space;   // pas « data-space » : ce nom sert aux boutons, et <html> les attraperait tous
     const campBox = $("#space").closest(".camp"); if (campBox) campBox.hidden = S.lock;
     $("#space").innerHTML = S.lock ? "" : [["client", "Client"], ["team", "Agence"]].map(([v, l]) =>
@@ -201,7 +203,7 @@
     const items = team ? [
       "Mon espace", ["equipe", "home", "Mon portail"], ["taches", "check", "Tâches", openTasks], ["discussions", "chat", "Discussions", window.ENTREMIS_CHAT.unreadAll(S.who)], ["processus", "grid", "Processus"], ["notifications", "bell", "Notifications", unread], ["guide", "info", "Guide de l'app"],
       "Production", ["appel", "phone", "Poste d'appel"], ["leads", "inbox", "Leads", window.ENTREMIS_LEADS.list().filter(l => !l.to && l.status !== "perdu").length], ["rendez-vous", "cal", "Rendez-vous"], ["zones", "pin", "Zones"],
-      "Clients", ["clients", "building", "Clients"], ["sante", "gauge", "Santé et suivi", window.ENTREMIS_GROWTH.riskCount()], ["scripts-equipe", "book", "Scripts"], ["secteurs", "tool", "Secteurs"],
+      "Clients", ["clients", "building", "Clients"], ["sante", "gauge", "Santé et suivi", window.ENTREMIS_GROWTH.riskCount()], ["scripts-equipe", "book", "Scripts"], ["secteurs", "tool", "Secteurs"], ["acces", "lock", "Accès clients"],
       "Trouver des clients", ["pipeline", "users", "Prospection"], ["propositions", "euro", "Propositions"], ["etudes", "check", "Études de cas"], ["appels", "phone", "Appels"], ["marketing", "signal", "Marketing"],
       "Pilotage", ["chiffres", "gauge", "Chiffres"], ["avancement", "chart", "Avancement"], ["finances", "euro", "Finances"], ["marge", "chart", "Marge"], ["conformite", "shield", "Conformité"]
     ] : [
@@ -226,7 +228,7 @@
     document.querySelectorAll(".bell .dot").forEach(d => { d.hidden = !unread; });
     const pt = document.getElementById("promise-text"); if (pt && !team) pt.textContent = clientParcours().guarantee;
 
-    const names = { accueil: "Accueil", agenda: "Agenda", comptes: c.words.accounts, messages: "Messages", equipe: "Mon portail", taches: "Tâches", clients: "Clients", pipeline: "Prospection", avancement: "Avancement", finances: "Finances", appels: "Appels", marketing: "Marketing", plus: "Plus", chiffres: "Chiffres", leads: "Leads", generer: "Nouveau document", guide: "Guide", processus: "Processus", discussions: "Discussions", secteurs: "Secteurs", appel: "Poste d'appel", "rendez-vous": "Rendez-vous", zones: "Zones", sante: "Santé et suivi", propositions: "Propositions", etudes: "Études de cas", marge: "Marge", conformite: "Conformité", aide: "Comment ça marche", resultats: "Résultats", dispos: "Disponibilités", parrainage: "Parrainage", menu: "Plus", scripts: "Scripts", "scripts-equipe": "Scripts", notifications: "Notifications", reglages: "Réglages" };
+    const names = { accueil: "Accueil", agenda: "Agenda", comptes: c.words.accounts, messages: "Messages", equipe: "Mon portail", taches: "Tâches", clients: "Clients", pipeline: "Prospection", avancement: "Avancement", finances: "Finances", appels: "Appels", marketing: "Marketing", plus: "Plus", chiffres: "Chiffres", leads: "Leads", generer: "Nouveau document", guide: "Guide", processus: "Processus", discussions: "Discussions", secteurs: "Secteurs", acces: "Accès clients", appel: "Poste d'appel", "rendez-vous": "Rendez-vous", zones: "Zones", sante: "Santé et suivi", propositions: "Propositions", etudes: "Études de cas", marge: "Marge", conformite: "Conformité", aide: "Comment ça marche", resultats: "Résultats", dispos: "Disponibilités", parrainage: "Parrainage", menu: "Plus", scripts: "Scripts", "scripts-equipe": "Scripts", notifications: "Notifications", reglages: "Réglages" };
     const fe = route.name === "fiche" ? (TD_().clients.find(x => x.id === route.id) || TD_().pipeline.find(x => x.id === route.id)) : null;
     const crumbs = route.name === "script" ? ["Scripts", (window.ENTREMIS_SCRIPTS && document.title) ? "Script" : "Script"] : route.name === "rdv" ? ["Agenda", route.appt ? route.appt.name : ""] : route.name === "fiche" ? [fe && fe.camp !== undefined || (fe && TD_().clients.includes(fe)) ? "Clients" : "Prospection", fe ? fe.name : "Fiche"] : route.name === "generer" ? ["Finances", "Nouveau document"] : [names[route.name]];
     $("#crumbs").innerHTML = `<span>${team ? "Espace agence" : esc(U.company) + " – " + esc(c.name)}</span>` + crumbs.map((x, i) =>
@@ -243,7 +245,7 @@
   function asBar() {
     const cur = viewId();
     return `<p class="as-text">${icon("eye")}<span class="as-long">Vous voyez l'espace de</span><span class="as-short">Vue client</span></p>
-      ${fsel("as-pick", "Client", D.team.clients.map(x => [x.id, x.name]), cur)}
+      ${fsel("as-pick", "Client", allClients().map(x => [x.id, x.name]), cur)}
       <button class="btn btn-ghost as-back" type="button" data-space="team">${icon("back")}<span class="as-long">Revenir à l'agence</span><span class="as-short">Agence</span></button>`;
   }
 
@@ -747,7 +749,7 @@
     else if (h.startsWith("message-")) { name = "messages"; id = h.slice(8); }
     else if (h.startsWith("fiche-")) { name = "fiche"; id = h.slice(6); }
     else if (h.startsWith("script-")) { name = "script"; id = h.slice(7); }
-    const GROWTH_ROUTES = ["appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite"];
+    const GROWTH_ROUTES = ["appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite", "acces"];
     const CLIENT_ROUTES = ["accueil", "agenda", "rdv", "comptes", "messages", "scripts", "script", "aide", "resultats", "dispos", "parrainage", "menu"];
     const OPS = window.ENTREMIS_OPS;
     if (S.lock) {
@@ -769,9 +771,9 @@
     S.keepAbsence = false;
     renderChrome(r);
     if (key !== lastKey) { S.taskForm = false; S.acc = null; }
-    if (key !== lastKey) { window.ENTREMIS_OPS.resetSheet(); window.ENTREMIS_METRICS.resetSheet(); window.ENTREMIS_FICHE.reset(); window.ENTREMIS_SCRIPTS.reset(); window.ENTREMIS_GEN.closeDoc(); window.ENTREMIS_SETTINGS.reset(); window.ENTREMIS_GROWTH.reset(); }
+    if (key !== lastKey) { window.ENTREMIS_OPS.resetSheet(); window.ENTREMIS_METRICS.resetSheet(); window.ENTREMIS_FICHE.reset(); window.ENTREMIS_SCRIPTS.reset(); window.ENTREMIS_GEN.closeDoc(); window.ENTREMIS_SETTINGS.reset(); window.ENTREMIS_GROWTH.reset(); window.ENTREMIS_ACCESS.reset(); }
     const tv = TM().views[r.name] || window.ENTREMIS_OPS.views[r.name] || (r.name === "chiffres" ? window.ENTREMIS_METRICS.view : null) || (r.name === "fiche" ? s => window.ENTREMIS_FICHE.view(s, r.id) : null)
-      || (r.name === "scripts" ? window.ENTREMIS_SCRIPTS.viewList : r.name === "script" ? s => window.ENTREMIS_SCRIPTS.viewScript(s, r.id) : r.name === "scripts-equipe" ? window.ENTREMIS_SCRIPTS.viewTeam : r.name === "leads" ? window.ENTREMIS_LEADS.view : r.name === "generer" ? window.ENTREMIS_GEN.view : r.name === "guide" ? window.ENTREMIS_GUIDE.viewTeam : r.name === "processus" ? window.ENTREMIS_PROCESS.view : r.name === "discussions" ? window.ENTREMIS_CHAT.view : r.name === "secteurs" ? window.ENTREMIS_SECTORS.view : window.ENTREMIS_GROWTH.views[r.name] ? window.ENTREMIS_GROWTH.views[r.name] : r.name === "aide" ? window.ENTREMIS_GUIDE.viewClient : r.name === "resultats" ? window.ENTREMIS_CPLUS.viewResults : r.name === "dispos" ? window.ENTREMIS_CPLUS.viewDispos : r.name === "parrainage" ? window.ENTREMIS_CPLUS.viewParrainage : r.name === "menu" ? viewClientMenu : null);
+      || (r.name === "scripts" ? window.ENTREMIS_SCRIPTS.viewList : r.name === "script" ? s => window.ENTREMIS_SCRIPTS.viewScript(s, r.id) : r.name === "scripts-equipe" ? window.ENTREMIS_SCRIPTS.viewTeam : r.name === "leads" ? window.ENTREMIS_LEADS.view : r.name === "generer" ? window.ENTREMIS_GEN.view : r.name === "guide" ? window.ENTREMIS_GUIDE.viewTeam : r.name === "processus" ? window.ENTREMIS_PROCESS.view : r.name === "discussions" ? window.ENTREMIS_CHAT.view : r.name === "secteurs" ? window.ENTREMIS_SECTORS.view : r.name === "acces" ? window.ENTREMIS_ACCESS.view : window.ENTREMIS_GROWTH.views[r.name] ? window.ENTREMIS_GROWTH.views[r.name] : r.name === "aide" ? window.ENTREMIS_GUIDE.viewClient : r.name === "resultats" ? window.ENTREMIS_CPLUS.viewResults : r.name === "dispos" ? window.ENTREMIS_CPLUS.viewDispos : r.name === "parrainage" ? window.ENTREMIS_CPLUS.viewParrainage : r.name === "menu" ? viewClientMenu : null);
     const v = tv ? tv(S) : { accueil: viewHome, agenda: viewAgenda, rdv: () => viewRdv(r.appt), comptes: viewAccounts, messages: () => viewMessages(r.id) }[r.name]();
     if (key !== lastKey && r.name !== "fiche") { S.ctxClient = null; S.ctxContact = null; }
     let html = v;
@@ -810,6 +812,7 @@
     if (window.ENTREMIS_SECTORS.onClick(e, S, render)) return;
     if (window.ENTREMIS_SETTINGS.onClick(e, S, render)) return;
     if (window.ENTREMIS_GROWTH.onClick(e, S, render)) return;
+    if (window.ENTREMIS_ACCESS.onClick(e, S, render)) return;
     if (TM().onClick(e, S, render)) return;
     const ap = e.target.closest("[data-as-pick]");
     if (ap) { pickClient(ap.dataset.asPick); return; }
@@ -864,6 +867,7 @@
     if (window.ENTREMIS_PROCESS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_SECTORS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_SETTINGS.onSubmit(e, S, render)) return;
+    if (window.ENTREMIS_ACCESS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_GROWTH.onSubmit(e, S, render)) return;
     if (e.target.id === "doc-form" || e.target.id === "call-form") { window.ENTREMIS_OPS.onSubmit(e, S, render); return; }
     if (window.ENTREMIS_METRICS.onSubmit(e, S, render)) return;
@@ -962,7 +966,7 @@
     setTimeout(() => el.classList.add("out"), 1250);
     setTimeout(() => el.remove(), 1700);
   }
-  window.EM = { D, S, C, baseC, viewId, viewClient, viewUser, pickClient, esc, icon, fileIcon, brand, cline, confirm: o => askConfirm(o), toast, store, isNarrow: () => isNarrow(), sampleTag, loader, nodeFlow, tickRing, fsel, render: () => render() };
+  window.EM = { D, S, C, baseC, allClients, viewId, viewClient, viewUser, pickClient, esc, icon, fileIcon, brand, cline, confirm: o => askConfirm(o), toast, store, isNarrow: () => isNarrow(), sampleTag, loader, nodeFlow, tickRing, fsel, render: () => render() };
   splash();
 
   applyTheme();
@@ -994,4 +998,5 @@
   window.ENTREMIS_SECTORS.init(() => render());
   window.ENTREMIS_CPLUS.init(() => render());
   window.ENTREMIS_GROWTH.init(() => render());
+  window.ENTREMIS_ACCESS.init(() => render());
 })();

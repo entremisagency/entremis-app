@@ -2678,3 +2678,18 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 }
 /* Sur le site en ligne, le réglage d'aperçu de la maquette (ordinateur / téléphone) n'a pas sa place */
 .is-cloud .tweak{display:none}
+
+/* ===== Accès clients (agence) : créer l'accès d'un client, voir les accès ouverts ===== */
+.ac-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-5);align-items:start}
+.ac-grid .field>label{font-size:var(--text-caption);font-weight:var(--weight-strong);color:var(--color-muted)}
+.ac-list{display:grid;gap:var(--space-2);margin:0;padding:0;list-style:none}
+.ac-row{display:grid;grid-template-columns:var(--avatar) minmax(0,1fr);gap:var(--space-2) var(--space-3);align-items:center;padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-card)}
+.ac-row b{display:block;color:var(--color-ink)}
+.ac-row small{display:block;font-size:var(--text-caption);color:var(--color-muted)}
+.ac-acts{grid-column:2 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.ac-del{color:var(--danger-ink)}
+.ac-done .h2{display:flex;align-items:center;gap:var(--space-2)}
+.ac-done .h2 .icon{color:var(--color-action)}
+.ac-share{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+@container app (max-width:960px){ .ac-grid{grid-template-columns:minmax(0,1fr)} }
+@container app (max-width:640px){ .ac-acts{grid-column:1 / -1} .ac-grid .field-row{grid-template-columns:minmax(0,1fr)} }
