@@ -177,6 +177,7 @@
         <dl class="money">
           <div><dt>Encaissé</dt><dd class="tabnum">${euros(cur)}</dd></div>
           ${costs.map(c => `<div class="minus"><dt>${esc(c.label)}</dt><dd class="tabnum">− ${euros(c.value)}</dd></div>`).join("")}
+          ${window.ENTREMIS_LIVE.on() ? `<div><dt><button class="link" type="button" data-live-new="cost">${EM().icon("plus")}Ajouter une dépense</button></dt><dd></dd></div>` : ""}
           <div class="total"><dt>Reste, avant impôts</dt><dd class="tabnum">${euros(cur - costSum)}</dd></div>
         </dl>
       </section>
@@ -266,7 +267,7 @@
       const t = seo.traffic, cur = t[t.length - 1].value, prev = t[t.length - 2].value;
       body = `
       <div class="kpis kpis-4" role="list">
-        ${kpi("Visites depuis Google", cur, `+${Math.round((cur - prev) / prev * 100)} % sur un mois`, "ok")}
+        ${kpi("Visites depuis Google", cur, prev ? `${cur >= prev ? "+" : ""}${Math.round((cur - prev) / prev * 100)} % sur un mois` : "pas encore mesuré", "ok")}
         ${kpi("Mots-clés dans le top 10", seo.keywords.filter(k => k.pos <= 10).length, `sur ${seo.keywords.length} suivis`)}
         ${kpi("En progression", seo.keywords.filter(k => k.pos < k.prev).length, "mots-clés qui montent", "ok")}
         ${kpi("En recul", seo.keywords.filter(k => k.pos > k.prev).length, "à surveiller", seo.keywords.some(k => k.pos > k.prev) ? "danger" : "")}

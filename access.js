@@ -9,8 +9,7 @@
   const EM = () => window.EM, OPS = () => window.ENTREMIS_OPS, TM = () => window.ENTREMIS_TEAM;
   const CL = () => window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on() ? window.ENTREMIS_CLOUD : null;
   const X = { pick: "", login: "", name: "", trade: "", contact: "", err: "", busy: false, done: null, reset: null, members: null, loading: false };
-  let ST = null;
-  const CLIENTS = () => ST || (ST = OPS().makeStore("clients", () => []));
+  const CLIENTS = () => window.ENTREMIS_LIVE.CLIENTS();   // la même liste que la page Clients
 
   // Un identifiant propre : minuscules, sans accent ni espace (« Thermo Rhône » devient « thermo-rhone »)
   const slug = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
@@ -174,7 +173,7 @@
 
   window.ENTREMIS_ACCESS = {
     view: S => view(S, EM().render), onClick, onSubmit, extra,
-    init: render => CLIENTS().init(render),
+    init: () => {},
     reset: () => { X.reset = null; X.err = ""; }
   };
 })();

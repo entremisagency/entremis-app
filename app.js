@@ -50,17 +50,19 @@
   const LEAD_STEP = { nouveau: "targeted", rappele: "contacted", qualifie: "replied", attribue: "replied", rdv: "meeting" };
   function campOf(id) {
     const b = baseC(), cl = allClients().find(x => x.id === id);
-    if (cl && cl.camp && D.campaigns[cl.camp]) return D.campaigns[cl.camp];
+    const cloud = window.ENTREMIS_CLOUD.on();
+    if (!cloud && cl && cl.camp && D.campaigns[cl.camp]) return D.campaigns[cl.camp];
     const c0 = cl || viewClient();
-    const rdv = window.ENTREMIS_GROWTH ? window.ENTREMIS_GROWTH.otherRdv(id) : [];
+    const rdv = (!cloud && window.ENTREMIS_GROWTH ? window.ENTREMIS_GROWTH.otherRdv(id) : []).concat(window.ENTREMIS_LIVE ? window.ENTREMIS_LIVE.rdvFor(id).filter(r => r.state !== "cancel").map(window.ENTREMIS_LIVE.asAppt) : []);
     const leads = window.ENTREMIS_LEADS ? window.ENTREMIS_LEADS.list().filter(l => l.to === id && l.status !== "perdu") : [];
-    const key = rdv.map(a => a.id + a.state).join(",") + "|" + leads.map(l => l.id + l.status).join(",");
+    const key = rdv.map(a => [a.id, a.state, a.date, a.start, a.name, a.replacedBy].join("~")).join(",") + "|" + leads.map(l => l.id + l.status).join(",");
     if (CAMP[id] && CAMP[id].key === key) return CAMP[id].c;   // même objet tant que rien ne change
     const ini = n => n.split(/\s+/).map(w => w.charAt(0)).join("").slice(0, 2).toUpperCase();
     const day = iso => { const d = new Date(String(iso || "").slice(0, 10) + "T12:00:00Z"); return isNaN(d) ? "" : d.getUTCDate() + " " + MONTHS_S[d.getUTCMonth()]; };
-    const appointments = rdv.map(a => ({ id: a.id, date: a.date, start: a.start, end: a.end, name: a.name, initials: ini(a.name), role: a.role, org: a.org || "Maison individuelle", city: a.city, mode: "Visite technique", state: a.state, reply: a.reply,
-      absence: a.state === "replaced" ? (a.absence || { reported: day(a.date) + " à " + a.end, reason: a.reply === "rien" ? "Absent, sans répondre au rappel" : "Absent" }) : undefined,
-      criteria: { besoin: a.role, budget: "À préciser au rendez-vous", decideur: "Propriétaire, à confirmer", delai: "À préciser" }, signals: [] }));
+    const appointments = rdv.map(a => ({ id: a.id, date: a.date, start: a.start, end: a.end, name: a.name, initials: ini(a.name), role: a.role, org: a.org || (a.address ? a.address : "Maison individuelle"), city: a.city, mode: "Visite technique", state: a.state, reply: a.reply,
+      replacedBy: a.replacedBy, note: a.note, phone: a.phone, address: a.address,
+      absence: a.state === "replaced" ? (a.absence || { reported: day(a.absentAt || a.date) + " à " + a.end, reason: a.reply === "rien" ? "Absent, sans répondre au rappel" : "Absent" }) : undefined,
+      criteria: { besoin: a.role, budget: "À préciser au rendez-vous", decideur: "Propriétaire, à confirmer", delai: "À préciser" }, signals: a.note ? [a.note] : [] }));
     const accounts = leads.map(l => ({ org: l.name, sector: l.trade, city: l.city, size: l.zone || "", signal: l.source ? "Demande via " + l.source : "", step: LEAD_STEP[l.status] || "targeted", last: day(l.givenAt || l.at) }));
     const past = appointments.filter(a => a.date < D.today.iso && a.state !== "new"), ok = past.filter(a => a.state === "ok").length, abs = c0.absences || 0;
     const c = Object.assign({}, b, {
@@ -223,7 +225,7 @@
     const me = TM().member(S.who);
     $("#account").innerHTML = team
       ? `${TM().avatar(me.id)}<div><b>${me.name}</b><span>Mon portail – changer</span></div>`
-      : `<span class="av av-md">${esc(U.initials)}</span><div><b>${esc(U.name)}</b><span>${esc(U.company)}${S.lock ? "" : " – exemple"}</span></div>`;
+      : `<span class="av av-md">${esc(U.initials)}</span><div><b>${esc(U.name)}</b><span>${esc(U.company)}${S.lock || window.ENTREMIS_CLOUD.on() ? "" : " – exemple"}</span></div>`;
     const so = $("#side-out"); if (so) so.innerHTML = window.ENTREMIS_CLOUD.on() ? `<button class="side-out" type="button" data-cloud-out>${icon("logout")}<span>Se déconnecter</span></button>` : "";
     $("#m-avatar").outerHTML = team ? `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages">${TM().avatar(me.id, "av")}</a>` : `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages"><span class="av">${esc(U.initials)}</span></a>`;
     document.querySelectorAll(".bell .dot").forEach(d => { d.hidden = !unread; });
@@ -766,13 +768,14 @@
   }
   let lastKey = "";
   function render() {
+    if (window.ENTREMIS_LIVE) window.ENTREMIS_LIVE.rebuild();
     const r = parse();
     const key = r.name + "/" + (r.id || "");
     if (key !== lastKey && r.name === "rdv") S.absenceOpen = !!S.keepAbsence;
     S.keepAbsence = false;
     renderChrome(r);
     if (key !== lastKey) { S.taskForm = false; S.acc = null; }
-    if (key !== lastKey) { window.ENTREMIS_OPS.resetSheet(); window.ENTREMIS_METRICS.resetSheet(); window.ENTREMIS_FICHE.reset(); window.ENTREMIS_SCRIPTS.reset(); window.ENTREMIS_GEN.closeDoc(); window.ENTREMIS_SETTINGS.reset(); window.ENTREMIS_GROWTH.reset(); window.ENTREMIS_ACCESS.reset(); }
+    if (key !== lastKey) { window.ENTREMIS_OPS.resetSheet(); window.ENTREMIS_METRICS.resetSheet(); window.ENTREMIS_FICHE.reset(); window.ENTREMIS_SCRIPTS.reset(); window.ENTREMIS_GEN.closeDoc(); window.ENTREMIS_SETTINGS.reset(); window.ENTREMIS_GROWTH.reset(); window.ENTREMIS_ACCESS.reset(); window.ENTREMIS_LIVE.reset(); }
     const tv = TM().views[r.name] || window.ENTREMIS_OPS.views[r.name] || (r.name === "chiffres" ? window.ENTREMIS_METRICS.view : null) || (r.name === "fiche" ? s => window.ENTREMIS_FICHE.view(s, r.id) : null)
       || (r.name === "scripts" ? window.ENTREMIS_SCRIPTS.viewList : r.name === "script" ? s => window.ENTREMIS_SCRIPTS.viewScript(s, r.id) : r.name === "scripts-equipe" ? window.ENTREMIS_SCRIPTS.viewTeam : r.name === "leads" ? window.ENTREMIS_LEADS.view : r.name === "generer" ? window.ENTREMIS_GEN.view : r.name === "guide" ? window.ENTREMIS_GUIDE.viewTeam : r.name === "processus" ? window.ENTREMIS_PROCESS.view : r.name === "discussions" ? window.ENTREMIS_CHAT.view : r.name === "secteurs" ? window.ENTREMIS_SECTORS.view : r.name === "acces" ? window.ENTREMIS_ACCESS.view : window.ENTREMIS_GROWTH.views[r.name] ? window.ENTREMIS_GROWTH.views[r.name] : r.name === "aide" ? window.ENTREMIS_GUIDE.viewClient : r.name === "resultats" ? window.ENTREMIS_CPLUS.viewResults : r.name === "dispos" ? window.ENTREMIS_CPLUS.viewDispos : r.name === "parrainage" ? window.ENTREMIS_CPLUS.viewParrainage : r.name === "menu" ? viewClientMenu : null);
     const v = tv ? tv(S) : { accueil: viewHome, agenda: viewAgenda, rdv: () => viewRdv(r.appt), comptes: viewAccounts, messages: () => viewMessages(r.id) }[r.name]();
@@ -781,7 +784,8 @@
     // Les formulaires (tâche, appel, document) s'ouvrent depuis n'importe quel écran
     if (S.taskForm && !html.includes('id="task-form"')) html += TM().taskSheet(S);
     if (window.ENTREMIS_OPS.sheetOpen() && !html.includes('class="sheet"')) html += window.ENTREMIS_OPS.sheetHtml(S);
-    html += window.ENTREMIS_GEN.docPanel(S);   // un devis ou une facture ouvert (vrai PDF, partage)
+    html += window.ENTREMIS_GEN.docPanel(S);
+    html += window.ENTREMIS_LIVE.sheet(S);   // client, prospect, rendez-vous, dépense   // un devis ou une facture ouvert (vrai PDF, partage)
     window.ENTREMIS_PICK.close();
     $("#view").innerHTML = html;
     window.ENTREMIS_PICK.enhance($("#view"));   // dates et heures : pastilles et calendrier façon Apple
@@ -816,6 +820,7 @@
     if (window.ENTREMIS_SETTINGS.onClick(e, S, render)) return;
     if (window.ENTREMIS_GROWTH.onClick(e, S, render)) return;
     if (window.ENTREMIS_ACCESS.onClick(e, S, render)) return;
+    if (window.ENTREMIS_LIVE.onClick(e, S, render)) return;
     if (TM().onClick(e, S, render)) return;
     const ap = e.target.closest("[data-as-pick]");
     if (ap) { pickClient(ap.dataset.asPick); return; }
@@ -871,6 +876,7 @@
     if (window.ENTREMIS_SECTORS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_SETTINGS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_ACCESS.onSubmit(e, S, render)) return;
+    if (e.target.id === "live-form") { window.ENTREMIS_LIVE.onSubmit(e, S, render); return; }
     if (window.ENTREMIS_GROWTH.onSubmit(e, S, render)) return;
     if (e.target.id === "doc-form" || e.target.id === "call-form") { window.ENTREMIS_OPS.onSubmit(e, S, render); return; }
     if (window.ENTREMIS_METRICS.onSubmit(e, S, render)) return;
@@ -1002,4 +1008,5 @@
   window.ENTREMIS_CPLUS.init(() => render());
   window.ENTREMIS_GROWTH.init(() => render());
   window.ENTREMIS_ACCESS.init(() => render());
+  window.ENTREMIS_LIVE.init(() => render());
 })();

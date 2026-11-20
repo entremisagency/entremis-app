@@ -96,6 +96,8 @@
             <button class="btn btn-ghost" type="button" data-act="new-task">${icon("check")}Nouvelle tâche</button>
             <a class="btn btn-ghost" href="#generer" data-gen-for="${e.id}">${icon("euro")}Faire un devis</a>
             ${e.c ? `<button class="btn btn-ghost" type="button" data-open-client="${e.id}">${icon("eye")}Voir son espace client</button>` : ""}
+            ${e.c ? `<button class="btn btn-ghost" type="button" data-live-new="rdv" data-live-client="${e.id}">${icon("cal")}Placer un rendez-vous</button>` : ""}
+            ${window.ENTREMIS_LIVE.on() ? `<button class="btn btn-ghost" type="button" data-live-edit="${e.c ? "client" : "prospect"}:${e.id}">${icon("sliders")}${e.c ? "Campagne et suivi" : "Étape et valeur"}</button>` : ""}
           </div>
         </section>
         <section class="card">

@@ -95,8 +95,16 @@
     { id: "x-nadia-ferhat", client: "blindex", name: "Nadia Ferhat", role: "Porte blindée", city: "Lyon 3e", date: "2026-11-20", start: "18:00", end: "18:45", state: "new" },
     { id: "x-paul-riviere", client: "delmas", name: "Paul Rivière", role: "Chauffe-eau", city: "Grenoble", date: "2026-11-23", start: "14:00", end: "15:00", state: "new" }
   ];
-  const allRdv = () => EM().baseC().appointments.map(a => Object.assign({ client: "solaria" }, a)).concat(OTHER_RDV).sort((a, b) => (a.date + a.start) < (b.date + b.start) ? -1 : 1);
+  const LIVE = () => window.ENTREMIS_LIVE, CLOUD = () => window.ENTREMIS_CLOUD.on();
+  const allRdv = () => (CLOUD() ? [] : EM().baseC().appointments.map(a => Object.assign({ client: "solaria" }, a)).concat(OTHER_RDV))
+    .concat(LIVE().rdvs().filter(r => r.state !== "cancel").map(LIVE().asAppt)).sort((a, b) => (a.date + a.start) < (b.date + b.start) ? -1 : 1);
   const resultOf = a => CP().result(a.id) || a.result || null;
+  // Pour un rendez-vous placé dans l'app : visite faite, absent (puis remplaçant), modifier
+  function liveActs(a, past) {
+    const icon = EM().icon;
+    if (a.state === "replaced") return a.replacedBy ? "" : `<button class="btn btn-primary btn-xs" type="button" data-live-replace="${a.id}">${icon("swap")}Placer un remplaçant</button>`;
+    return `${past && a.state !== "ok" ? `<button class="btn btn-ghost btn-xs" type="button" data-rdv-state="${a.id}:ok">${icon("check")}Visite faite</button><button class="btn btn-ghost btn-xs" type="button" data-rdv-state="${a.id}:replaced">Absent</button>` : ""}<button class="btn btn-ghost btn-xs" type="button" data-live-edit="rdv:${a.id}">Modifier</button>`;
+  }
   function viewRdvs(S) {
     const all = allRdv(), wk0 = addDays(today(), -((new Date(today() + "T12:00:00Z").getUTCDay() + 6) % 7)), wk1 = addDays(wk0, 6);
     const week = all.filter(a => a.date >= wk0 && a.date <= wk1);
@@ -112,10 +120,10 @@
         <a class="rv-client" href="#fiche-${a.client}">${esc(c.name)}</a>
         <span class="rv-conf" aria-label="Rappels : ${cf.reply || "pas encore envoyés"}">${a.state === "replaced" ? `<span class="state state-warn">Absent, remplacé</span>` : `<span class="rv-dots">${dot(cf.veille)}${dot(cf.matin)}</span><small>${cf.reply ? cf.reply : "rappels prévus"}</small>`}</span>
         <span class="rv-res">${a.state === "replaced" ? "" : r ? `<span class="state state-${CP().OUT[r.outcome][1]}">${CP().OUT[r.outcome][0]}</span>${r.outcome === "signe" && r.amount ? `<b class="tabnum">${euros(r.amount)}</b>` : ""}` : past ? `<span class="muted">à renseigner</span>` : `<span class="muted">à venir</span>`}</span>
-        <span class="rv-acts">${a.state === "replaced" ? "" : `<button class="btn btn-ghost btn-xs" type="button" data-copy="${esc(past ? sms.matin : sms.veille)}">${icon("copy")}SMS</button>`}${past && !r && a.state !== "replaced" ? `<button class="btn btn-ghost btn-xs" type="button" data-rv-ask="${a.id}">Demander le résultat</button>` : ""}</span>
+        <span class="rv-acts">${a.state === "replaced" ? "" : `<button class="btn btn-ghost btn-xs" type="button" data-copy="${esc(past ? sms.matin : sms.veille)}">${icon("copy")}SMS</button>`}${past && !r && a.state !== "replaced" ? `<button class="btn btn-ghost btn-xs" type="button" data-rv-ask="${a.id}">Demander le résultat</button>` : ""}${a.by !== undefined ? liveActs(a, past) : ""}</span>
       </li>`;
     };
-    return `${head("Rendez-vous", "Tous les clients : rappels au particulier, présence, résultat.")}
+    return `${head("Rendez-vous", "Tous les clients : rappels au particulier, présence, résultat.", `<button class="btn btn-primary" type="button" data-live-new="rdv">${EM().icon("plus")}Placer un rendez-vous</button>`)}
     <div class="kpis kpis-4" role="list">
       ${kpi("Cette semaine", week.filter(a => a.state !== "replaced").length, "rendez-vous placés")}
       ${kpi("Confirmés", sent.length ? Math.round(conf.length / sent.length * 100) + " %" : "–", "par SMS, parmi les rappels envoyés")}
@@ -244,7 +252,9 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
       <p class="pp-next">Prochaine étape : on signe, la campagne démarre sous 2 jours.</p></article>`;
   }
   function viewPropositions(S) {
-    if (!G.prop) G.prop = propFor((TD().pipeline.find(p => p.stage !== "won") || TD().pipeline[0]).id);
+    const first = TD().pipeline.find(p => p.stage !== "won") || TD().pipeline[0] || TD().clients[0];
+    if (!first) return `${head("Propositions", "Une proposition claire pour chaque prospect : ce qu'on livre, le prix, et ce que ça peut lui rapporter.")}<section class="card"><p class="body">Ajoutez d'abord un prospect : la proposition se prépare pour lui.</p><div class="form-actions"><button class="btn btn-primary" type="button" data-live-new="prospect">${EM().icon("plus")}Nouveau prospect</button></div></section>`;
+    if (!G.prop) G.prop = propFor(first.id);
     const p = G.prop, opts = TD().pipeline.filter(x => x.stage !== "won").map(x => [x.id, x.name + " – prospect"]).concat(TD().clients.map(c => [c.id, c.name + " – client, renouvellement"]));
     const saved = PROPS().list.slice().sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1);
     const num = (k, l, step, suffix) => `<label class="field"><span>${l}</span><div class="pp-num"><input name="${k}" type="number" inputmode="decimal" min="0" step="${step}" value="${p[k]}">${suffix ? `<small>${suffix}</small>` : ""}</div></label>`;
@@ -345,6 +355,7 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
       return { c: r.c, mrr: r.mrr, pub, calls, repl, fixed, m, pct: r.mrr ? m / r.mrr * 100 : 0 }; });
   }
   function viewMarge(S) {
+    if (!margins().length) return `${head("Marge", "Ce que rapporte chaque client, une fois payés la publicité et le temps passé.")}<section class="card"><p class="body">La marge se calcule dès qu'un client est enregistré.</p><div class="form-actions"><button class="btn btn-primary" type="button" data-live-new="client">${EM().icon("plus")}Nouveau client</button></div></section>`;
     const ms = margins(), h = hyp(), total = ms.reduce((s, x) => s + x.m, 0), best = ms.slice().sort((a, b) => b.pct - a.pct)[0], worst = ms.slice().sort((a, b) => a.pct - b.pct)[0];
     return `${head("Marge par campagne", "Ce que paie le client, moins la pub, le temps d'appel et les remplacements.")}
     <div class="kpis kpis-4" role="list">
@@ -556,7 +567,9 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
       e.preventDefault(); const id = new FormData(f).get("lead"), l = LEADS().list().find(x => x.id === id); if (!l) return true;
       EM().confirm({ title: `Effacer les données de ${l.name} ?`, text: "Son nom, sa ville et ses coordonnées disparaissent pour toute l'équipe. On ne garde que la trace de l'effacement.", ok: "Effacer" }).then(ok => {
         if (!ok) return;
-        LEADS().put(Object.assign({}, l, { name: "Personne effacée", city: "", zone: "", erased: true }));
+        LEADS().put(Object.assign({}, l, { name: "Personne effacée", city: "", zone: "", phone: "", email: "", note: "", erased: true }));
+        LIVE().rdvs().filter(r => r.lead === l.id || r.name === l.name).forEach(r => LIVE().RDV().put(Object.assign({}, r, { name: "Personne effacée", phone: "", address: "", note: "" })));
+        OPS().stores.CALLS.list.filter(c => c.contact === l.name).forEach(c => OPS().stores.CALLS.put(Object.assign({}, c, { contact: "Personne effacée", note: "" })));
         ERAS().put({ id: "e" + Date.now().toString(36), lead: l.id, at: today(), by: S.who }); TM().haptic("done"); render(); EM().toast("Données effacées.");
       });
       return true;

@@ -165,6 +165,7 @@
         ${s ? `<button class="lp-act lp-main" type="button" data-lead-give="${l.id}:${s.id}">${icon("check")}<span>Donner</span></button>` : ""}
         ${!c && l.status !== "perdu" ? `<button class="lp-act" type="button" data-lead-pick="${l.id}">${icon("users")}<span>Autre client</span></button>` : ""}
         ${c ? `<button class="lp-act" type="button" data-lead-take="${l.id}">${icon("swap")}<span>Reprendre</span></button>` : ""}
+        ${l.status !== "perdu" && !l.erased ? `<button class="lp-act" type="button" data-live-rdv="${l.id}">${icon("cal")}<span>Placer le RDV</span></button>` : ""}
         ${l.status !== "perdu" ? `<button class="lp-act" type="button" data-lead-lose="${l.id}">${icon("trash")}<span>Écarter</span></button>` : ""}
       </div>
       ${L.pick === l.id ? `<div class="q-pick">${TD().clients.map(cl => `<button class="pill" type="button" data-lead-give="${l.id}:${cl.id}">${esc(cl.name)}</button>`).join("")}</div>` : ""}

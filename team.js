@@ -287,7 +287,7 @@
     return `
     <div class="head">
       <div class="head-text"><h1 class="h1">Clients</h1><p class="sub">Les installateurs qui achètent nos leads.</p></div>
-      <div class="head-actions">${EM().sampleTag}</div>
+      <div class="head-actions">${EM().sampleTag}<button class="btn btn-primary" type="button" data-live-new="client">${icon("plus")}Nouveau client</button></div>
     </div>
     <div class="kpis kpis-4" role="list">
       ${kpi("Campagnes en cours", cs.length, `${cs.filter(c => c.pace === "late").length} en retard`)}
@@ -325,7 +325,8 @@
   /* ---------- Écran : nouveaux clients à signer ---------- */
   const STAGES = [["lead", "À contacter"], ["call", "Appel fait"], ["quote", "Devis envoyé"], ["won", "Signé"]];
   let PIPE = null;
-  const pipe = () => PIPE || (PIPE = TD().pipeline.map(p => Object.assign({}, p)));
+  // En ligne : les vrais prospects (base) ; dans la maquette : une copie des exemples
+  const pipe = () => window.ENTREMIS_LIVE.on() ? TD().pipeline : (PIPE || (PIPE = TD().pipeline.map(p => Object.assign({}, p))));
   const euros = n => n.toLocaleString("fr-FR") + " €";
   function viewPipeline(S) {
     const esc = EM().esc, icon = EM().icon, narrow = EM().isNarrow();
@@ -352,7 +353,7 @@
     return `
     <div class="head">
       <div class="head-text"><h1 class="h1">Prospection</h1><p class="sub">Les installateurs à signer, étape par étape. Notez chaque appel dans <a class="link" href="#appels">Appels</a>.</p></div>
-      <div class="head-actions">${EM().sampleTag}</div>
+      <div class="head-actions">${EM().sampleTag}<button class="btn btn-primary" type="button" data-live-new="prospect">${icon("plus")}Nouveau prospect</button></div>
     </div>
     <div class="kpis kpis-4" role="list">
       ${kpi("En discussion", open.length, "installateurs")}
@@ -446,6 +447,8 @@
       { id: "c4", kind: "info", icon: "chart", text: "Votre bilan de la semaine est prêt : 3 rendez-vous livrés", at: "16 nov.", day: "Plus tôt", act: { label: "Voir le bilan", href: "#accueil" } }
     ]
   };
+  // En ligne : les alertes viennent des vraies données (leads à donner, RDV du jour, absences, retards, factures)
+  const notifs = space => window.ENTREMIS_LIVE && window.ENTREMIS_LIVE.on() ? window.ENTREMIS_LIVE.notifs(space) : NOTIFS[space];
   const PREF_EVENTS = {
     team: [["task-mine", "Tâche pour moi"], ["task-late", "Tâche en retard"], ["absence", "Absence signalée"], ["rdv", "RDV placé"], ["morning", "Résumé à 8 h"]],
     client: [["rdv", "Nouveau RDV"], ["remind", "Rappel la veille"], ["replace", "Remplacement placé"], ["weekly", "Bilan du vendredi"]]
@@ -472,7 +475,7 @@
   function viewNotifications(S) {
     const esc = EM().esc, icon = EM().icon, space = S.space;
     const read = S.read || {};
-    const list = NOTIFS[space];
+    const list = notifs(space);
     const p = prefs(space);
     const groups = [...new Set(list.map(n => n.day))];
     const unread = list.filter(n => !read[n.id]).length;
@@ -517,10 +520,11 @@
     }
     if (t.dataset.deal) {
       const p = pipe().find(x => x.id === t.dataset.deal); if (!p) return true;
-      const prev = p.stage, i = STAGES.findIndex(s => s[0] === p.stage);
-      p.stage = STAGES[Math.min(i + 1, STAGES.length - 1)][0];
-      haptic(p.stage === "won" ? "done" : "tap"); render();
-      toast(p.stage === "won" ? `${p.name} est signé.` : `${p.name} : ${STAGES[i + 1][1].toLowerCase()}.`, () => { p.stage = prev; render(); });
+      const prev = p.stage, i = STAGES.findIndex(s => s[0] === p.stage), next = STAGES[Math.min(i + 1, STAGES.length - 1)][0];
+      const L = window.ENTREMIS_LIVE, save = st => { if (L.on()) { const row = L.PROSPECTS().list.find(x => x.id === p.id); if (row) L.PROSPECTS().put(Object.assign({}, row, { stage: st })); } else p.stage = st; };
+      save(next);
+      haptic(next === "won" ? "done" : "tap"); render();
+      toast(next === "won" ? `${p.name} est signé.` : `${p.name} : ${STAGES[i + 1][1].toLowerCase()}.`, () => { save(prev); render(); });
       return true;
     }
     if (t.dataset.pipeStage) { S.pipeStage = t.dataset.pipeStage; haptic("tap"); render(); return true; }
@@ -543,7 +547,7 @@
       haptic("warn"); render(); toast("Photo retirée."); });
       return true;
     }
-    if (act === "read-all") { const r = {}; NOTIFS[S.space].forEach(n => { r[n.id] = true; }); S.read = r; haptic("tap"); render(); return true; }
+    if (act === "read-all") { const r = {}; notifs(S.space).forEach(n => { r[n.id] = true; }); S.read = r; haptic("tap"); render(); return true; }
     return false;
   }
   async function deleteTask(id, render) {
@@ -659,6 +663,6 @@
     avatar: av, taskSheet,
     TEAM_ROUTES, SHARED_ROUTES, T, initTasks, initSwipe, onClick, onChange, onSubmit, member, haptic, photoUrl, photoBusy: () => P.busy,
     views: { equipe: viewPortal, taches: viewTasks, clients: viewClients, pipeline: viewPipeline, avancement: viewProgress, notifications: viewNotifications, reglages: S => window.ENTREMIS_SETTINGS.view(S) },
-    unreadCount: S => NOTIFS[S.space].filter(n => !(S.read || {})[n.id]).length
+    unreadCount: S => notifs(S.space).filter(n => !(S.read || {})[n.id]).length
   };
 })();

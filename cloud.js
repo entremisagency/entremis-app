@@ -26,6 +26,20 @@
     return !inClaude && (/\.github\.io$/.test(location.hostname) || /(^|\.)entremis\./.test(location.hostname));
   })();
 
+  // Site en ligne : la vraie date et la vraie heure (la maquette, elle, reste figée au jeudi 19 novembre, 10 h 40)
+  if (on) {
+    const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"], MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+    const p2 = n => String(n).padStart(2, "0"), isoOf = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+    const clock = () => {
+      const n = new Date(), D_ = window.ENTREMIS_DATA;
+      D_.today = { iso: isoOf(n), label: `${JOURS[n.getDay()]} ${n.getDate()} ${MOIS[n.getMonth()]}`, now: `${p2(n.getHours())}:${p2(n.getMinutes())}`, nowMinutes: n.getHours() * 60 + n.getMinutes() };
+      const mon = new Date(n); mon.setDate(n.getDate() - ((n.getDay() + 6) % 7));
+      D_.weeks = [-7, 0, 7].map(k => { const a = new Date(mon); a.setDate(mon.getDate() + k); const b = new Date(a); b.setDate(a.getDate() + 4);
+        return { start: isoOf(a), label: a.getMonth() === b.getMonth() ? `${a.getDate()} – ${b.getDate()} ${MOIS[b.getMonth()]} ${b.getFullYear()}` : `${a.getDate()} ${MOIS[a.getMonth()]} – ${b.getDate()} ${MOIS[b.getMonth()]} ${b.getFullYear()}` }; });
+    };
+    clock(); setInterval(clock, 60000);
+  }
+
   // Arrivée par le lien d'une invitation ou d'un « mot de passe oublié » : on le note avant que la bibliothèque nettoie l'adresse
   const LINK = (() => { const m = String(location.hash).match(/(?:^|[#&])type=(invite|recovery)/); return m ? m[1] : ""; })();
   let client = null, me = null, priv = {};

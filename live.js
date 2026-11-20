@@ -1,0 +1,236 @@
+/* Entremis — les vraies données (Marc, 20 nov. 2026 : « fais tout sauf les e-mails »).
+   Sur le site en ligne, plus aucun exemple : clients, prospects, rendez-vous, dépenses viennent de la base,
+   et tout le reste en est tiré (objectifs, rythme, remplacements, semaine, finances, alertes).
+   Dans la maquette (aperçu, claude.ai), les exemples restent ; les rendez-vous placés s'y ajoutent.
+   Collections : « clients », « prospects », « rdv » (un rendez-vous porte son client : client_id), « costs ».
+   Astuce : les tableaux de data.js (team.clients, team.pipeline…) sont réécrits sur place, si bien que toutes les pages
+   existantes lisent les vraies données sans changer. */
+(function () {
+  "use strict";
+  const EM = () => window.EM, OPS = () => window.ENTREMIS_OPS, D = () => window.ENTREMIS_DATA, TD = () => window.ENTREMIS_DATA.team;
+  const on = () => !!(window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on());
+  const st = {};
+  const store = name => st[name] || (st[name] = OPS().makeStore(name, () => []));
+  const CLIENTS = () => store("clients"), PROSPECTS = () => store("prospects"), RDV = () => store("rdv"), COSTS = () => store("costs");
+  const LEADS = () => window.ENTREMIS_LEADS, DOCS = () => window.ENTREMIS_OPS.stores.DOCS, CALLS = () => window.ENTREMIS_OPS.stores.CALLS, TASKS = () => window.ENTREMIS_TEAM.T;
+
+  const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+  const MONTHS_L = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+  const DAYS = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
+  const p2 = n => String(n).padStart(2, "0");
+  const iso = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  const today = () => on() ? iso(new Date()) : D().today.iso;
+  const addDays = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return iso(d); };
+  const between = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 86400000);
+  const short = s => { const d = new Date(String(s).slice(0, 10) + "T12:00:00"); return isNaN(d) ? "" : d.getDate() + " " + MONTHS[d.getMonth()]; };
+  const dayLabel = s => { const d = new Date(s + "T12:00:00"); return s === today() ? "aujourd'hui" : s === addDays(today(), 1) ? "demain" : `${DAYS[d.getDay()]} ${d.getDate()}`; };
+  const nowHm = () => { const n = new Date(); return p2(n.getHours()) + ":" + p2(n.getMinutes()); };
+  const slug = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  const isPast = a => a.date < today() || (a.date === today() && (a.end || a.start || "00:00") <= nowHm());
+
+  /* ---------- Les rendez-vous ---------- */
+  const rdvs = () => RDV().list.filter(r => r && r.date && r.client_id);
+  const rdvFor = id => rdvs().filter(r => r.client_id === id);
+  // Le format des rendez-vous d'exemple (pages Rendez-vous, agenda du client)
+  const asAppt = r => Object.assign({ client: r.client_id, role: r.role || "Projet à préciser", city: r.city || "", end: r.end || r.start, state: r.state || "new" }, r);
+
+  /* ---------- Les clients : la fiche saisie, plus ce qu'on calcule ---------- */
+  function clientRow(c) {
+    const start = c.start || (c.createdAt ? String(c.createdAt).slice(0, 10) : today()), days = Math.max(1, Number(c.days) || 30), target = Math.max(0, Number(c.target) || 0);
+    const mine = rdvFor(c.id), inCamp = mine.filter(r => r.date >= start);
+    const done = inCamp.filter(r => r.state === "ok").length, day = Math.min(days, Math.max(1, between(start, today()) + 1));
+    const expected = target * day / days;
+    const pace = !target ? "ontrack" : done >= expected + 1 ? "ahead" : done + 1 < expected ? "late" : "ontrack";
+    const up = mine.filter(r => r.state !== "replaced" && r.state !== "cancel" && !isPast(r)).sort((a, b) => (a.date + a.start) < (b.date + b.start) ? -1 : 1)[0];
+    return Object.assign({ trade: "", offer: "Rendez-vous", owner: "marc", contact: "", contactRole: "Gérant" }, c, {
+      done, target, day, days, pace, start,
+      next: up ? `${up.name} – ${dayLabel(up.date)} ${up.start}` : "À placer",
+      absences: mine.filter(r => r.state === "replaced").length
+    });
+  }
+
+  /* ---------- Réécrire les tableaux de la maquette avec les vraies données ---------- */
+  function rebuild() {
+    if (!on()) return;
+    const T = TD(), put = (k, arr) => { if (Array.isArray(T[k])) T[k].splice(0, T[k].length, ...arr); else T[k] = arr; };
+    const clients = CLIENTS().list.filter(c => c && c.id && c.name && !c.archived).map(clientRow);
+    put("clients", clients);
+    put("pipeline", PROSPECTS().list.filter(p => p && p.id && p.name).map(p => Object.assign({ trade: "", city: "", stage: "lead", owner: "marc", value: 0, next: "Premier appel à caler", source: "" }, p, { value: Number(p.value) || 0 })));
+    const nameOf = id => (clients.find(c => c.id === id) || { name: id }).name;
+    put("replacements", rdvs().filter(r => r.state === "replaced").map(r => ({ client: nameOf(r.client_id), person: [r.name, r.role, r.city].filter(Boolean).join(", "), reported: short(r.absentAt || r.date), due: short(addDays(r.date, 7)), owner: r.by || "marc", status: r.replacedBy ? "placed" : "searching", by: (rdvs().find(x => x.id === r.replacedBy) || {}).name || "" })));
+    // Les 8 dernières semaines : rendez-vous livrés, appels, devis et factures
+    const mon = addDays(today(), -((new Date(today() + "T12:00:00").getDay() + 6) % 7));
+    const weeks = Array.from({ length: 8 }, (_, i) => addDays(mon, -7 * (7 - i)));
+    const inWeek = (s, w) => s && String(s).slice(0, 10) >= w && String(s).slice(0, 10) <= addDays(w, 6);
+    put("weekly", weeks.map(w => ({ label: short(w), value: rdvs().filter(r => r.state === "ok" && inWeek(r.date, w)).length + CALLS().list.filter(c => inWeek(c.at, w)).length + DOCS().list.filter(d => inWeek(d.date, w)).length })));
+    // Objectifs du mois
+    const m = today().slice(0, 7), month = MONTHS_L[Number(m.slice(5, 7)) - 1];
+    const okMonth = rdvs().filter(r => r.state === "ok" && r.date.slice(0, 7) === m).length, targets = clients.reduce((a, c) => a + c.target, 0);
+    const fac = DOCS().list.filter(d => d.kind === "facture" && String(d.date || "").slice(0, 7) === m), billed = fac.reduce((a, d) => a + (Number(d.amount) || 0), 0), paid = fac.filter(d => d.status === "paye").reduce((a, d) => a + (Number(d.amount) || 0), 0);
+    const won = PROSPECTS().list.filter(p => p.stage === "won").length;
+    put("goals", [
+      { label: `Rendez-vous livrés en ${month}`, done: okMonth, target: Math.max(1, targets) },
+      { label: "Prospects signés", done: won, target: Math.max(1, PROSPECTS().list.length) },
+      { label: `Factures payées en ${month}`, done: Math.round(paid), target: Math.max(1, Math.round(billed)) }
+    ]);
+    // Les leads par métier
+    const byTrade = {}; LEADS().list().forEach(l => { if (l.trade) byTrade[l.trade] = (byTrade[l.trade] || 0) + 1; });
+    put("trades", Object.keys(byTrade).map(k => ({ label: k, value: byTrade[k] })).sort((a, b) => b.value - a.value));
+    // Ce que couvre chaque client (métiers et zones)
+    T.coverage = {}; clients.forEach(c => { T.coverage[c.id] = { trades: String(c.trade || "").split(/,| et /).map(s => s.trim()).filter(Boolean), zones: String(c.zone || c.city || "").split(",").map(s => s.trim()).filter(Boolean) }; });
+    // Le travail de chacun ce mois-ci
+    T.perPerson = {}; T.members.forEach(mb => {
+      T.perPerson[mb.id] = [["RDV placés", String(rdvs().filter(r => r.by === mb.id && String(r.at || r.date).slice(0, 7) === m).length)], ["Appels", String(CALLS().list.filter(c => c.who === mb.id && String(c.at).slice(0, 7) === m).length)]];
+    });
+    // Finances : les factures des 6 derniers mois, les dépenses saisies
+    const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(today() + "T12:00:00"); d.setDate(1); d.setMonth(d.getMonth() - (5 - i)); return iso(d).slice(0, 7); });
+    put("revenue", months.map(k => ({ label: MONTHS_L[Number(k.slice(5, 7)) - 1], value: Math.round(DOCS().list.filter(d => d.kind === "facture" && String(d.date || "").slice(0, 7) === k).reduce((a, d) => a + (Number(d.amount) || 0), 0)), current: k === m || undefined })));
+    put("costs", COSTS().list.filter(c => c && c.label).map(c => ({ id: c.id, label: c.label, value: Number(c.value) || 0 })));
+    put("ads", []);
+    if (T.seo && T.seo.traffic) T.seo.traffic = T.seo.traffic.map(x => Object.assign({}, x, { value: 0 }));
+  }
+
+  /* ---------- Les alertes, tirées des vraies données ---------- */
+  function notifs(space) {
+    const out = [], t = today(), clients = TD().clients, nameOf = id => (clients.find(c => c.id === id) || { name: id }).name;
+    const add = (id, kind, icon, text, day, at, act) => out.push({ id, kind, icon, text, who: "", at, day, act });
+    if (space === "client") {
+      const id = EM().viewId();
+      rdvFor(id).filter(r => r.state !== "cancel" && r.date >= t && r.date <= addDays(t, 7)).sort((a, b) => (a.date + a.start) < (b.date + b.start) ? -1 : 1)
+        .forEach(r => add("r-" + r.id, r.date === t ? "warn" : "info", "cal", `Rendez-vous : ${r.name}, ${r.role || "projet"}, ${dayLabel(r.date)} à ${r.start}`, r.date === t ? "Aujourd'hui" : "Bientôt", short(r.at || r.date), { label: "Voir le RDV", href: "#rdv-" + r.id }));
+      const res = window.ENTREMIS_CPLUS ? window.ENTREMIS_CPLUS.results() : [];
+      rdvFor(id).filter(r => r.state !== "replaced" && r.state !== "cancel" && isPast(r) && !res.some(x => x.id === r.id))
+        .forEach(r => add("f-" + r.id, "warn", "check", `Comment s'est passée la visite chez ${r.name} ? Notez le résultat en 10 secondes.`, "À faire", short(r.date), { label: "Renseigner", href: "#resultats" }));
+      return out;
+    }
+    const free = LEADS().list().filter(l => !l.to && l.status !== "perdu" && !l.erased);
+    if (free.length) add("leads-" + free.length, "info", "inbox", `${free.length} lead${free.length > 1 ? "s" : ""} à donner à un client`, "Aujourd'hui", "maintenant", { label: "Voir les leads", href: "#leads" });
+    rdvs().filter(r => r.date === t && r.state !== "cancel" && r.state !== "replaced").forEach(r => add("t-" + r.id, "info", "cal", `Rendez-vous aujourd'hui chez ${nameOf(r.client_id)} : ${r.name} à ${r.start}`, "Aujourd'hui", r.start, { label: "Rendez-vous", href: "#rendez-vous" }));
+    rdvs().filter(r => r.state === "replaced" && !r.replacedBy).forEach(r => add("a-" + r.id, "warn", "swap", `Absence chez ${nameOf(r.client_id)} : ${r.name}. Un remplaçant à placer.`, "À faire", short(r.absentAt || r.date), { label: "Placer un RDV", href: "#rendez-vous" }));
+    TASKS().list.filter(k => k.status !== "done" && k.due && k.due < t).forEach(k => add("k-" + k.id, "danger", "alert", `Tâche en retard : « ${k.title} »`, "À faire", short(k.due), { label: "Voir la tâche", task: k.id }));
+    DOCS().list.filter(d => d.kind === "facture" && d.status !== "paye" && d.due && d.due < t).forEach(d => add("d-" + d.id, "warn", "euro", `Facture ${d.number || ""} de ${d.client || ""} : échéance passée le ${short(d.due)}`, "À faire", short(d.due), { label: "Relancer", doc: d.id }));
+    clients.filter(c => c.pace === "late").forEach(c => add("p-" + c.id + "-" + c.done, "info", "chart", `${c.name} est en retard sur son objectif : ${c.done} sur ${c.target}, jour ${c.day} sur ${c.days}`, "À suivre", "", { label: "Voir la fiche", href: "#fiche-" + c.id }));
+    return out;
+  }
+
+  /* ---------- Les formulaires : client, prospect, rendez-vous, dépense ---------- */
+  const X = { sheet: null, data: {} };
+  const field = (name, label, value, attrs) => `<label class="field"><span>${label}</span><input name="${name}" value="${EM().esc(value == null ? "" : value)}" ${attrs || ""}></label>`;
+  const select = (name, label, opts, cur) => `<div class="field"><label>${label}</label><select name="${name}">${opts.map(([v, l]) => `<option value="${EM().esc(v)}"${String(cur) === String(v) ? " selected" : ""}>${EM().esc(l)}</option>`).join("")}</select></div>`;
+  const members = () => TD().members.map(m => [m.id, m.name]);
+  const trades = () => (window.ENTREMIS_SECTORS ? window.ENTREMIS_SECTORS.list() : []).map(s => [s.name, s.name]);
+  function sheet(S) {
+    if (!X.sheet) return "";
+    const d = X.data || {}, esc = EM().esc, k = X.sheet;
+    const titles = { client: d.id ? "Modifier le client" : "Nouveau client", prospect: d.id ? "Modifier le prospect" : "Nouveau prospect", rdv: d.id ? "Modifier le rendez-vous" : "Placer un rendez-vous", cost: "Nouvelle dépense" };
+    let body = "";
+    if (k === "client") body = `${field("name", "Nom de l'entreprise", d.name, 'required maxlength="80"')}
+      <div class="field-row">${select("trade", "Métier", trades(), d.trade)}${field("zone", "Zone (ville, département)", d.zone, 'maxlength="80" placeholder="Ex. : Rhône"')}</div>
+      <div class="field-row">${field("contact", "Personne à contacter", d.contact, 'maxlength="80"')}${field("phone", "Téléphone", d.phone, 'type="tel" maxlength="20"')}</div>
+      <div class="field-row">${select("owner", "Suivi par", members(), d.owner || S.who)}${field("target", "Objectif (rendez-vous)", d.target || 10, 'type="number" min="0" max="500"')}</div>
+      <div class="field-row">${field("start", "Début de la campagne", d.start || today(), 'type="date"')}${field("days", "Durée (jours)", d.days || 30, 'type="number" min="1" max="365"')}</div>`;
+    if (k === "prospect") body = `${field("name", "Nom de l'entreprise", d.name, 'required maxlength="80"')}
+      <div class="field-row">${select("trade", "Métier", trades(), d.trade)}${field("city", "Ville", d.city, 'maxlength="60"')}</div>
+      <div class="field-row">${select("owner", "Suivi par", members(), d.owner || S.who)}${field("value", "Valeur par mois (€)", d.value || "", 'type="number" min="0" step="50"')}</div>
+      <div class="field-row">${select("stage", "Étape", [["lead", "À contacter"], ["call", "Appel fait"], ["quote", "Devis envoyé"], ["won", "Signé"]], d.stage || "lead")}${select("source", "Venu par", [["LinkedIn", "LinkedIn"], ["Site", "Le site"], ["Recommandation", "Recommandation"], ["Téléphone", "Appel sortant"], ["Salon", "Salon"], ["Autre", "Autre"]], d.source || "LinkedIn")}</div>
+      ${field("phone", "Téléphone", d.phone, 'type="tel" maxlength="20"')}${field("next", "Prochaine étape", d.next, 'maxlength="120" placeholder="Ex. : rappeler jeudi matin"')}`;
+    if (k === "rdv") body = `${select("client_id", "Chez quel client", [["", "Choisir"]].concat(EM().allClients().map(c => [c.id, c.name])), d.client_id || "")}
+      <div class="field-row">${field("name", "Particulier (prénom et nom)", d.name, 'required maxlength="80"')}${field("phone", "Téléphone", d.phone, 'type="tel" maxlength="20"')}</div>
+      ${field("role", "Projet", d.role, 'maxlength="80" placeholder="Ex. : pompe à chaleur air/eau"')}
+      <div class="field-row">${field("address", "Adresse", d.address, 'maxlength="120"')}${field("city", "Ville", d.city, 'maxlength="60"')}</div>
+      <div class="field-row">${field("date", "Date", d.date || addDays(today(), 1), 'type="date" required')}${field("start", "Heure", d.start || "10:00", 'type="time" required')}</div>
+      ${field("note", "Ce qu'il faut savoir", d.note, 'maxlength="300" placeholder="Ex. : maison de 1985, chaudière fioul, disponible le matin"')}`;
+    if (k === "cost") body = `${field("label", "Dépense", d.label, 'required maxlength="80" placeholder="Ex. : Publicités en ligne"')}${field("value", "Montant par mois (€)", d.value, 'type="number" min="0" step="10" required')}`;
+    return `<div class="scrim" data-live-close></div>
+    <form class="sheet" id="live-form" data-kind="${k}" aria-label="${esc(titles[k])}" novalidate>
+      <div class="sheet-grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="link" type="button" data-live-close>Annuler</button><b>${esc(titles[k])}</b><button class="link strong" type="submit">Enregistrer</button></div>
+      ${body}
+      <p class="cg-msg live-msg" role="alert" hidden></p>
+      ${d.id && k !== "cost" ? `<button class="link ac-del" type="button" data-live-del="${k}:${esc(d.id)}">${k === "rdv" ? "Annuler ce rendez-vous" : k === "client" ? "Archiver ce client" : "Supprimer ce prospect"}</button>` : ""}
+    </form>`;
+  }
+  const open = (kind, data) => { X.sheet = kind; X.data = Object.assign({}, data || {}); EM().render(); setTimeout(() => { const i = document.querySelector("#live-form input, #live-form select"); if (i) i.focus(); }, 60); };
+
+  function onClick(e, S, render) {
+    const t = e.target.closest("[data-live-new],[data-live-edit],[data-live-close],[data-live-del],[data-live-rdv],[data-live-replace],[data-rdv-state]"); if (!t) return false;
+    const d = t.dataset;
+    if (d.liveNew) { open(d.liveNew, d.liveClient ? { client_id: d.liveClient } : {}); return true; }
+    if (d.liveReplace) { const r = RDV().list.find(x => x.id === d.liveReplace) || {}; open("rdv", { replaces: r.id, client_id: r.client_id, role: r.role, city: r.city }); return true; }
+    if (d.liveEdit) { const [k, id] = d.liveEdit.split(":"); const src = { client: CLIENTS(), prospect: PROSPECTS(), rdv: RDV() }[k]; open(k, src ? src.list.find(x => x.id === id) : {}); return true; }
+    if (d.liveRdv) { // placer un rendez-vous pour un lead (déjà donné à un client, ou à donner)
+      const l = LEADS().list().find(x => x.id === d.liveRdv) || {};
+      open("rdv", { lead: l.id, client_id: l.to || "", name: l.name, phone: l.phone, role: l.trade, city: l.city }); return true;
+    }
+    if ("liveClose" in d) { X.sheet = null; render(); return true; }
+    if (d.liveDel) {
+      const [k, id] = d.liveDel.split(":");
+      const label = { rdv: "Annuler ce rendez-vous ?", client: "Archiver ce client ?", prospect: "Supprimer ce prospect ?" }[k];
+      EM().confirm({ title: label, text: k === "client" ? "Il disparaît des listes. Ses rendez-vous, résultats et factures restent." : k === "rdv" ? "Le client ne le verra plus dans son agenda." : "Il disparaît de la prospection.", ok: k === "client" ? "Archiver" : k === "rdv" ? "Annuler le RDV" : "Supprimer" }).then(ok => {
+        if (!ok) return;
+        if (k === "client") { const c = CLIENTS().list.find(x => x.id === id); if (c) CLIENTS().put(Object.assign({}, c, { archived: true })); }
+        if (k === "prospect") PROSPECTS().remove(id);
+        if (k === "rdv") RDV().remove(id);
+        X.sheet = null; render(); EM().toast("C'est fait.");
+      });
+      return true;
+    }
+    if (d.rdvState) { // présent, absent, remplacé
+      const [id, state] = d.rdvState.split(":"), r = RDV().list.find(x => x.id === id); if (!r) return true;
+      RDV().put(Object.assign({}, r, { state }, state === "replaced" ? { absentAt: today() } : {}));
+      window.ENTREMIS_TEAM.haptic(state === "ok" ? "done" : "warn"); render();
+      EM().toast(state === "ok" ? `${r.name} : visite faite.` : `${r.name} : absent. Placez un remplaçant.`, () => { RDV().put(r); render(); });
+      return true;
+    }
+    return false;
+  }
+
+  async function onSubmit(e, S, render) {
+    if (e.target.id !== "live-form") return false;
+    e.preventDefault();
+    const f = e.target, k = f.dataset.kind, fd = new FormData(f), v = n => String(fd.get(n) || "").trim(), d = X.data || {};
+    const say = m => { const p = f.querySelector(".live-msg"); p.textContent = m; p.hidden = false; };
+    const now = new Date().toISOString().slice(0, 16);
+    if (k === "client") {
+      if (!v("name")) return say("Écrivez le nom de l'entreprise."), true;
+      const id = d.id || slug(v("name"));
+      if (!id) return say("Ce nom ne convient pas : ajoutez des lettres."), true;
+      if (!d.id && (CLIENTS().list.some(c => c.id === id) || TD().clients.some(c => c.id === id))) return say("Ce client existe déjà."), true;
+      await CLIENTS().put(Object.assign({}, d, { id, client_id: id, name: v("name"), trade: v("trade"), zone: v("zone"), contact: v("contact"), phone: v("phone"), owner: v("owner"), target: Number(v("target")) || 0, start: v("start") || today(), days: Number(v("days")) || 30, createdAt: d.createdAt || now }));
+    }
+    if (k === "prospect") {
+      if (!v("name")) return say("Écrivez le nom de l'entreprise."), true;
+      await PROSPECTS().put(Object.assign({}, d, { id: d.id || "p" + Date.now().toString(36), name: v("name"), trade: v("trade"), city: v("city"), owner: v("owner"), value: Number(v("value")) || 0, stage: v("stage"), source: v("source"), phone: v("phone"), next: v("next") || "Premier appel à caler", createdAt: d.createdAt || now }));
+    }
+    if (k === "rdv") {
+      if (!v("client_id")) return say("Choisissez chez quel client."), true;
+      if (!v("name")) return say("Écrivez le nom du particulier."), true;
+      if (!v("date") || !v("start")) return say("Choisissez la date et l'heure."), true;
+      const [h, mn] = v("start").split(":").map(Number), end = p2(Math.min(23, h + 1)) + ":" + p2(mn || 0);
+      const row = Object.assign({}, d, { id: d.id || "r" + Date.now().toString(36), client_id: v("client_id"), name: v("name"), phone: v("phone"), role: v("role"), address: v("address"), city: v("city"), date: v("date"), start: v("start"), end: d.end && d.start === v("start") ? d.end : end, note: v("note"), state: d.state || "new", mode: "Visite technique", by: d.by || S.who, at: d.at || now });
+      await RDV().put(row);
+      // Le rendez-vous qui remplace une absence : on le note sur l'absence
+      if (d.replaces) { const old = RDV().list.find(x => x.id === d.replaces); if (old) RDV().put(Object.assign({}, old, { replacedBy: row.id })); }
+      if (d.lead) { const l = LEADS().list().find(x => x.id === d.lead); if (l) LEADS().put(Object.assign({}, l, { status: "rdv", to: row.client_id, givenAt: l.givenAt || now, givenBy: l.givenBy || S.who })); }
+    }
+    if (k === "cost") {
+      if (!v("label") || !(Number(v("value")) >= 0)) return say("Écrivez la dépense et son montant."), true;
+      await COSTS().put({ id: "k" + Date.now().toString(36), label: v("label"), value: Number(v("value")) || 0 });
+    }
+    const msg = { client: "Client enregistré.", prospect: "Prospect enregistré.", rdv: "Rendez-vous placé : le client le voit dans son agenda.", cost: "Dépense ajoutée." }[k];
+    X.sheet = null; window.ENTREMIS_TEAM.haptic("done"); render(); EM().toast(msg);
+    return true;
+  }
+
+  window.ENTREMIS_LIVE = {
+    on, CLIENTS, PROSPECTS, RDV, COSTS, rdvs, rdvFor, asAppt, notifs, sheet, onClick, onSubmit, open,
+    sheetOpen: () => !!X.sheet,
+    reset: () => { X.sheet = null; },
+    init: render => {
+      const go = () => { rebuild(); render(); };
+      [CLIENTS, PROSPECTS, RDV, COSTS].forEach(s => s().init(go));
+      if (on()) { const tick = () => { rebuild(); }; setInterval(() => { tick(); }, 60000); }
+    },
+    rebuild
+  };
+})();

@@ -2703,3 +2703,6 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
   .side-out{justify-content:center;padding:var(--space-2)}
   .side-out span{display:none}
 }
+
+/* Site en ligne : plus d'étiquettes « Exemple », les données sont les vraies */
+.is-cloud .sample:not(.sync){display:none}
