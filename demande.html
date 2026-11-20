@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entremis · Votre projet</title>
+<meta name="description" content="Parlez-nous de votre projet de rénovation : un conseiller Entremis vous rappelle, puis vous met en relation avec un installateur de votre région.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:title" content="Entremis · Parlez-nous de votre projet">
+<meta property="og:description" content="Un conseiller vous rappelle, puis vous met en relation avec un installateur de votre région.">
+<meta property="og:image" content="https://entremisagency.github.io/entremis-app/img/partage.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Outfit:wght@500&display=swap">
+<link rel="stylesheet" href="tokens.css?v=20261120m">
+<style>
+  /* Page publique de demande (particuliers). Elle reprend les jetons de l'app ; une seule couleur vive : le bouton. */
+  html,body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
+  .dm{display:grid;grid-template-columns:var(--cg-art-w) minmax(0,1fr);gap:var(--space-3);width:min(var(--cg-shell-w),calc(100% - var(--space-4) * 2));margin:var(--space-6) auto;padding:var(--space-3);border-radius:var(--radius-xl);background:var(--color-white);box-shadow:var(--shadow-sheet),0 0 0 1px var(--color-hairline)}
+  .dm-art{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;gap:var(--space-5);margin:0;padding:var(--space-5);overflow:hidden;border-radius:var(--radius-lg);background:var(--cg-art-bg);color:var(--color-white);min-height:var(--cg-art-band)}
+  .dm-art img{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
+  .dm-art::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--cg-scrim)}
+  .dm-logo{display:flex;align-items:center;gap:var(--space-3)}
+  .dm-logo svg{width:var(--logo);height:var(--logo)}
+  .dm-logo span{font-family:var(--font-charte);font-weight:var(--weight-strong);font-size:var(--text-caption);letter-spacing:.2em}
+  .dm-art p{margin:0;display:grid;gap:var(--space-2);max-width:var(--cg-art-cap)}
+  .dm-art small{font-size:var(--text-small);color:var(--cg-art-soft)}
+  .dm-art b{font-size:var(--cg-art-title-sm);font-weight:var(--weight-strong);line-height:1.2;text-wrap:balance}
+  form{display:grid;gap:var(--space-4);align-content:start;padding:var(--space-6) var(--space-5)}
+  h1{margin:0;font-size:var(--text-app-h1);font-weight:var(--weight-strong);letter-spacing:-0.025em}
+  .sub{margin:calc(-1 * var(--space-2)) 0 0;font-size:var(--text-small);color:var(--color-muted)}
+  .field{display:grid;gap:var(--space-2);min-width:0}
+  .field>span{font-size:var(--text-caption);font-weight:var(--weight-strong);color:var(--color-muted)}
+  .row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-3)}
+  input,select,textarea{box-sizing:border-box;width:100%;min-height:var(--button-h);padding:0 var(--space-4);border:0;border-radius:var(--radius-md);background:var(--color-surface-2);color:var(--color-ink);font:inherit;font-size:var(--text-body)}
+  textarea{padding:var(--space-3) var(--space-4);min-height:calc(var(--button-h) * 2);resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--color-action);outline-offset:0}
+  .ok{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);align-items:start;font-size:var(--text-small);color:var(--color-body)}
+  .ok input{width:var(--space-5);min-height:var(--space-5);height:var(--space-5);margin:0;accent-color:var(--color-action)}
+  .ok a{color:var(--color-action)}
+  button{min-height:var(--button-h);border:0;border-radius:var(--radius-md);background:var(--color-action);color:var(--color-on-action);font:inherit;font-weight:var(--weight-strong);cursor:pointer}
+  button:disabled{opacity:.6;cursor:default}
+  .msg{margin:0;padding:var(--space-3);border-radius:var(--radius-md);background:var(--danger-tint);color:var(--danger-ink);font-size:var(--text-small)}
+  .msg[hidden],.done[hidden],form[hidden]{display:none}
+  .done{display:grid;gap:var(--space-3);align-content:center;padding:var(--space-6) var(--space-5)}
+  .done p{margin:0;color:var(--color-body)}
+  .hp{position:absolute;left:-9999px}
+  @media (max-width:640px){
+    .dm{grid-template-columns:minmax(0,1fr);margin:var(--space-3) auto}
+    form,.done{padding:var(--space-4) var(--space-2)}
+    .row{grid-template-columns:minmax(0,1fr)}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo-e" viewBox="0 0 120 120"><path fill="currentColor" d="M24 26a8 8 0 0 1 8-8h58a7 7 0 0 1 0 14H38v56h52a7 7 0 0 1 0 14H32a8 8 0 0 1-8-8Z"/><rect x="48" y="53" width="60" height="14" rx="7" fill="#2F5BEA"/></symbol></svg>
+<main class="dm">
+  <figure class="dm-art" aria-hidden="true">
+    <img src="img/connexion.jpg" alt="">
+    <div class="dm-logo"><svg><use href="#logo-e"/></svg><span>ENTREMIS</span></div>
+    <p><small>Pompe à chaleur, solaire, isolation, climatisation…</small><b>Un installateur de votre région, après un premier appel pour comprendre votre projet.</b></p>
+  </figure>
+  <form id="f" novalidate>
+    <h1>Parlez-nous de votre projet</h1>
+    <p class="sub">Un conseiller Entremis vous rappelle, puis vous met en relation avec un installateur de votre région.</p>
+    <label class="field"><span>Votre projet</span><select name="projet" required>
+      <option value="">Choisir</option><option>Pompe à chaleur</option><option>Panneaux solaires</option><option>Isolation</option><option>Climatisation</option><option>Chauffe-eau</option><option>Fenêtres</option><option>Toiture</option><option>Plomberie</option><option>Électricité</option><option>Porte blindée ou serrure</option><option>Autre</option></select></label>
+    <div class="row"><label class="field"><span>Code postal</span><input name="cp" inputmode="numeric" maxlength="5" autocomplete="postal-code" required></label><label class="field"><span>Ville</span><input name="ville" maxlength="60" autocomplete="address-level2"></label></div>
+    <label class="field"><span>Prénom et nom</span><input name="nom" maxlength="80" autocomplete="name" required></label>
+    <div class="row"><label class="field"><span>Téléphone</span><input name="tel" type="tel" maxlength="20" autocomplete="tel" required></label><label class="field"><span>E-mail (facultatif)</span><input name="email" type="email" maxlength="120" autocomplete="email"></label></div>
+    <label class="field"><span>Ce qu'il faut savoir (facultatif)</span><textarea name="message" maxlength="500" placeholder="Ex. : maison de 1985, chaudière fioul, disponible le matin"></textarea></label>
+    <input class="hp" name="site" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <label class="ok"><input type="checkbox" name="accord" required><span>J'accepte qu'Entremis me rappelle au sujet de ce projet et transmette ma demande à un installateur partenaire de ma région. Mes coordonnées ne sont pas vendues. <a href="https://entremisagency.github.io/confidentialite.html" target="_blank" rel="noopener">Confidentialité</a></span></label>
+    <p class="msg" role="alert" hidden></p>
+    <button type="submit">Être rappelé</button>
+  </form>
+  <div class="done" hidden role="status"><h1>Merci, c'est noté</h1><p>Un conseiller Entremis vous rappelle au numéro indiqué pour parler de votre projet.</p></div>
+</main>
+<script>
+(function () {
+  "use strict";
+  // La demande va droit dans la page Leads de l'équipe (fonction nouveau_lead de la base). Seule la clé publique est ici.
+  var API = "https://cnhxrhyugghigkozfpde.supabase.co/rest/v1/rpc/nouveau_lead", KEY = "sb_publishable_85-eC1adPGzOvLtAhLPonw_2HJwrdYX";
+  var q = new URLSearchParams(location.search), source = (q.get("source") || "Site").slice(0, 30);
+  var f = document.getElementById("f"), msg = f.querySelector(".msg"), btn = f.querySelector("button");
+  var say = function (t) { msg.textContent = t; msg.hidden = false; };
+  f.addEventListener("submit", function (e) {
+    e.preventDefault(); msg.hidden = true;
+    var d = new FormData(f), v = function (k) { return String(d.get(k) || "").trim(); };
+    if (v("site")) return;   // un robot a rempli le champ caché
+    if (!v("projet")) return say("Choisissez votre projet.");
+    if (!/^\d{5}$/.test(v("cp"))) return say("Le code postal doit avoir 5 chiffres.");
+    if (v("nom").length < 2) return say("Écrivez votre nom.");
+    if (v("tel").replace(/[^0-9]/g, "").length < 10) return say("Le numéro de téléphone est incomplet.");
+    if (!d.get("accord")) return say("Cochez la case pour qu'on puisse vous rappeler.");
+    btn.disabled = true; btn.textContent = "Envoi…";
+    fetch(API, { method: "POST", headers: { "apikey": KEY, "Content-Type": "application/json" }, body: JSON.stringify({
+      p_nom: v("nom"), p_telephone: v("tel"), p_ville: v("ville"), p_code_postal: v("cp"), p_projet: v("projet"),
+      p_source: source, p_email: v("email"), p_message: v("message"), p_consentement: true }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) { btn.disabled = false; btn.textContent = "Être rappelé"; return say((x.j && x.j.message) || "L'envoi n'a pas marché. Réessayez."); }
+        f.hidden = true; document.querySelector(".done").hidden = false;
+      })
+      .catch(function () { btn.disabled = false; btn.textContent = "Être rappelé"; say("Pas de connexion. Réessayez dans un instant."); });
+  });
+})();
+</script>
+</body>
+</html>

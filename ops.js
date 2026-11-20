@@ -306,7 +306,7 @@
     return `
     <div class="head">
       <div class="head-text"><h1 class="h1">Marketing</h1><p class="sub">Référencement, publicités, aides et calculateur.</p></div>
-      <div class="head-actions">${EM().sampleTag}${tabs}</div>
+      <div class="head-actions">${EM().sampleTag}${window.ENTREMIS_LIVE.on() ? `<button class="btn btn-ghost" type="button" data-live-new="marketing">${icon("chart")}Chiffres du mois</button>` : ""}${tabs}</div>
     </div>${body}`;
   }
 

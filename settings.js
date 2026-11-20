@@ -100,7 +100,15 @@
   }
   function secNotifs(S) {
     const n = TM().unreadCount(S);
-    return `<section class="set-group">${linkRow("#notifications", "Ce qui vous prévient", "Choisir les événements, et comment : dans l'app, par e-mail, par SMS.")}
+    const perm = "Notification" in window ? Notification.permission : "absent";
+    const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
+    const dev = perm === "granted" ? `<span class="state state-ok">Activées</span>` : perm === "denied" ? `<span class="state state-neutral">Refusées</span>`
+      : perm === "absent" || (ios && !standalone) ? `<span class="state state-neutral">Pas ici</span>` : `<button class="btn btn-ghost" type="button" data-alerts-on>${EM().icon("bell")}Activer</button>`;
+    const devSub = perm === "denied" ? "Refusées dans ce navigateur : à rétablir dans ses réglages (site entremisagency.github.io)."
+      : ios && !standalone ? "Sur iPhone : ajoutez d'abord l'app à l'écran d'accueil (Partager, puis « Sur l'écran d'accueil »), puis ouvrez-la depuis l'icône."
+      : "Un nouveau lead, une demande du site, un nouveau rendez-vous : une alerte sur cet appareil, tant que l'app est ouverte ou en arrière-plan.";
+    return `<section class="set-group">${CL() ? row("Alertes sur cet appareil", devSub, dev) : ""}${linkRow("#notifications", "Ce qui vous prévient", "Choisir les événements, et comment : dans l'app, par e-mail, par SMS.")}
       ${row("Non lues", n ? `${n} notification${n > 1 ? "s" : ""} à lire` : "Tout est lu", `<a class="btn btn-ghost" href="#notifications">${EM().icon("bell")}Voir</a>`)}</section>`;
   }
   const HAPTIC_KEY = "entremis-app-haptics";
@@ -175,6 +183,7 @@
   }
 
   function onClick(e, S, render) {
+    if (e.target.closest("[data-alerts-on]")) { window.ENTREMIS_LIVE.askAlerts().then(r => { render(); EM().toast(r === "granted" ? "Alertes activées sur cet appareil." : "Alertes non activées."); }); return true; }
     if (e.target.closest("[data-pw-open]")) { X.pw = true; render(); setTimeout(() => { const i = document.querySelector('#pw-form input[name="current"]'); if (i) i.focus(); }, 60); return true; }
     if (e.target.closest("[data-pw-close]")) { X.pw = false; render(); return true; }
     const t = e.target.closest("[data-set-sec],[data-set-back],[data-set-font],[data-set-haptics],[data-cx-open],[data-cx-close]"); if (!t) return false;

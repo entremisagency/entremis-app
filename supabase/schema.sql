@@ -180,6 +180,88 @@ grant execute on function public.creer_acces_client(text, text, text) to authent
 grant execute on function public.nouveau_mot_de_passe_client(text, text) to authenticated;
 grant execute on function public.retirer_acces_client(text) to authenticated;
 
+-- 6 ter. Un compte pour chacun dans l'équipe (Marc, Richard, Gianni), créé depuis l'app (page Accès) ---------
+create or replace function public.creer_compte_equipe(p_login text, p_password text, p_who text)
+  returns text language plpgsql security definer set search_path = public, extensions, auth as $$
+declare
+  v_login text := lower(trim(coalesce(p_login, '')));
+  v_who   text := lower(trim(coalesce(p_who, '')));
+  v_email text;
+  v_id    uuid := gen_random_uuid();
+begin
+  if not public.is_team() then raise exception 'Réservé à l''équipe Entremis.'; end if;
+  if v_who not in ('marc', 'richard', 'gianni') then raise exception 'Membre de l''équipe inconnu.'; end if;
+  if v_login !~ '^[a-z0-9][a-z0-9._-]{1,39}$' then raise exception 'Identifiant : lettres et chiffres, sans espace ni accent.'; end if;
+  if length(coalesce(p_password, '')) < 6 then raise exception 'Mot de passe provisoire : 6 caractères au moins.'; end if;
+  v_email := v_login || '@entremisagency.github.io';
+  if exists (select 1 from auth.users where lower(email) = v_email) then raise exception 'Cet identifiant est déjà pris.'; end if;
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                          confirmation_token, recovery_token, email_change_token_new, email_change)
+  values ('00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', v_email,
+          crypt(p_password, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), v_id, v_id::text, jsonb_build_object('sub', v_id::text, 'email', v_email, 'email_verified', true), 'email', now(), now(), now());
+  insert into public.members (user_id, who, role) values (v_id, v_who, 'team');
+  return v_login;
+end $$;
+revoke all on function public.creer_compte_equipe(text, text, text) from public, anon;
+grant execute on function public.creer_compte_equipe(text, text, text) to authenticated;
+
+-- 6 quater. Les demandes qui arrivent toutes seules -----------------------------------------
+-- nouveau_lead : la page de demande publique (demande.html), ou Make / Zapier branchés sur vos publicités.
+-- demande_site : le formulaire « Réserver un appel » du site vitrine (un installateur qui veut travailler avec Entremis).
+-- Ouvertes à tous (sans compte), mais bornées : accord obligatoire, téléphone vérifié, pas de doublon sur 30 jours,
+-- 300 demandes par jour au plus. Elles n'écrivent que dans les demandes ; elles ne lisent rien.
+create table if not exists public.entrees (jour date primary key, n int not null default 0);
+alter table public.entrees enable row level security;   -- aucune règle : personne ne la lit depuis l'app
+
+create or replace function public.nouveau_lead(p_nom text, p_telephone text, p_ville text default '', p_projet text default '',
+  p_source text default 'Site', p_email text default '', p_message text default '', p_code_postal text default '', p_consentement boolean default false)
+  returns text language plpgsql security definer set search_path = public as $$
+declare
+  v_tel text := regexp_replace(coalesce(p_telephone, ''), '[^0-9+]', '', 'g');
+  v_id  text := 'w' || to_char(clock_timestamp(), 'YYMMDDHH24MISSMS') || substr(md5(random()::text), 1, 4);
+  v_n   int;
+begin
+  if not coalesce(p_consentement, false) then raise exception 'Il faut accepter d''être rappelé.'; end if;
+  if length(trim(coalesce(p_nom, ''))) < 2 then raise exception 'Écrivez votre nom.'; end if;
+  if length(v_tel) < 10 then raise exception 'Le numéro de téléphone est incomplet.'; end if;
+  if exists (select 1 from public.docs where collection = 'leads' and data->>'phone_n' = v_tel and updated_at > now() - interval '30 days') then return 'deja'; end if;
+  insert into public.entrees (jour, n) values (current_date, 1) on conflict (jour) do update set n = public.entrees.n + 1 returning n into v_n;
+  if v_n > 300 then raise exception 'Trop de demandes aujourd''hui. Réessayez demain.'; end if;
+  insert into public.docs (collection, id, data, client_id) values ('leads', v_id, jsonb_build_object(
+    'name', left(trim(p_nom), 80), 'phone', left(trim(p_telephone), 20), 'phone_n', v_tel, 'email', left(trim(coalesce(p_email, '')), 120),
+    'city', left(trim(coalesce(p_ville, '')), 60), 'zip', left(trim(coalesce(p_code_postal, '')), 10), 'zone', left(trim(coalesce(p_code_postal, '')), 2),
+    'trade', left(trim(coalesce(p_projet, '')), 60), 'source', left(coalesce(nullif(trim(p_source), ''), 'Site'), 30), 'note', left(trim(coalesce(p_message, '')), 500),
+    'status', 'nouveau', 'consent', true, 'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
+  return v_id;
+end $$;
+
+create or replace function public.demande_site(p_entreprise text, p_contact text, p_telephone text, p_metier text default '',
+  p_zone text default '', p_volume text default '', p_quand text default '', p_email text default '', p_message text default '')
+  returns text language plpgsql security definer set search_path = public as $$
+declare
+  v_tel text := regexp_replace(coalesce(p_telephone, ''), '[^0-9+]', '', 'g');
+  v_id  text := 'site' || to_char(clock_timestamp(), 'YYMMDDHH24MISSMS') || substr(md5(random()::text), 1, 4);
+  v_n   int;
+begin
+  if length(trim(coalesce(p_entreprise, ''))) < 2 then raise exception 'Écrivez le nom de l''entreprise.'; end if;
+  if length(v_tel) < 10 then raise exception 'Le numéro de téléphone est incomplet.'; end if;
+  insert into public.entrees (jour, n) values (current_date, 1) on conflict (jour) do update set n = public.entrees.n + 1 returning n into v_n;
+  if v_n > 300 then raise exception 'Trop de demandes aujourd''hui. Réessayez demain.'; end if;
+  insert into public.docs (collection, id, data, client_id) values ('site-requests', v_id, jsonb_build_object(
+    'name', left(trim(p_entreprise), 80), 'who', left(trim(coalesce(p_contact, '')), 80), 'phone', left(trim(p_telephone), 20), 'email', left(trim(coalesce(p_email, '')), 120),
+    'trade', left(trim(coalesce(p_metier, '')), 60), 'zone', left(trim(coalesce(p_zone, '')), 60), 'volume', left(trim(coalesce(p_volume, '')), 60),
+    'when', left(trim(coalesce(p_quand, '')), 60), 'message', left(trim(coalesce(p_message, '')), 500), 'source', 'site',
+    'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
+  return v_id;
+end $$;
+revoke all on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean) from public;
+revoke all on function public.demande_site(text, text, text, text, text, text, text, text, text) from public;
+grant execute on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean) to anon, authenticated;
+grant execute on function public.demande_site(text, text, text, text, text, text, text, text, text) to anon, authenticated;
+
 -- 7. Les comptes de l'équipe ------------------------------------------------------------
 -- On se connecte avec son prénom (marc, richard, gianni) : l'app en fait l'adresse prenom@entremisagency.github.io,
 -- qui ne reçoit aucun e-mail. D'abord : Authentication > Users > Add user > « Create new user » avec ces trois adresses,

@@ -768,7 +768,7 @@
   }
   let lastKey = "";
   function render() {
-    if (window.ENTREMIS_LIVE) window.ENTREMIS_LIVE.rebuild();
+    if (window.ENTREMIS_LIVE) { window.ENTREMIS_LIVE.rebuild(); window.ENTREMIS_LIVE.watch(); }
     const r = parse();
     const key = r.name + "/" + (r.id || "");
     if (key !== lastKey && r.name === "rdv") S.absenceOpen = !!S.keepAbsence;
@@ -876,7 +876,7 @@
     if (window.ENTREMIS_SECTORS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_SETTINGS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_ACCESS.onSubmit(e, S, render)) return;
-    if (e.target.id === "live-form") { window.ENTREMIS_LIVE.onSubmit(e, S, render); return; }
+    if (e.target.getAttribute && e.target.getAttribute("id") === "live-form") { window.ENTREMIS_LIVE.onSubmit(e, S, render); return; }
     if (window.ENTREMIS_GROWTH.onSubmit(e, S, render)) return;
     if (e.target.id === "doc-form" || e.target.id === "call-form") { window.ENTREMIS_OPS.onSubmit(e, S, render); return; }
     if (window.ENTREMIS_METRICS.onSubmit(e, S, render)) return;

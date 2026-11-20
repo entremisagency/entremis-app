@@ -8,7 +8,7 @@
   "use strict";
   const EM = () => window.EM, OPS = () => window.ENTREMIS_OPS, TM = () => window.ENTREMIS_TEAM;
   const CL = () => window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on() ? window.ENTREMIS_CLOUD : null;
-  const X = { pick: "", login: "", name: "", trade: "", contact: "", err: "", busy: false, done: null, reset: null, members: null, loading: false };
+  const X = { team: null, all: [], pick: "", login: "", name: "", trade: "", contact: "", err: "", busy: false, done: null, reset: null, members: null, loading: false };
   const CLIENTS = () => window.ENTREMIS_LIVE.CLIENTS();   // la même liste que la page Clients
 
   // Un identifiant propre : minuscules, sans accent ni espace (« Thermo Rhône » devient « thermo-rhone »)
@@ -25,6 +25,7 @@
     const c = CL(); if (!c || X.loading) return;
     X.loading = true;
     const rows = await c.listMembers();
+    X.all = rows;
     X.members = rows.filter(r => r.role === "client").sort((a, b) => String(b.created_at || "") < String(a.created_at || "") ? -1 : 1);
     X.loading = false; render();
   }
@@ -106,10 +107,38 @@
           : list.length ? `<ul class="ac-list">${rows}</ul>` : `<p class="body">Aucun accès pour l'instant.</p>`}
       </section>
     </div>
-    ${resetSheet()}`;
+    ${cloud ? teamCard() : ""}
+    ${resetSheet()}${teamSheet()}`;
+  }
+  // Un compte pour chacun : Marc, Richard, Gianni (au lieu du compte agence partagé)
+  function teamCard() {
+    const esc = EM().esc, icon = EM().icon;
+    const rows = TM().T && window.ENTREMIS_DATA.team.members.map(m => {
+      const has = X.all.some(r => r.role === "team" && r.who === m.id);
+      return `<li class="ac-row"><span class="av av-md">${esc(m.initials)}</span><span><b>${esc(m.name)}</b><small>${has ? "Compte personnel créé : il se connecte avec « " + esc(m.id) + " »" : "Pas encore de compte personnel"}</small></span>
+        <span class="ac-acts">${has ? `<span class="state state-ok">Créé</span>` : `<button class="btn btn-ghost" type="button" data-ac-team="${esc(m.id)}">${icon("user")}Créer son compte</button>`}</span></li>`;
+    }).join("");
+    return `<section class="card"><div class="card-head"><h2 class="h2">Comptes de l'équipe</h2></div>
+      <p class="body">Un compte pour chacun : on sait qui a fait quoi, et chacun garde ses réglages. Le compte agence partagé reste utilisable.</p>
+      <ul class="ac-list">${rows}</ul></section>`;
+  }
+  function teamSheet() {
+    if (!X.team) return "";
+    const esc = EM().esc, m = window.ENTREMIS_DATA.team.members.find(x => x.id === X.team) || { name: X.team };
+    return `<div class="scrim" data-ac-team-close></div>
+    <form class="sheet" id="ac-team-form" aria-label="Compte de ${esc(m.name)}" novalidate>
+      <div class="sheet-grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="link" type="button" data-ac-team-close>Annuler</button><b>Compte de ${esc(m.name)}</b><button class="link strong" type="submit">Créer</button></div>
+      <label class="field"><span>Identifiant</span><input name="login" value="${esc(X.team)}" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="40"></label>
+      ${pwInput("password", "Mot de passe provisoire")}
+      <p class="cg-msg ac-team-msg" role="alert" hidden></p>
+      <p class="field-help">Donnez-le-lui de vive voix. À sa première connexion, l'app lui fait choisir son propre mot de passe.</p>
+    </form>`;
   }
 
   function onClick(e, S, render) {
+    const tm = e.target.closest("[data-ac-team],[data-ac-team-close]");
+    if (tm) { X.team = "acTeamClose" in tm.dataset ? null : tm.dataset.acTeam; render(); return true; }
     const t = e.target.closest("[data-ac-pick],[data-ac-view],[data-ac-reset],[data-ac-reset-close],[data-ac-del],[data-ac-refresh],[data-ac-done-close]");
     if (!t) return false;
     const d = t.dataset;
@@ -133,6 +162,18 @@
   }
 
   function onSubmit(e, S, render) {
+    if (e.target.id === "ac-team-form") {
+      e.preventDefault();
+      const f = e.target, fd = new FormData(f), login = slug(String(fd.get("login") || "")), pw = String(fd.get("password") || ""), say = m => { const p = f.querySelector(".ac-team-msg"); p.textContent = m; p.hidden = false; };
+      if (!LOGIN_OK.test(login)) { say("Identifiant : lettres et chiffres, sans espace ni accent."); return true; }
+      if (pw.length < 6) { say("6 caractères au moins."); return true; }
+      const go = f.querySelector('button[type="submit"]'); go.disabled = true; go.textContent = "Création…";
+      CL().rpc("creer_compte_equipe", { p_login: login, p_password: pw, p_who: X.team }).then(({ error }) => {
+        if (error) { go.disabled = false; go.textContent = "Créer"; say(error.message || "Pas créé. Réessayez."); return; }
+        const who = X.team; X.team = null; X.members = null; TM().haptic("done"); render(); EM().toast(`Compte créé : il se connecte avec « ${login} ».`);
+      });
+      return true;
+    }
     if (e.target.id === "ac-reset") {
       e.preventDefault();
       const f = e.target, pw = String(new FormData(f).get("password") || ""), say = m => { const p = f.querySelector(".ac-reset-msg"); p.textContent = m; p.hidden = false; };
@@ -174,6 +215,6 @@
   window.ENTREMIS_ACCESS = {
     view: S => view(S, EM().render), onClick, onSubmit, extra,
     init: () => {},
-    reset: () => { X.reset = null; X.err = ""; }
+    reset: () => { X.reset = null; X.err = ""; X.team = null; }
   };
 })();

@@ -499,16 +499,19 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
     { id: "s2", name: "Alu Fenêtres 38", trade: "Fenêtres et volets", zone: "Isère (38)", volume: "5 rendez-vous par mois", who: "Sarah Benali", phone: "06 77 10 32 54", when: "Après 17 h", at: "2026-11-18T16:40" }
   ];
   const SITEST = () => store("site-requests");
+  // En ligne : les vraies demandes du formulaire du site (fonction demande_site) ; dans la maquette : deux exemples
+  const siteRequests = () => CLOUD() ? SITEST().list.filter(r => r && r.name).sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1) : SITE;
   function prospectExtras() {
     const done = id => !!(SITEST().list.find(x => x.id === id) || {}).called;
+    const SITE_ = siteRequests();
     const refs = CP().referrals().list.slice().sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1);
     const RS = { nouveau: ["Reçu", "neutral"], appele: ["Appelé", "info"], signe: ["Signé", "ok"] };
     return `<div class="home-main">
-      <section class="card"><div class="card-head"><h2 class="h2">Demandes du site <span class="muted tabnum">${SITE.filter(s => !done(s.id)).length}</span></h2><span class="muted">rappel promis sous 24 h</span></div>
-        <ul class="sr-list">${SITE.map(s => { const due = new Date(Date.parse(s.at) + 86400000), left = Math.round((due - Date.parse(nowIso())) / 3600000), called = done(s.id);
+      <section class="card"><div class="card-head"><h2 class="h2">Demandes du site <span class="muted tabnum">${SITE_.filter(s => !done(s.id)).length}</span></h2><span class="muted">rappel promis sous 24 h</span></div>
+        <ul class="sr-list">${SITE_.length ? SITE_.map(s => { const due = new Date(Date.parse(s.at) + 86400000), left = Math.round((due - Date.parse(nowIso())) / 3600000), called = done(s.id);
           return `<li class="sr-row${called ? " is-done" : ""}"><div><b>${esc(s.name)}</b><span>${esc(s.trade)} – ${esc(s.zone)} – ${esc(s.volume)}</span><span>${esc(s.who)}, rappel souhaité : ${esc(s.when)}</span></div>
-            ${called ? `<span class="state state-ok">Rappelé</span>` : `<span class="state state-${left < 0 ? "danger" : left < 6 ? "warn" : "info"}">${left < 0 ? "En retard" : `Encore ${left} h`}</span><span class="sr-acts"><a class="icon-btn" href="tel:${s.phone.replace(/\s/g, "")}" aria-label="Appeler ${esc(s.who)}">${icon("phone")}</a><button class="btn btn-ghost btn-xs" type="button" data-site-done="${s.id}">Rappelé</button></span>`}</li>`; }).join("")}</ul>
-        <p class="kpi-note">Maquette : le formulaire du site est à brancher par le dev, ces deux demandes sont des exemples.</p></section>
+            ${called ? `<span class="state state-ok">Rappelé</span>` : `<span class="state state-${left < 0 ? "danger" : left < 6 ? "warn" : "info"}">${left < 0 ? "En retard" : `Encore ${left} h`}</span><span class="sr-acts"><a class="icon-btn" href="tel:${s.phone.replace(/\s/g, "")}" aria-label="Appeler ${esc(s.who)}">${icon("phone")}</a><button class="btn btn-ghost btn-xs" type="button" data-site-done="${s.id}">Rappelé</button></span>`}${CLOUD() && !s.prospect ? `<button class="btn btn-ghost btn-xs" type="button" data-site-prospect="${s.id}">En prospect</button>` : ""}</li>`; }).join("") : `<li class="sr-row"><div><span>Aucune demande pour l'instant. Elles arrivent ici dès qu'un installateur remplit le formulaire du site.</span></div></li>`}</ul>
+        ${CLOUD() ? "" : `<p class="kpi-note">Maquette : ces deux demandes sont des exemples. En ligne, le formulaire du site les envoie ici.</p>`}</section>
       <section class="card"><div class="card-head"><h2 class="h2">Parrainages <span class="muted tabnum">${refs.length}</span></h2><span class="muted">présentés par nos clients</span></div>
         ${refs.length ? `<ul class="sr-list">${refs.map(r => { const s = RS[r.status] || RS.nouveau; return `<li class="sr-row"><div><b>${esc(r.name)}</b><span>${esc(r.trade)} – ${esc(r.city)}</span><span>De la part de ${esc(r.fromName || r.from)}${r.note ? " – " + esc(r.note) : ""}</span></div><span class="state state-${s[1]}">${s[0]}</span>
           <span class="sr-acts">${r.phone ? `<a class="icon-btn" href="tel:${esc(r.phone.replace(/\s/g, ""))}" aria-label="Appeler">${icon("phone")}</a>` : ""}${r.status !== "signe" ? `<button class="btn btn-ghost btn-xs" type="button" data-ref-step="${r.id}">${r.status === "appele" ? "Signé" : "Appelé"}</button>` : ""}</span></li>`; }).join("")}</ul>` : `<p class="body">Pas encore de parrainage. Les clients présentent un installateur depuis leur espace (page Parrainer).</p>`}
@@ -518,7 +521,7 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
 
   /* =================== Clics et formulaires =================== */
   function onClick(e, S, render) {
-    const t = e.target.closest("[data-call-lead],[data-call-out],[data-call-why],[data-rv-f],[data-rv-ask],[data-zone],[data-zone-close],[data-prop-for],[data-prop-pdf],[data-prop-open],[data-case-ok],[data-seo],[data-sim],[data-sim-back],[data-sim-done],[data-ct],[data-goal],[data-site-done],[data-ref-step]");
+    const t = e.target.closest("[data-call-lead],[data-call-out],[data-call-why],[data-rv-f],[data-rv-ask],[data-zone],[data-zone-close],[data-prop-for],[data-prop-pdf],[data-prop-open],[data-case-ok],[data-seo],[data-sim],[data-sim-back],[data-sim-done],[data-ct],[data-goal],[data-site-done],[data-site-prospect],[data-ref-step]");
     // <html> porte data-zone (l'espace affiché) : ce n'est pas une zone. Sans ce garde-fou, ce module avalait tous les clics de l'équipe.
     if (!t || t === document.documentElement) return false;
     const d = t.dataset;
@@ -539,7 +542,10 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
     if ("simDone" in d) { EM().toast("Aperçu : sur le site, la demande arriverait dans Leads, avec sa preuve de consentement."); G.sim = null; render(); return true; }
     if (d.ct) { const [id, what] = d.ct.split(":"), cur = ctOf(id); CTS().put({ id, sign: what === "sign" ? "envoye" : cur[0], mandat: what === "mandat" ? "envoye" : cur[1], since: cur[2] }); render(); EM().toast(what === "sign" ? "Contrat envoyé pour signature (maquette)." : "Demande de mandat envoyée (maquette)."); return true; }
     if (d.goal) { const [id, dv] = d.goal.split(":"), cur = (GOALS().list.find(x => x.id === id) || {}).target || (GOAL_DEF[id] || ["", 10])[1]; GOALS().put({ id, target: Math.max(1, cur + Number(dv) * (cur >= 50 ? 10 : 1)) }); render(); return true; }
-    if (d.siteDone) { SITEST().put({ id: d.siteDone, called: true, by: S.who, at: nowIso() }); TM().haptic("done"); render(); EM().toast("Noté : rappelé dans les temps."); return true; }
+    if (d.siteProspect) { const r = SITEST().list.find(x => x.id === d.siteProspect); if (!r) return true;
+      LIVE().PROSPECTS().put({ id: "p" + Date.now().toString(36), name: r.name, trade: r.trade || "", city: r.zone || "", owner: S.who, value: 0, stage: "lead", source: "Site", phone: r.phone || "", next: "Rappeler " + (r.who || ""), createdAt: nowIso() });
+      SITEST().put(Object.assign({}, r, { prospect: true })); TM().haptic("done"); render(); EM().toast(`${r.name} ajouté à la prospection.`); return true; }
+    if (d.siteDone) { const cur = SITEST().list.find(x => x.id === d.siteDone) || {}; SITEST().put(Object.assign({}, cur, { id: d.siteDone, called: true, by: S.who, calledAt: nowIso() })); TM().haptic("done"); render(); EM().toast("Noté : rappelé dans les temps."); return true; }
     if (d.refStep) { const r = CP().referrals().list.find(x => x.id === d.refStep); if (r) { CP().referrals().put(Object.assign({}, r, { status: r.status === "appele" ? "signe" : "appele" })); render(); } return true; }
     return false;
   }
@@ -582,6 +588,7 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
     views: { appel: viewAppel, "rendez-vous": viewRdvs, zones: viewZones, sante: viewSante, propositions: viewPropositions, etudes: viewEtudes, marge: viewMarge, conformite: viewConformite },
     leadReasons, creatives, seoPages, simulator, contracts, cashflow, goals, prospectExtras, onClick, onSubmit,
     riskCount: () => TD().clients.filter(c => health(c).level === 2).length,
+    siteRequests: () => siteRequests(),
     otherRdv: id => OTHER_RDV.filter(a => a.client === id),                                  // les rendez-vous d'exemple d'un client (sa vue client)
     rdvClient: id => { const a = allRdv().find(x => x.id === id); return a ? a.client : null; },   // à quel client appartient ce rendez-vous
     reset: () => { G.zone = null; G.why = null; },

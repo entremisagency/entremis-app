@@ -65,7 +65,7 @@
     const maxC = Math.max(1, ...byClient.map(x => x[1])), maxS = Math.max(1, ...bySource.map(x => x[1]));
     return `
     <div class="head"><div class="head-text"><h1 class="h1">Leads</h1><p class="sub">Chaque lead va à un seul client.</p></div>
-      <div class="head-actions">${store().source === "db" ? `<span class="sample sync">${icon("users")}Partagé avec l'équipe</span>` : EM().sampleTag}</div></div>
+      <div class="head-actions">${store().source === "db" ? `<span class="sample sync">${icon("users")}Partagé avec l'équipe</span>` : EM().sampleTag}<button class="btn btn-ghost" type="button" data-live-new="sources">${icon("signal")}Faire arriver les leads</button></div></div>
 
     <div class="kpis kpis-4" role="list">
       <article class="kpi" role="listitem"><p class="kpi-label">Leads ce mois-ci</p><div><p class="kpi-value">${TD().trades.reduce((a, t) => a + t.value, 0).toLocaleString("fr-FR")}</p><p class="kpi-note">tous métiers, tous clients</p></div></article>

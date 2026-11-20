@@ -11,7 +11,7 @@
   const on = () => !!(window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on());
   const st = {};
   const store = name => st[name] || (st[name] = OPS().makeStore(name, () => []));
-  const CLIENTS = () => store("clients"), PROSPECTS = () => store("prospects"), RDV = () => store("rdv"), COSTS = () => store("costs");
+  const CLIENTS = () => store("clients"), PROSPECTS = () => store("prospects"), RDV = () => store("rdv"), COSTS = () => store("costs"), MKT = () => store("marketing");
   const LEADS = () => window.ENTREMIS_LEADS, DOCS = () => window.ENTREMIS_OPS.stores.DOCS, CALLS = () => window.ENTREMIS_OPS.stores.CALLS, TASKS = () => window.ENTREMIS_TEAM.T;
 
   const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
@@ -86,8 +86,16 @@
     const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(today() + "T12:00:00"); d.setDate(1); d.setMonth(d.getMonth() - (5 - i)); return iso(d).slice(0, 7); });
     put("revenue", months.map(k => ({ label: MONTHS_L[Number(k.slice(5, 7)) - 1], value: Math.round(DOCS().list.filter(d => d.kind === "facture" && String(d.date || "").slice(0, 7) === k).reduce((a, d) => a + (Number(d.amount) || 0), 0)), current: k === m || undefined })));
     put("costs", COSTS().list.filter(c => c && c.label).map(c => ({ id: c.id, label: c.label, value: Number(c.value) || 0 })));
-    put("ads", []);
-    if (T.seo && T.seo.traffic) T.seo.traffic = T.seo.traffic.map(x => Object.assign({}, x, { value: 0 }));
+    const mk = id => MKT().list.find(r => r.id === id) || {};
+    if (T.seo) { T.seo.traffic = months.map(k => ({ label: MONTHS_L[Number(k.slice(5, 7)) - 1], value: Number(mk(k).traffic) || 0, current: k === m || undefined })); T.seo.keywords = []; }
+    const leadsMonth = LEADS().list().filter(l => String(l.at || "").slice(0, 7) === m);
+    const chan = [["meta", "Meta (Facebook, Instagram)", "Meta", /facebook|instagram|meta/i], ["google", "Google Ads", "Google", /google/i], ["site", "Site et page de demande", "Site", /site|page/i], ["autre", "Autres sources", "Autre", null]];
+    const used = new Set();
+    put("ads", chan.map(([id, name, channel, re]) => {
+      const n = leadsMonth.filter(l => { if (used.has(l.id)) return false; const ok = re ? re.test(l.source || "") : true; if (ok) used.add(l.id); return ok; }).length;
+      const spent = Number((mk(m).spend || {})[id]) || 0;
+      return { id, name, channel, client: "", budget: spent, spent, leads: n, status: spent || n ? "on" : "off" };
+    }));
   }
 
   /* ---------- Les alertes, tirées des vraies données ---------- */
@@ -122,7 +130,7 @@
   function sheet(S) {
     if (!X.sheet) return "";
     const d = X.data || {}, esc = EM().esc, k = X.sheet;
-    const titles = { client: d.id ? "Modifier le client" : "Nouveau client", prospect: d.id ? "Modifier le prospect" : "Nouveau prospect", rdv: d.id ? "Modifier le rendez-vous" : "Placer un rendez-vous", cost: "Nouvelle dépense" };
+    const titles = { marketing: "Les chiffres du mois", sources: "Faire arriver les leads", client: d.id ? "Modifier le client" : "Nouveau client", prospect: d.id ? "Modifier le prospect" : "Nouveau prospect", rdv: d.id ? "Modifier le rendez-vous" : "Placer un rendez-vous", cost: "Nouvelle dépense" };
     let body = "";
     if (k === "client") body = `${field("name", "Nom de l'entreprise", d.name, 'required maxlength="80"')}
       <div class="field-row">${select("trade", "Métier", trades(), d.trade)}${field("zone", "Zone (ville, département)", d.zone, 'maxlength="80" placeholder="Ex. : Rhône"')}</div>
@@ -140,11 +148,25 @@
       <div class="field-row">${field("address", "Adresse", d.address, 'maxlength="120"')}${field("city", "Ville", d.city, 'maxlength="60"')}</div>
       <div class="field-row">${field("date", "Date", d.date || addDays(today(), 1), 'type="date" required')}${field("start", "Heure", d.start || "10:00", 'type="time" required')}</div>
       ${field("note", "Ce qu'il faut savoir", d.note, 'maxlength="300" placeholder="Ex. : maison de 1985, chaudière fioul, disponible le matin"')}`;
+    if (k === "marketing") { const r = MKT().list.find(x => x.id === (d.id || today().slice(0, 7))) || {}, sp = r.spend || {};
+      body = `${field("month", "Mois", d.id || today().slice(0, 7), 'type="month" required')}
+      ${field("traffic", "Visites du site venues de Google (Search Console)", r.traffic || "", 'type="number" min="0"')}
+      <div class="field-row">${field("meta", "Dépense Meta (€)", sp.meta || "", 'type="number" min="0" step="10"')}${field("google", "Dépense Google Ads (€)", sp.google || "", 'type="number" min="0" step="10"')}</div>
+      ${field("autre", "Autres dépenses de pub (€)", sp.autre || "", 'type="number" min="0" step="10"')}
+      <p class="field-help">Les leads de chaque canal se comptent tout seuls, d'après leur source. Le coût par lead s'en déduit.</p>`; }
+    if (k === "sources") { const url = location.origin + location.pathname.replace(/[^/]*$/, "") + "demande.html";
+      const api = "https://cnhxrhyugghigkozfpde.supabase.co/rest/v1/rpc/nouveau_lead";
+      const ex = JSON.stringify({ p_nom: "Prénom Nom", p_telephone: "06 12 34 56 78", p_ville: "Lyon", p_code_postal: "69003", p_projet: "Pompe à chaleur", p_source: "Facebook", p_email: "", p_message: "", p_consentement: true }, null, 1);
+      body = `<p class="body"><b>1. La page de demande</b>, à mettre dans vos publicités et vos posts. Ajoutez la source à la fin de l'adresse pour savoir d'où vient chaque lead.</p>
+      <div class="ac-share"><button class="btn btn-ghost" type="button" data-copy="${esc(url + "?source=Facebook")}">${EM().icon("copy")}Lien pour Facebook</button><button class="btn btn-ghost" type="button" data-copy="${esc(url + "?source=Google")}">${EM().icon("copy")}Lien pour Google</button><a class="btn btn-ghost" href="${esc(url)}" target="_blank" rel="noopener">${EM().icon("eye")}Voir la page</a></div>
+      <p class="body"><b>2. Make ou Zapier</b>, pour les formulaires Facebook et Google (Lead Ads) : à chaque nouveau lead, une requête HTTP POST vers cette adresse, avec les en-têtes <code>apikey</code> et <code>Content-Type: application/json</code>.</p>
+      <div class="ac-share"><button class="btn btn-ghost" type="button" data-copy="${esc(api)}">${EM().icon("copy")}Adresse</button><button class="btn btn-ghost" type="button" data-copy="${esc(window.ENTREMIS_CLOUD.key ? window.ENTREMIS_CLOUD.key() : "")}">${EM().icon("copy")}Clé (apikey)</button><button class="btn btn-ghost" type="button" data-copy="${esc(ex)}">${EM().icon("copy")}Exemple de contenu</button></div>
+      <p class="field-help">Le lead arrive aussitôt dans la page Leads, chez tout le monde. Un même numéro n'entre qu'une fois par mois. L'accord du particulier (p_consentement) est obligatoire.</p>`; }
     if (k === "cost") body = `${field("label", "Dépense", d.label, 'required maxlength="80" placeholder="Ex. : Publicités en ligne"')}${field("value", "Montant par mois (€)", d.value, 'type="number" min="0" step="10" required')}`;
     return `<div class="scrim" data-live-close></div>
     <form class="sheet" id="live-form" data-kind="${k}" aria-label="${esc(titles[k])}" novalidate>
       <div class="sheet-grab" aria-hidden="true"></div>
-      <div class="sheet-head"><button class="link" type="button" data-live-close>Annuler</button><b>${esc(titles[k])}</b><button class="link strong" type="submit">Enregistrer</button></div>
+      <div class="sheet-head"><button class="link" type="button" data-live-close>${k === "sources" ? "Fermer" : "Annuler"}</button><b>${esc(titles[k])}</b>${k === "sources" ? "<span></span>" : `<button class="link strong" type="submit">Enregistrer</button>`}</div>
       ${body}
       <p class="cg-msg live-msg" role="alert" hidden></p>
       ${d.id && k !== "cost" ? `<button class="link ac-del" type="button" data-live-del="${k}:${esc(d.id)}">${k === "rdv" ? "Annuler ce rendez-vous" : k === "client" ? "Archiver ce client" : "Supprimer ce prospect"}</button>` : ""}
@@ -186,7 +208,7 @@
   }
 
   async function onSubmit(e, S, render) {
-    if (e.target.id !== "live-form") return false;
+    if (!e.target.getAttribute || e.target.getAttribute("id") !== "live-form") return false;
     e.preventDefault();
     const f = e.target, k = f.dataset.kind, fd = new FormData(f), v = n => String(fd.get(n) || "").trim(), d = X.data || {};
     const say = m => { const p = f.querySelector(".live-msg"); p.textContent = m; p.hidden = false; };
@@ -213,22 +235,62 @@
       if (d.replaces) { const old = RDV().list.find(x => x.id === d.replaces); if (old) RDV().put(Object.assign({}, old, { replacedBy: row.id })); }
       if (d.lead) { const l = LEADS().list().find(x => x.id === d.lead); if (l) LEADS().put(Object.assign({}, l, { status: "rdv", to: row.client_id, givenAt: l.givenAt || now, givenBy: l.givenBy || S.who })); }
     }
+    if (k === "marketing") {
+      const id = v("month"); if (!/^\d{4}-\d{2}$/.test(id)) return say("Choisissez le mois."), true;
+      await MKT().put({ id, traffic: Number(v("traffic")) || 0, spend: { meta: Number(v("meta")) || 0, google: Number(v("google")) || 0, autre: Number(v("autre")) || 0 } });
+    }
+    if (k === "sources") { X.sheet = null; render(); return true; }
     if (k === "cost") {
       if (!v("label") || !(Number(v("value")) >= 0)) return say("Écrivez la dépense et son montant."), true;
       await COSTS().put({ id: "k" + Date.now().toString(36), label: v("label"), value: Number(v("value")) || 0 });
     }
-    const msg = { client: "Client enregistré.", prospect: "Prospect enregistré.", rdv: "Rendez-vous placé : le client le voit dans son agenda.", cost: "Dépense ajoutée." }[k];
+    const msg = { marketing: "Chiffres du mois enregistrés.", client: "Client enregistré.", prospect: "Prospect enregistré.", rdv: "Rendez-vous placé : le client le voit dans son agenda.", cost: "Dépense ajoutée." }[k];
     X.sheet = null; window.ENTREMIS_TEAM.haptic("done"); render(); EM().toast(msg);
     return true;
   }
 
+  const NT = { ready: false, seen: new Set() };
+  const keysNow = () => {
+    const out = [];
+    if (EM().S.space === "client" || EM().S.lock) rdvFor(EM().viewId()).forEach(r => out.push(["rdv:" + r.id, "Nouveau rendez-vous", `${r.name}, ${dayLabel(r.date)} à ${r.start}`, "#rdv-" + r.id]));
+    else {
+      LEADS().list().forEach(l => out.push(["lead:" + l.id, "Nouveau lead", [l.name, l.trade, l.city].filter(Boolean).join(", "), "#leads"]));
+      (window.ENTREMIS_GROWTH && window.ENTREMIS_GROWTH.siteRequests ? window.ENTREMIS_GROWTH.siteRequests() : []).forEach(s => out.push(["site:" + s.id, "Demande du site", `${s.name}${s.who ? ", " + s.who : ""}`, "#pipeline"]));
+    }
+    return out;
+  };
+  async function alertOn(title, body, href) {
+    EM().toast(`${title} : ${body}`); window.ENTREMIS_TEAM.haptic("done");
+    try {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+      const opts = { body, icon: "img/apple-touch-icon.png", badge: "img/favicon-32.png", tag: title + body, data: { href } };
+      if (reg) reg.showNotification(title, opts); else new Notification(title, opts);
+    } catch (_) {}
+  }
+  function watch() {
+    if (!on()) return;
+    const ks = keysNow();
+    if (!NT.ready) return;
+    ks.forEach(([k, title, body, href]) => { if (!NT.seen.has(k)) { NT.seen.add(k); alertOn(title, body, href); } });
+  }
+  function startWatch() {
+    window.ENTREMIS_CLOUD.ready().then(() => setTimeout(() => { keysNow().forEach(([k]) => NT.seen.add(k)); NT.ready = true; }, 6000));
+  }
+  async function askAlerts() {
+    if (!("Notification" in window)) return "absent";
+    try { const r = await Notification.requestPermission(); return r; } catch (_) { return "refuse"; }
+  }
+
   window.ENTREMIS_LIVE = {
+    watch, askAlerts, MKT,
     on, CLIENTS, PROSPECTS, RDV, COSTS, rdvs, rdvFor, asAppt, notifs, sheet, onClick, onSubmit, open,
     sheetOpen: () => !!X.sheet,
     reset: () => { X.sheet = null; },
     init: render => {
       const go = () => { rebuild(); render(); };
-      [CLIENTS, PROSPECTS, RDV, COSTS].forEach(s => s().init(go));
+      [CLIENTS, PROSPECTS, RDV, COSTS, MKT].forEach(s => s().init(go));
+      if (on()) startWatch();
       if (on()) { const tick = () => { rebuild(); }; setInterval(() => { tick(); }, 60000); }
     },
     rebuild
