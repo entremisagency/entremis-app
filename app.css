@@ -2710,3 +2710,9 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 /* Pastilles d'état : texte blanc sur leur couleur, partout. Une règle « .bloc span » (sous-titres gris) ne doit jamais
    les repeindre : ce sélecteur l'emporte sur toutes les règles de ce genre. */
 .state[class*="state-"]{color:var(--color-white)}
+
+/* Écrire l'e-mail d'un devis ou d'une facture (envoi depuis son Gmail) */
+.doc-mail{display:grid;gap:var(--space-3);padding:var(--space-4);border-radius:var(--radius-md);background:var(--color-card)}
+.doc-mail textarea{width:100%;box-sizing:border-box;padding:var(--space-3) var(--space-4);border:0;border-radius:var(--radius-md);background:var(--color-white);color:var(--color-ink);font:inherit;font-size:var(--text-body);resize:vertical}
+.doc-mail input{background:var(--color-white)}
+.doc-mail textarea:focus{outline:2px solid var(--color-action);outline-offset:0}

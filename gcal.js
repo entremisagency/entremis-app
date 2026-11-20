@@ -27,6 +27,8 @@
 
   /* ---------- Le site en ligne : Google directement ---------- */
   const W = { token: null, until: 0, client: null, pending: null };
+  const CAL = "https://www.googleapis.com/auth/calendar.events", MAIL = "https://www.googleapis.com/auth/gmail.send";
+  const TK = {};   // un jeton par autorisation : { token, until, client, pending }
   const web = () => !hasRuntime();
   const webReady = () => !!GOOGLE_CLIENT_ID;
   const loadGis = () => new Promise((ok, ko) => {
@@ -34,14 +36,38 @@
     const s = document.createElement("script"); s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.onload = ok; s.onerror = () => ko(new Error("gis")); document.head.appendChild(s);
   });
   // Demande (ou renouvelle) l'accès : à appeler pendant un clic, sinon le navigateur bloque la fenêtre Google
-  function token() {
-    if (W.token && Date.now() < W.until - 60000) return Promise.resolve(W.token);
+  function tokenFor(scope, known) {
+    const k = TK[scope] || (TK[scope] = { token: null, until: 0, client: null, pending: null });
+    if (k.token && Date.now() < k.until - 60000) return Promise.resolve(k.token);
     return loadGis().then(() => new Promise((ok, ko) => {
-      if (!W.client) W.client = window.google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: "https://www.googleapis.com/auth/calendar.events",
-        callback: r => { const p = W.pending; W.pending = null; if (r && r.access_token) { W.token = r.access_token; W.until = Date.now() + (Number(r.expires_in) || 3600) * 1000; p && p.ok(W.token); } else p && p.ko(r); },
-        error_callback: e => { const p = W.pending; W.pending = null; p && p.ko(e); } });
-      W.pending = { ok, ko }; W.client.requestAccessToken({ prompt: remembered() ? "" : "consent" });
+      if (!k.client) k.client = window.google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope,
+        callback: r => { const p = k.pending; k.pending = null; if (r && r.access_token) { k.token = r.access_token; k.until = Date.now() + (Number(r.expires_in) || 3600) * 1000; p && p.ok(k.token); } else p && p.ko(r); },
+        error_callback: e => { const p = k.pending; k.pending = null; p && p.ko(e); } });
+      k.pending = { ok, ko }; k.client.requestAccessToken({ prompt: known ? "" : "consent" });
     }));
+  }
+  const token = () => tokenFor(CAL, remembered());
+
+  /* ---------- Envoyer un e-mail depuis son Gmail (devis, factures), avec le PDF en pièce jointe ----------
+     L'app n'a que le droit d'envoyer (gmail.send) : elle ne lit jamais la boîte. */
+  const MAIL_KEY = "entremis-app-gmail-on";
+  const b64u = str => btoa(unescape(encodeURIComponent(str)));
+  const ascii = s => String(s || "document.pdf").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9 ._-]/g, "-");
+  const blob64 = b => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = ko; r.readAsDataURL(b); });
+  async function gmailSend({ to, subject, text, file }) {
+    const known = (() => { try { return localStorage.getItem(MAIL_KEY) === "1"; } catch (_) { return false; } })();
+    const tok = await tokenFor(MAIL, known);
+    const bd = "entremis" + Date.now().toString(36), parts = [
+      "To: " + to, "Subject: =?UTF-8?B?" + b64u(subject) + "?=", "MIME-Version: 1.0", `Content-Type: multipart/mixed; boundary="${bd}"`, "",
+      "--" + bd, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", b64u(text)];
+    if (file) { const name = ascii(file.name), data = (await blob64(file)).replace(/(.{76})/g, "$1\r\n");
+      parts.push("--" + bd, `Content-Type: ${file.type || "application/pdf"}; name="${name}"`, "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; filename="${name}"`, "", data); }
+    parts.push("--" + bd + "--");
+    const raw = b64u(parts.join("\r\n")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { Authorization: "Bearer " + tok, "Content-Type": "application/json" }, body: JSON.stringify({ raw }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw Object.assign(new Error((j.error && j.error.message) || "Gmail"), { status: r.status }); }
+    try { localStorage.setItem(MAIL_KEY, "1"); } catch (_) {}
+    return true;
   }
   const api = (path, opts) => token().then(t => fetch("https://www.googleapis.com/calendar/v3/" + path, Object.assign({}, opts, { headers: Object.assign({ Authorization: "Bearer " + t, "Content-Type": "application/json" }, (opts || {}).headers) })))
     .then(r => r.ok ? r.json() : r.json().then(j => { throw Object.assign(new Error((j.error && j.error.message) || "Google"), { status: r.status }); }));
@@ -238,5 +264,5 @@
     return false;
   }
 
-  window.ENTREMIS_GCAL = { init, panel, onClick, addState, addTask, addLive, linked };
+  window.ENTREMIS_GCAL = { init, panel, onClick, addState, addTask, addLive, linked, gmailSend, gmailReady: () => web() && webReady(), preload: () => { if (web() && webReady()) loadGis().catch(() => {}); } };
 })();

@@ -101,6 +101,8 @@
     if (open && (!inner || inner === open)) { VIEW = open.dataset.docOpen; render(); return true; }
     if (e.target.closest("[data-doc-close]")) { VIEW = null; render(); return true; }
     const sh = e.target.closest("[data-doc-share]"); if (sh) { share(sh.dataset.docShare, S); return true; }
+    const gm = e.target.closest("[data-doc-gmail]"); if (gm) { MAIL = gm.dataset.docGmail; window.ENTREMIS_GCAL.preload(); render(); setTimeout(() => { const i = document.querySelector('#doc-mail input[name="to"]'); if (i) i.focus(); }, 60); return true; }
+    if (e.target.closest("[data-doc-gmail-close]")) { MAIL = null; render(); return true; }
     const t = e.target.closest("[data-gen-kind],[data-gen-add],[data-gen-del],[data-gen-pdf],[data-gen-for],[data-gen-new],[data-doc-pdf],[data-gen-tab]");
     if (!t) return false;
     if (t.dataset.genTab) { TAB = t.dataset.genTab; render(); return true; }
@@ -272,14 +274,14 @@
     const mailto = `mailto:${x.email.replace(/[^\w.@+-]/g, "")}?subject=${encodeURIComponent(x.subject)}&body=${encodeURIComponent(x.mail)}`;
     const sms = `sms:${x.phone}?&body=${encodeURIComponent(x.short)}`;
     const wa = `https://wa.me/${intl}?text=${encodeURIComponent(x.short)}`;
-    const c = CACHE[d.id], ready = c && c.key === docKey(d) && c.pages, share = shareOk();
+    const c = CACHE[d.id], ready = c && c.key === docKey(d) && c.pages, share = shareOk(), gmail = window.ENTREMIS_GCAL && window.ENTREMIS_GCAL.gmailReady();
     setTimeout(() => mount(d.id), 0);
     return `<div class="lp-scrim" data-doc-close></div><aside class="lead-panel doc-panel" aria-label="${esc(title)}">
       <header class="lp-head"><div class="doc-head-id">${EM().fileIcon(d.fileName || "pdf", "fic-lg")}<div><h2 class="h2">${esc(title)}</h2><div class="lp-tags">${OPS().docTag(d)}<span class="src">${esc(d.client || "")}</span></div></div></div>
         <button class="icon-btn" type="button" data-doc-close aria-label="Fermer">${icon("plus")}</button></header>
       <div class="lp-acts doc-acts">
         ${share ? `<button class="lp-act lp-main" type="button" data-doc-share="${d.id}">${icon("share")}<span>Partager</span></button>` : ""}
-        <a class="lp-act${share ? "" : " lp-main"}" href="${esc(mailto)}" target="_blank" rel="noopener">${icon("mail")}<span>E-mail</span></a>
+        ${gmail ? `<button class="lp-act${share ? "" : " lp-main"}" type="button" data-doc-gmail="${d.id}">${icon("mail")}<span>E-mail</span></button>` : `<a class="lp-act${share ? "" : " lp-main"}" href="${esc(mailto)}" target="_blank" rel="noopener">${icon("mail")}<span>E-mail</span></a>`}
         <a class="lp-act" href="${esc(sms)}" target="_blank" rel="noopener">${icon("chat")}<span>SMS</span></a>
         <a class="lp-act" href="${esc(wa)}" target="_blank" rel="noopener">${icon("wa")}<span>WhatsApp</span></a>
         <button class="lp-act" type="button" data-doc-pdf="${d.id}">${icon("download")}<span>${d.fileName && !/\.pdf$/i.test(d.fileName) ? "Fichier" : "PDF"}</span></button>
@@ -288,8 +290,37 @@
       <p class="doc-hint">${share ? "Partager joint le vrai PDF (Mail, Messages, WhatsApp…)." : "Le texte est prêt. Pour l'e-mail, joignez le PDF téléchargé."}</p>
       <dl class="lp-dl"><div><dt>Montant</dt><dd>${money(x.t.ht)} HT – ${money(x.t.ttc)} TTC</dd></div>${x.email ? `<div><dt>E-mail</dt><dd>${esc(x.email)}</dd></div>` : ""}${x.phone ? `<div><dt>Téléphone</dt><dd>${esc(x.c.phone)}</dd></div>` : ""}</dl>
       ${OPS().docNext(d)}
+      ${MAIL === d.id ? mailBox(d, x) : ""}
       <div class="doc-pdf" data-doc-pages="${d.id}">${ready ? pagesHtml(c, title) : EM().loader("Préparation du PDF", "Le même fichier que celui que vous envoyez")}</div>
     </aside>`;
+  }
+  // Écrire l'e-mail avant de l'envoyer depuis son Gmail : le texte est prêt, le PDF part en pièce jointe
+  let MAIL = null;
+  function mailBox(d, x) {
+    const esc = EM().esc;
+    return `<form class="doc-mail" id="doc-mail" data-doc="${d.id}" novalidate>
+      <label class="field"><span>À</span><input name="to" type="email" required value="${esc(x.email)}" placeholder="adresse du client"></label>
+      <label class="field"><span>Objet</span><input name="subject" required value="${esc(x.subject)}"></label>
+      <label class="field"><span>Message</span><textarea name="text" rows="7">${esc(x.mail)}</textarea></label>
+      <p class="cg-msg doc-mail-msg" role="alert" hidden></p>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">${EM().icon("mail")}Envoyer depuis mon Gmail</button><button class="btn btn-ghost" type="button" data-doc-gmail-close>Annuler</button></div>
+      <p class="field-help">Le PDF part en pièce jointe. L'e-mail apparaîtra dans vos messages envoyés.</p>
+    </form>`;
+  }
+  async function sendMail(f, S, render) {
+    const id = f.dataset.doc, d = OPS().stores.DOCS.list.find(x => x.id === id); if (!d) return;
+    const fd = new FormData(f), to = String(fd.get("to") || "").trim(), say = m => { const p = f.querySelector(".doc-mail-msg"); p.textContent = m; p.hidden = false; };
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) { say("Écrivez l'adresse e-mail du client."); return; }
+    const go = f.querySelector('button[type="submit"]'); go.disabled = true; go.textContent = "Envoi…";
+    try {
+      const c = CACHE[id], file = c && c.file ? c.file : await fileOf(d).then(m => new File([m.blob], m.filename, { type: m.blob.type || "application/pdf" }));
+      await window.ENTREMIS_GCAL.gmailSend({ to, subject: String(fd.get("subject") || ""), text: String(fd.get("text") || ""), file });
+      if (d.status === "brouillon" || !d.status) OPS().stores.DOCS.put(Object.assign({}, d, { status: "envoye", sentAt: new Date().toISOString().slice(0, 16) }));
+      MAIL = null; TM().haptic("done"); render(); EM().toast(`Envoyé depuis votre Gmail à ${to}.`);
+    } catch (err) {
+      go.disabled = false; go.innerHTML = EM().icon("mail") + "Envoyer depuis mon Gmail";
+      say(err && err.type === "popup_closed" ? "La fenêtre Google a été fermée : rien n'est parti." : err && err.status === 403 ? "Google refuse l'envoi : l'autorisation Gmail n'est pas encore donnée dans la console Google." : "L'e-mail n'est pas parti. Réessayez.");
+    }
   }
   function share(id, S) {
     const c = CACHE[id], d = OPS().stores.DOCS.list.find(x => x.id === id);
@@ -309,5 +340,6 @@
 
   document.addEventListener("input", e => onInput(e));
   document.addEventListener("change", e => { if (e.target.closest("#gen-form")) onInput(e); });
+  document.addEventListener("submit", e => { if (e.target.id === "doc-mail") { e.preventDefault(); sendMail(e.target, EM().S, EM().render); } });
   window.ENTREMIS_GEN = { view, onClick, onSubmit, docPanel, loadPdf, save, money, frDate, closeDoc: () => { VIEW = null; }, openDoc: id => { VIEW = id; } };
 })();
