@@ -1,0 +1,5 @@
+# Entremis — réglages des fonctions Supabase.
+# Les nouvelles clés (sb_publishable, sb_secret) ne sont pas des jetons JWT : la fonction vérifie elle-même
+# que la personne est connectée et fait partie de l'équipe (voir functions/send-email/index.ts).
+[functions.send-email]
+verify_jwt = false

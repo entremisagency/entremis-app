@@ -1,0 +1,406 @@
+/* Entremis — jetons de la webapp.
+   Partie 1 : copie exacte de prototypes/landing-site/tokens.css (site à jour du 19 nov. 2026 : bleu électrique, clair uniquement).
+   Partie 2 : ajouts propres à l'app (densité, agenda, barre latérale, mobile).
+   Si les jetons du site changent, recopier la partie 1 telle quelle. */
+
+/* Entremis — jetons. Source : DESIGN.md à la racine du projet. Ne rien écrire en dur dans les écrans.
+   .scope-dark force le thème sombre sur un bloc (cadre d'image, carte mise en avant, bande de la garantie). */
+
+:root{
+  /* ---------- Palette : le bleu électrique (choisi par Marc le 19 nov. 2026) ---------- */
+  --p-action-dark:#3D6BFF;  --p-action-dark-hover:#5580FF;  --p-on-action-dark:#FFFFFF;
+  --p-action-light:#2F5BEA; --p-action-light-hover:#264DCC; --p-on-action-light:#FFFFFF;
+  --p-accent-dark:#A9BDFF;  --p-accent-light:#2F5BEA;
+  --p-featured:#13235C;
+  --p-gradient:linear-gradient(90deg,#13235C 0%,#3D6BFF 55%,#A9BDFF 85%,#EEF2FF 100%);
+
+  /* ---------- Constantes de marque ---------- */
+  --color-noir:#020507;
+  --color-lumiere:#EAF6FF;
+  --color-white:#FFFFFF;
+
+  /* ---------- Sens (interface seulement) ---------- */
+  --color-ok:#7FD6A8;      --color-ok-bg:rgba(127,214,168,.12);
+  --color-attente:#F0C27F; --color-attente-bg:rgba(240,194,127,.12);
+
+  /* ---------- Typo ---------- */
+  --font:"Outfit","Helvetica Neue",Arial,sans-serif;
+  --text-display-xl:clamp(44px,6vw,72px);
+  --text-display-lg:clamp(34px,4.4vw,52px);
+  --text-display-md:clamp(28px,3vw,36px);
+  --text-title:22px;
+  --text-title-sm:18px;
+  --text-body-lg:18px;
+  --text-body:16px;
+  --text-small:14px;
+  --text-caption:13px;
+  --text-micro:12px;
+  --text-figure:40px;
+  --text-number-xl:clamp(48px,5.4vw,64px);
+  --text-button:15px;
+  --weight-number:200;
+  --weight-display:300;
+  --weight-body:400;
+  --weight-strong:500;
+  --track-display-xl:-0.03em;
+  --track-display-lg:-0.02em;
+  --track-title:-0.01em;
+  --leading-display:1.04;
+  --leading-title:1.3;
+  --leading-body:1.55;
+
+  /* ---------- Rayons ---------- */
+  --radius-xs:4px;
+  --radius-sm:8px;
+  --radius-md:12px;
+  --radius-lg:20px;
+  --radius-xl:28px;
+  --radius-pill:999px;
+
+  /* ---------- Écarts (base 4) ---------- */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px;
+  --space-6:32px; --space-7:48px; --space-8:64px; --space-section:112px;
+  --container:1200px; --gutter:24px;
+
+  /* ---------- Tailles de composants ---------- */
+  --button-h:48px; --arrow-tile:40px; --nav-h:60px; --icon:18px; --avatar:32px;
+
+  /* ---------- Mouvement ---------- */
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --dur-fast:160ms;
+  --dur-base:320ms;
+  --dur-reveal:900ms;
+}
+
+/* ---------- Le site est uniquement en clair (choix de Marc, 19 nov. 2026) ---------- */
+:root{
+  color-scheme:light;
+  --color-canvas:#F3F7FA;
+  --color-surface-1:#FFFFFF;
+  --color-surface-2:#EDF3F8;
+  --color-surface-3:#DFE8F0;
+  --color-hairline:rgba(11,46,74,.10);
+  --color-hairline-strong:rgba(11,46,74,.18);
+  --color-ink:#06121C;
+  --color-body:#3D5366;
+  --color-muted:#647A8D;
+  --color-action:var(--p-action-light);
+  --color-action-hover:var(--p-action-light-hover);
+  --color-on-action:var(--p-on-action-light);
+  --color-accent:var(--p-accent-light);
+  --color-info-bg:color-mix(in srgb,var(--p-accent-light) 12%,transparent);
+  --color-featured:var(--p-featured);
+  --color-contrast:#06121C;          /* bouton foncé de la barre de navigation */
+  --color-on-contrast:#FFFFFF;
+  --color-logo-bar:var(--p-action-light);
+  --gradient-chemin:var(--p-gradient);
+  --shadow-ui:0 14px 32px -18px rgba(11,46,74,.35);
+  --color-ok:#1F8A5B;      --color-ok-bg:rgba(31,138,91,.10);
+  --color-attente:#A36410; --color-attente-bg:rgba(163,100,16,.10);
+}
+/* Blocs sombres voulus dans la page claire : cadre de l'image du hero, carte mise en avant, bande de la garantie */
+.scope-dark{
+  color-scheme:dark;
+  --color-canvas:#020507; --color-surface-1:#07111A; --color-surface-2:#0B1A27; --color-surface-3:#10263A;
+  --color-hairline:rgba(159,208,245,.10); --color-hairline-strong:rgba(159,208,245,.18);
+  --color-ink:#EAF6FF; --color-body:#A3B8C9; --color-muted:#6F8699;
+  --color-action:var(--p-action-dark); --color-action-hover:var(--p-action-dark-hover); --color-on-action:var(--p-on-action-dark);
+  --color-accent:var(--p-accent-dark); --color-info-bg:color-mix(in srgb,var(--p-accent-dark) 14%,transparent);
+  --color-contrast:#EAF6FF; --color-on-contrast:#020507;
+  --shadow-ui:0 18px 40px -18px rgba(2,5,7,.9);
+  --color-ok:#7FD6A8; --color-ok-bg:rgba(127,214,168,.12); --color-attente:#F0C27F; --color-attente-bg:rgba(240,194,127,.12);
+}
+
+@media (max-width:560px){
+  :root{ --space-section:72px; --gutter:16px; --text-title:20px; }
+}
+
+/* =====================================================================
+   Webapp (espace client) — mode Operate. Ajouts au-dessus des jetons du site.
+   Échelle de texte fixe (pas de clamp) : un écran d'outil se lit à taille constante.
+   ===================================================================== */
+:root{
+  /* Texte de l'app */
+  --text-app-h1:28px;                /* titre d'écran */
+  --text-app-h2:18px;                /* titre de panneau */
+  --text-app-num:44px;               /* chiffre d'objectif */
+  --text-app-kpi:36px;               /* chiffre d'une tuile (plus gros, Marc 20 nov.) */
+  --weight-app-number:600;           /* chiffres : gras, plus de graisse fine */
+  --text-app-mobile-h1:24px;
+
+  /* Cadre */
+  --sidebar-w:248px;
+  --rail-w:72px;                     /* menu réduit aux icônes (écrans moyens) */
+  --rail-item:44px;
+  --topbar-h:56px;
+  --panel-pad:var(--space-6);        /* marge intérieure du grand panneau */
+  --frame-gap:var(--space-3);        /* écart entre la barre latérale, le panneau et le bord */
+  --content-max:1240px;
+
+  /* Densité */
+  --nav-row-h:36px;                  /* ligne du menu latéral */
+  --row-h:56px;                      /* ligne de tableau */
+  --row-h-compact:44px;
+  --control-h:36px;                  /* pilule de filtre, champ, petit bouton */
+  --icon-btn:36px;                   /* bouton icône rond */
+  --avatar-sm:28px;
+  --avatar-lg:48px;
+  --check:20px;
+  --badge-h:24px;
+  --dot:6px;                         /* pastille d'état seule */
+  --icon-sm:16px;
+  --icon-xs:14px;
+  --logo:24px;
+  --bar-h:4px;                       /* barre de progression, trait fin */
+  --seg-h:28px;
+  --tab-h:32px;
+  --row-time-col:72px;
+  --row-time-col-m:56px;
+  --icon-check:12px;
+  --crit-label-w:132px;
+  --search-w:240px;
+  --search-w-sm:180px;
+  --tab-target:48px;               /* zone de toucher minimale */
+
+  /* Agenda */
+  --hour-h:88px;                     /* une heure dans la grille */
+  --agenda-time-col:56px;
+  --agenda-head-h:48px;
+  --now-pill-h:22px;
+  --month-cell-h:120px;              /* case de la vue Mois */
+  --month-cell-h-m:52px;
+
+  /* Graphiques fins (barres verticales façon instrument) */
+  --tick-w:3px;
+  --tick-gap:6px;
+  --tick-h:36px;
+
+  /* Mobile */
+  --tabbar-h:64px;
+  --tabbar-pad:var(--space-2);
+  --mobile-header-h:56px;
+  --phone-w:390px;                   /* aperçu téléphone (iPhone 15) */
+  --phone-h:844px;
+  --phone-radius:48px;
+  --phone-bezel:10px;
+  --phone-status-h:44px;             /* barre de l'heure et de la batterie d'un iPhone, simulée dans l'aperçu */
+
+  /* Panneau Aperçu (réglage de maquette) */
+  --tweak-w:248px;
+
+  /* Calques */
+  --z-sticky:10; --z-tabbar:20; --z-toast:40; --z-tweak:50;
+
+  /* Couleurs d'état, vives (Marc, 19 nov. 2026 : vert, rouge, orange fluo).
+     Uniquement pour dire un état : la pastille et le point prennent la couleur vive, le texte prend la version foncée pour rester lisible. */
+  --vif-vert:#00D66B;   --ok-ink:#03793E;     --ok-tint:color-mix(in srgb,#00D66B 16%,#FFFFFF);
+  --vif-orange:#FF8A00; --warn-ink:#A84F00;   --warn-tint:color-mix(in srgb,#FF8A00 16%,#FFFFFF);
+  /* États en fluo (Marc, 19 nov. 2026, mêmes valeurs que le site) : pastilles pleines, texte foncé dessus. Réservés aux états. */
+  --color-fluo-ok:#3CF58D;
+  --color-fluo-wait:#FFC233;
+  --color-on-fluo:#03140A;
+  /* Pastilles de statut à texte blanc (Marc, 20 nov. 2026) : couleurs pleines assez soutenues pour que le blanc se lise */
+  --state-ok-solid:#0B8049;
+  --state-warn-solid:#B86200;
+  --state-danger-solid:#E0294B;
+  --state-info-solid:var(--color-action);
+  --state-neutral-solid:#647A8D;
+  --vif-rouge:#FF2D55;  --danger-ink:#C01236; --danger-tint:color-mix(in srgb,#FF2D55 13%,#FFFFFF);
+  --info-ink:var(--p-action-light); --info-tint:color-mix(in srgb,#2F5BEA 11%,#FFFFFF);
+
+  /* Titres plus appuyés (Marc, 19 nov. 2026) */
+  --weight-title:600;
+  --weight-large-title:700;          /* grand titre sur téléphone, façon iOS */
+  --text-ios-large:30px;
+  --text-ios-tab:11px;
+
+  /* Graphiques : une seule teinte, de l'encre au gris clair (Marc, 19 nov. : graphiques monochromes façon éditorial) */
+  --seq-0:#06121C; --seq-1:#3B4854; --seq-2:#6C7883; --seq-3:#9AA4AD; --seq-4:#C3CAD0; --seq-5:#DCE1E5;
+  --lolli-dot:4px;
+  --brand-title:20px;
+  --metric-min:220px;
+  --flow-hub:180px;
+  --prep-col-min:140px;
+  --prep-bar-min:48px;
+  --sheet-wide:720px;
+  --gen-qty-w:56px;
+  --orb:26px;
+  --dot-grid:16px;
+  --tile-gap:var(--space-2);              /* écart entre deux lignes d'une liste (règle de Marc) */
+  --tile-pad-y:var(--space-3);
+  --tile-pad-x:var(--space-4);
+  /* Petites valeurs autrefois écrites en dur dans app.css (passe design du 20 nov.) */
+  --toast-max:520px;
+  --row-bar-w:72px;
+  --goal-bar-w:96px;
+  --tab-icon:24px;
+  --tab-count:18px;
+  --grab-w:36px;
+  --grab-h:5px;
+  --island-w:120px;
+  --island-h:32px;
+  --color-scrim:rgba(6,18,28,.35);
+  --tab-active-bg:rgba(255,255,255,.75);
+  --shadow-knob:0 2px 4px -1px rgba(6,18,28,.35);
+  --shadow-tab:0 2px 8px -3px rgba(11,46,74,.25);
+  --shadow-bubble:0 1px 2px rgba(11,46,74,.06);
+  --edge-light:inset 0 1px 0 rgba(255,255,255,.35);
+  --edge-light-soft:inset 0 1px 0 rgba(255,255,255,.18);
+  --ring-white:0 0 0 2px rgba(255,255,255,.9);
+  --gd-key-w:180px;
+  --pr-node-min:190px;
+  --sheet-max-h:820px;
+  --qc-h:132px;
+  /* Boutons (style demandé par Marc le 20 nov. 2026 : coins doux, 36 px, ombre légère, anneau de focus) */
+  --btn-h:32px;
+  --btn-h-sm:28px;
+  --btn-h-lg:36px;
+  --btn-radius:var(--radius-md);
+  --btn-pad:var(--space-3);
+  --btn-pad-sm:10px;
+  --btn-gap:6px;
+  --btn-pad-lg:var(--space-5);
+  --shadow-btn:0 1px 2px rgba(6,18,28,.06);
+  --shadow-sheet:0 24px 60px -24px rgba(6,18,28,.35);
+  --spot-w:600px;
+  --lead-panel-w:360px;
+  --spot-top:12vh;
+  --spot-h:420px;
+  --ring:112px;
+  --ring-sm:104px;
+  --funnel-h:10px;
+  --nf-wire:48px;
+  --nf-wire-h:120px;
+  --nf-drop:40px;
+  --icon-stroke:1.75;          /* traits arrondis, dans l'esprit des icônes que Marc aime */
+  --orb-line:1.5px;
+  --orb-gap:4px;
+  --splash-logo:64px;
+  --gen-price-w:96px;
+  --sticky-top:80px;            /* sous la barre du haut */
+  --confirm-w:360px;
+  --kpi-min:220px;
+  --person-min:240px;
+  --heat-who:120px; --heat-who-m:56px; --heat-cell:22px; --heat-total:44px; --heat-total-m:28px;
+  --person-stat-min:72px;
+  --bubble-max:520px;
+  --bubble-r:20px;
+  --chat-list-w:320px;   /* colonne des fils, Discussions */
+  --chat-h:560px;        /* hauteur de la conversation */
+  --chat-card-h:260px;   /* derniers messages sur la fiche client */
+  --chat-input-max:160px;
+  --table-kpi-min:760px;
+  --cline-label-w:110px;
+  --res-min:140px; --kw-move-w:64px; --ios-row-h:52px; --ios-ico:30px;
+
+  /* Tâches, feuilles, interrupteurs */
+  --task-h:56px;
+  --sheet-radius:20px;
+  --switch-w:44px; --switch-h:26px;
+  --board-col-min:260px;
+  --chart-h:208px;
+
+  /* Couches de l'app (clair uniquement) */
+  --color-app-bg:#FFFFFF;                        /* fond blanc partout (Marc, 19 nov. 2026) */
+  --color-panel:#FFFFFF;                         /* le grand panneau arrondi, séparé par un trait fin */
+  --color-nav-active:var(--color-surface-2);     /* onglet actif du menu : pilule gris clair, visible sur le blanc */
+  /* Liquid Glass (Marc, 19 nov. 2026) : seulement sur ce qui flotte au-dessus du contenu */
+  --glass-bg:rgba(255,255,255,.72);
+  --glass-bg-strong:rgba(255,255,255,.80);
+  --glass-dark:rgba(6,18,28,.70);
+  --glass-blur:blur(22px) saturate(180%);
+  --glass-edge:rgba(255,255,255,.75);
+  --glass-shadow:0 10px 30px -12px rgba(11,46,74,.28),0 2px 6px -2px rgba(11,46,74,.10);
+  --glass-highlight:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 0 rgba(11,46,74,.06);
+  --color-card:#F3F6F9;                          /* fond des cartes : gris très clair, sans contour (Marc, 19 nov.) */
+  --color-card-hover:#EAF0F5;
+  --color-btn-soft:#E9EFF5;                      /* fond des boutons secondaires : bien visible sur le blanc */
+  --color-btn-soft-hover:#DCE5EE;
+  --color-today:var(--color-contrast);           /* le jour actif de l'agenda */
+  --color-on-today:var(--color-on-contrast);
+}
+@container app (max-width:560px){
+  #root > *{ --panel-pad:var(--space-4); --text-title:18px; --gutter:16px; }
+}
+
+/* =====================================================================
+   Style « AgentOps » (Marc, 20 nov. 2026, d'après une capture qu'il aime) :
+   une linéale, des chiffres grands et fins avec l'unité en gris, des gris neutres,
+   et une seule carte en bleu plein par écran. Outfit (charte) reste pour le logo.
+   Pour revenir à Outfit partout : --font:var(--font-charte).
+   ===================================================================== */
+:root{
+  --font:"Inter Tight","Helvetica Neue",Arial,sans-serif;
+  --font-charte:"Outfit","Helvetica Neue",Arial,sans-serif;
+  /* Gris neutres : plus de bleu dans les gris, le bleu est gardé pour l'action */
+  --color-canvas:#F2F2F3;
+  --color-surface-2:#F1F1F2;
+  --color-surface-3:#E4E4E7;
+  --color-hairline:rgba(17,17,20,.08);
+  --color-hairline-strong:rgba(17,17,20,.14);
+  --color-ink:#0D0D10;
+  --color-body:#4A4A52;
+  --color-muted:#7C7C86;
+  --color-contrast:#0D0D10;
+  --color-card:#F4F4F5;
+  --color-card-hover:#ECECEE;
+  --color-btn-soft:#EDEDEF;
+  --color-btn-soft-hover:#E2E2E5;
+  --color-featured:var(--p-action-light);         /* la carte mise en avant : bleu électrique plein */
+  --seq-0:#0D0D10; --seq-1:#3A3A40; --seq-2:#6B6B73; --seq-3:#9C9CA4; --seq-4:#C9C9CF; --seq-5:#E2E2E6;
+  /* Chiffres : grands et fins */
+  --text-app-kpi:40px;
+  --text-app-num:48px;
+  --weight-app-number:300;
+  --track-number:-0.035em;
+  --weight-title:600;
+}
+/* La carte bleue : texte blanc, le reste en blanc adouci */
+.scope-blue{
+  color-scheme:dark;
+  --color-ink:#FFFFFF; --color-body:rgba(255,255,255,.80); --color-muted:rgba(255,255,255,.64);
+  --color-hairline:rgba(255,255,255,.18); --color-hairline-strong:rgba(255,255,255,.30);
+  --color-accent:#FFFFFF; --color-action:#FFFFFF; --color-on-action:var(--p-action-light);
+  --color-info-bg:rgba(255,255,255,.14);
+}
+
+/* Dessins des métiers (cartes des campagnes, page Secteurs) : objets gris clair, la couleur vient de la matière */
+:root{
+  --art-white:#FFFFFF; --art-1:#F4F4F6; --art-2:#E2E2E6; --art-3:#C8C8CE; --art-line:#BDBDC4;
+  --art-dark:#2A2C32; --art-dark-2:#4A4D55; --art-leg:#9C9CA4; --art-shadow:rgba(13,13,16,.10);
+  --art-solar:#1C2A4A; --art-solar-line:#3E5687; --art-glare:rgba(255,255,255,.10); --art-glare-strong:rgba(255,255,255,.75);
+  --art-glass:#DCE9F7; --art-wool:#F2C94C; --art-wool-2:#D4A62A; --art-kraft:#C9A37A; --art-kraft-2:#A9825A;
+  --art-roof:#C4623B; --art-roof-2:#9E4A2A; --art-copper:#C47A45; --art-water:#9CC8F0;
+  --camp-min:300px;          /* largeur mini d'une carte de campagne */
+  --camp-art-w:150px;        /* le dessin, à droite de la carte */
+  --camp-top-h:150px;
+  --camp-bar-h:6px;
+  --hatch:repeating-linear-gradient(135deg,var(--color-surface-3) 0 2px,transparent 2px 6px);   /* reste à faire, hachuré */
+  --sec-thumb:64px;
+  --par-min:240px;
+  --par-key-w:104px;
+  --art-pick-min:92px;
+}
+
+:root{ --doc-panel-w:min(560px, calc(100vw - 2 * var(--space-4))); }   /* panneau d'un devis ou d'une facture : la page A4 doit rester lisible */
+
+/* Icônes de fichiers : tailles et couleur de l'étiquette par type (le contenu porte la couleur) */
+:root{
+  --fic-w:30px; --fic-label:9px; --fic-w-sm:24px; --fic-label-sm:8px; --fic-w-lg:42px; --fic-label-lg:11px;
+  --ft-pdf:#E0393E; --ft-doc:#3B6FF5; --ft-txt:#6B7280; --ft-md:#4A4A52; --ft-xls:#2E9E62; --ft-csv:#1E7468;
+  --ft-zip:#7C4DDB; --ft-ppt:#E8650F; --ft-json:#B07D0A; --ft-jpg:#2F8A3E; --ft-img:#D6336C; --ft-video:#2E7D32;
+  --ft-sun:#F2D27A; --ft-play:#7ED3A0;
+}
+
+/* Sélecteurs de date et d'heure (façon Apple) */
+:root{ --dp-w:320px; --dp-r:14px; --dp-cell:38px; --tw-row:36px; --tw-col-w:64px; }
+
+/* Centre de réglages */
+:root{ --set-nav-w:260px; --cx-mark:40px; }
+
+/* Espace client : résultats, avis, disponibilités */
+:root{ --res-amount-min:160px; --star:16px; --star-lg:28px; --dispo-label-w:120px; --dispo-label-w-sm:72px; --dispo-cell-h:44px; }
+
+/* Agence : nouvelles pages (poste d'appel, rendez-vous, zones, marge, marketing) */
+:root{ --call-queue-w:300px; --rv-when-w:88px; --rv-acts-w:240px; --zone-cell:34px; --zone-first-w:200px; --zone-art:36px; --mg-name-w:180px; --mg-res-w:200px; --mg-hyp-w:220px; --why-label-w:200px; --cr-thumb:72px; --sp-cell-w:96px; --cash-m-w:56px; }

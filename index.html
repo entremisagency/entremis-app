@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr" data-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entremis Espace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Outfit:wght@400;500&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo-e" viewBox="0 0 120 120"><path fill="currentColor" d="M24 26a8 8 0 0 1 8-8h58a7 7 0 0 1 0 14H38v56h52a7 7 0 0 1 0 14H32a8 8 0 0 1-8-8Z"/><rect x="48" y="53" width="60" height="14" rx="7" style="fill:var(--color-logo-bar)"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 12h15M13.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2c2.3 1.3 4.6 2 7 2.3v5.6c0 4.6-3 8.1-7 9.7-4-1.6-7-5.1-7-9.7V5.5c2.4-.3 4.7-1 7-2.3Z"/><path d="m9.2 12.2 2 2 3.6-3.8"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8.5 3v3.5M15.5 3v3.5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.8 10.6 10.4 4.9a2.4 2.4 0 0 1 3.2 0l6.6 5.7"/><path d="M5.8 9.2v8.3A2.5 2.5 0 0 0 8.3 20h7.4a2.5 2.5 0 0 0 2.5-2.5V9.2"/><path d="M10 20v-4.2a2 2 0 0 1 4 0V20"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M5 20.5V6.5A2.5 2.5 0 0 1 7.5 4h5A2.5 2.5 0 0 1 15 6.5v14M15 9.5h2.5A2.5 2.5 0 0 1 20 12v8.5M3 20.5h18M8.5 8h3M8.5 11.5h3M8.5 15h3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 7.5A3.5 3.5 0 0 1 7.5 4h9A3.5 3.5 0 0 1 20 7.5v6a3.5 3.5 0 0 1-3.5 3.5h-6.2L6 20.3V17h0a2 2 0 0 1-2-2Z"/><path d="M8.5 9.3h7M8.5 12.5h4.5"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M5 8h13.5M15 4.5 18.5 8 15 11.5M19 16H5.5M9 12.5 5.5 16 9 19.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4.5v15M4.5 12h15"/></symbol>
+  <symbol id="i-signal" viewBox="0 0 24 24"><path d="M5.5 18.5v-3.5M12 18.5V11M18.5 18.5v-12"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.3" r="3.8"/><path d="M5 19.3c0-3 3-5.1 7-5.1s7 2.1 7 5.1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.5l2.9 1.8"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6.3 15.8V11a5.7 5.7 0 0 1 11.4 0v4.8l1.3 1.6a.8.8 0 0 1-.6 1.3H5.6a.8.8 0 0 1-.6-1.3Z"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10.5M7.5 10.5 12 15l4.5-4.5M4.5 15.5v1.5A3 3 0 0 0 7.5 20h9a3 3 0 0 0 3-3v-1.5"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M8.6 3.8 10.4 7.6a1.5 1.5 0 0 1-.4 1.8l-1.3 1.1a10.6 10.6 0 0 0 4.8 4.8l1.1-1.3a1.5 1.5 0 0 1 1.8-.4l3.8 1.8c.6.3.9 1 .7 1.6l-.5 1.7a2.8 2.8 0 0 1-3 2C10.4 19.8 4.2 13.6 3.5 6.6a2.8 2.8 0 0 1 2-3l1.7-.5c.6-.2 1.3.1 1.6.7Z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".6" fill="currentColor"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.8" r="3.3"/><path d="M3.3 19c0-2.8 2.5-4.8 5.7-4.8s5.7 2 5.7 4.8"/><path d="M15.5 5.8a3 3 0 0 1 0 6M17 14.4c2.2.4 3.7 2 3.7 4.3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7"/><path d="m6.5 7 .8 11a2.2 2.2 0 0 0 2.2 2h5a2.2 2.2 0 0 0 2.2-2l.8-11M10.3 11v5M13.7 11v5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.8a2 2 0 0 1 3.4 0l7 12.2a2 2 0 0 1-1.7 3H5a2 2 0 0 1-1.7-3Z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r=".6" fill="currentColor"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19.5h16"/><path d="M5.5 15 10 10.5l3 3L19 7.5"/><path d="M15 7.5h4v4"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13.5 6.2 6.6A2.5 2.5 0 0 1 8.6 5h6.8a2.5 2.5 0 0 1 2.4 1.6l2.2 6.9V17a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3Z"/><path d="M4 13.5h4l1.2 2h5.6l1.2-2h4"/></symbol>
+  <symbol id="i-cal-plus" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8.5 3v3.5M15.5 3v3.5M12 12.8v4.6M9.7 15.1h4.6"/></symbol>
+  <symbol id="i-euro" viewBox="0 0 24 24"><path d="M17.5 6.6A6.5 6.5 0 0 0 7.3 12a6.5 6.5 0 0 0 10.2 5.4M5 10.5h8M5 13.5h7"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.6" height="6.6" rx="2.2"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="2.2"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="2.2"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="2.2"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19.5v-15M6 10.5l6-6 6 6"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 4.5v15M6 13.5l6 6 6-6"/></symbol>
+  <!-- Logos officiels des marques (tracés Simple Icons, CC0 ; « G » Google en 4 couleurs). Couleurs de marque d'origine. -->
+  <symbol id="b-google" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></symbol>
+  <symbol id="b-meta" viewBox="0 0 24 24"><path fill="#0081FB" d="M6.915 4.03c-1.968 0-3.683 1.28-4.871 3.113C.704 9.208 0 11.883 0 14.449c0 .706.07 1.369.21 1.973a6.624 6.624 0 0 0 .265.86 5.297 5.297 0 0 0 .371.761c.696 1.159 1.818 1.927 3.593 1.927 1.497 0 2.633-.671 3.965-2.444.76-1.012 1.144-1.626 2.663-4.32l.756-1.339.186-.325c.061.1.121.196.183.3l2.152 3.595c.724 1.21 1.665 2.556 2.47 3.314 1.046.987 1.992 1.22 3.06 1.22 1.075 0 1.876-.355 2.455-.843a3.743 3.743 0 0 0 .81-.973c.542-.939.861-2.127.861-3.745 0-2.72-.681-5.357-2.084-7.45-1.282-1.912-2.957-2.93-4.716-2.93-1.047 0-2.088.467-3.053 1.308-.652.57-1.257 1.29-1.82 2.05-.69-.875-1.335-1.547-1.958-2.056-1.182-.966-2.315-1.303-3.454-1.303zm10.16 2.053c1.147 0 2.188.758 2.992 1.999 1.132 1.748 1.647 4.195 1.647 6.4 0 1.548-.368 2.9-1.839 2.9-.58 0-1.027-.23-1.664-1.004-.496-.601-1.343-1.878-2.832-4.358l-.617-1.028a44.908 44.908 0 0 0-1.255-1.98c.07-.109.141-.224.211-.327 1.12-1.667 2.118-2.602 3.358-2.602zm-10.201.553c1.265 0 2.058.791 2.675 1.446.307.327.737.871 1.234 1.579l-1.02 1.566c-.757 1.163-1.882 3.017-2.837 4.338-1.191 1.649-1.81 1.817-2.486 1.817-.524 0-1.038-.237-1.383-.794-.263-.426-.464-1.13-.464-2.046 0-2.221.63-4.535 1.66-6.088.454-.687.964-1.226 1.533-1.533a2.264 2.264 0 0 1 1.088-.285z"/></symbol>
+  <symbol id="b-facebook" viewBox="0 0 24 24"><path fill="#0866FF" d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></symbol>
+  <symbol id="b-linkedin" viewBox="0 0 24 24"><path fill="#0A66C2" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></symbol>
+  <symbol id="b-googleads" viewBox="0 0 24 24"><path fill="#4285F4" d="M3.9998 22.9291C1.7908 22.9291 0 21.1383 0 18.9293s1.7908-3.9998 3.9998-3.9998 3.9998 1.7908 3.9998 3.9998-1.7908 3.9998-3.9998 3.9998zm19.4643-6.0004L15.4632 3.072C14.3586 1.1587 11.9121.5028 9.9988 1.6074S7.4295 5.1585 8.5341 7.0718l8.0009 13.8567c1.1046 1.9133 3.5511 2.5679 5.4644 1.4646 1.9134-1.1046 2.568-3.5511 1.4647-5.4644zM7.5137 4.8438L1.5645 15.1484A4.5 4.5 0 0 1 4 14.4297c2.5597-.0075 4.6248 2.1585 4.4941 4.7148l3.2168-5.5723-3.6094-6.25c-.4499-.7793-.6322-1.6394-.5878-2.4784z"/></symbol>
+  <symbol id="b-gcal" viewBox="0 0 24 24"><path fill="#4285F4" d="M18.316 5.684H24v12.632h-5.684V5.684zM5.684 24h12.632v-5.684H5.684V24zM18.316 5.684V0H1.895A1.894 1.894 0 0 0 0 1.895v16.421h5.684V5.684h12.632zm-7.207 6.25v-.065c.272-.144.5-.349.687-.617s.279-.595.279-.982c0-.379-.099-.72-.3-1.025a2.05 2.05 0 0 0-.832-.714 2.703 2.703 0 0 0-1.197-.257c-.6 0-1.094.156-1.481.467-.386.311-.65.671-.793 1.078l1.085.452c.086-.249.224-.461.413-.633.189-.172.445-.257.767-.257.33 0 .602.088.816.264a.86.86 0 0 1 .322.703c0 .33-.12.589-.36.778-.24.19-.535.284-.886.284h-.567v1.085h.633c.407 0 .748.109 1.02.327.272.218.407.499.407.843 0 .336-.129.614-.387.832s-.565.327-.924.327c-.351 0-.651-.103-.897-.311-.248-.208-.422-.502-.521-.881l-1.096.452c.178.616.505 1.082.977 1.401.472.319.984.478 1.538.477a2.84 2.84 0 0 0 1.293-.291c.382-.193.684-.458.902-.794.218-.336.327-.72.327-1.149 0-.429-.115-.797-.344-1.105a2.067 2.067 0 0 0-.881-.689zm2.093-1.931l.602.913L15 10.045v5.744h1.187V8.446h-.827l-2.158 1.557zM22.105 0h-3.289v5.184H24V1.895A1.894 1.894 0 0 0 22.105 0zm-3.289 23.5l4.684-4.684h-4.684V23.5zM0 22.105C0 23.152.848 24 1.895 24h3.289v-5.184H0v3.289z"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.6 17.5a8.5 8.5 0 1 1 14.8 0"/><path d="m12 13.5 3.3-3.8"/><circle cx="12" cy="13.8" r="1.3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="3"/><path d="M15.5 8.5V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v5.5a3 3 0 0 0 3 3h1.5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 20.8c-3.5-3-6.8-6.7-6.8-10.6a6.8 6.8 0 0 1 13.6 0c0 3.9-3.3 7.6-6.8 10.6Z"/><circle cx="12" cy="10.2" r="2.4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 6.2C4 5 5 4.2 6.2 4.4c2.3.4 4.2 1.3 5.8 2.8 1.6-1.5 3.5-2.4 5.8-2.8C19 4.2 20 5 20 6.2v10.6c0 .9-.7 1.6-1.6 1.8-2.4.4-4.5 1.3-6.4 2.9-1.9-1.6-4-2.5-6.4-2.9-.9-.2-1.6-.9-1.6-1.8Z"/><path d="M12 7.2V21"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M4.5 7.5l7.5 5.5 7.5-5.5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 14.5V4M8.5 7.5L12 4l3.5 3.5"/><path d="M7.5 11H7a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-.5"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M4.5 19.5l1.2-3.6A7.8 7.8 0 1 1 8.6 18.6z"/><path d="M9.3 9.2c.3 1.9 1.8 3.6 3.9 4.4l1-1 1.6.7-.4 1.4c-3 .2-6.4-2.7-6.9-5.9l1.3-.6.8 1.5z"/></symbol>
+  <symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7.5h9M18.5 7.5H20M4 16.5h2.5M11.5 16.5H20"/><circle cx="15.8" cy="7.5" r="2.5"/><circle cx="9" cy="16.5" r="2.5"/></symbol>
+</svg>
+
+<div id="root">
+<!-- En-tête mobile -->
+<header class="m-head">
+  <div id="m-left"></div>
+  <button class="icon-btn m-search" type="button" data-sp-open aria-label="Rechercher"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></button>
+  <a class="icon-btn bell" href="#notifications" aria-label="Notifications"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span class="dot"></span></a>
+  <a class="av" id="m-avatar" href="#reglages" aria-label="Réglages">JA</a>
+</header>
+
+<div class="app">
+  <aside class="side" aria-label="Menu">
+    <a class="logo" href="#accueil" aria-label="Entremis, accueil"><svg aria-hidden="true"><use href="#logo-e"/></svg><span>ENTREMIS</span></a>
+    <div class="camp">
+      <p class="camp-label">Espace</p>
+      <div class="seg" id="space" role="group" aria-label="Espace"></div>
+    </div>
+    <nav class="menu" id="menu" aria-label="Écrans"></nav>
+    <div class="side-foot">
+      <div class="promise client-only">
+        <b><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>Garantis ou remplacés</b>
+        <span id="promise-text">Un rendez-vous manqué ? On en place un autre.</span>
+      </div>
+      <a class="account" id="account" href="#reglages"></a>
+    </div>
+  </aside>
+
+  <main class="panel">
+    <header class="top">
+      <nav class="crumbs" id="crumbs" aria-label="Fil d'Ariane"></nav>
+      <div class="top-right">
+        <button class="search" type="button" data-sp-open aria-label="Rechercher (⌘K)"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><span>Rechercher</span><kbd>⌘K</kbd></button>
+        <a class="icon-btn bell" href="#notifications" aria-label="Notifications"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span class="dot"></span></a>
+      </div>
+    </header>
+    <div class="view" id="view"></div>
+  </main>
+</div>
+
+<nav class="tabbar" id="tabbar" aria-label="Écrans"></nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+</div>
+
+<div class="tweak">
+  <div class="tweak-box" id="tweak-box" hidden></div>
+  <button class="tweak-toggle" type="button" data-act="tweak" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg>Aperçu</button>
+</div>
+
+<script src="data.js"></script>
+<script src="team.js"></script>
+<script src="gcal.js"></script>
+<script src="ops.js"></script>
+<script src="metrics.js"></script>
+<script src="fiche.js"></script>
+<script src="scripts.js"></script>
+<script src="leads.js"></script>
+<script src="gen.js"></script>
+<script src="calc.js"></script>
+<script src="search.js"></script>
+<script src="guide.js"></script>
+<script src="process.js"></script>
+<script src="chat.js"></script>
+<script src="sectors.js"></script>
+<script src="pickers.js"></script>
+<script src="settings.js"></script>
+<script src="client-plus.js"></script>
+<script src="growth.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

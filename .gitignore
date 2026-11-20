@@ -1,0 +1,12 @@
+# Jamais de clé ni de secret sur GitHub
+.env
+.env.*
+supabase/functions/.env
+supabase/.temp/
+*.pem
+*.p8
+*.p12
+.DS_Store
+# Captures d'écran de travail et page générée pour claude.ai : pas sur le site
+captures/
+artifact.html
