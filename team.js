@@ -21,7 +21,17 @@
   }
   function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(T.list)); } catch (e) {} }
 
+  const CLOUD = () => window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on() ? window.ENTREMIS_CLOUD : null;
   async function initTasks(onChange) {
+    // Site en ligne : les tâches et les photos vont dans la base (Supabase), les mêmes pour Marc, Richard et Gianni
+    const cl = CLOUD();
+    if (cl) {
+      T.source = "loading"; T.cloud = cl.collection("tasks"); T.profiles = cl.collection("profiles"); onChange();
+      T.cloud.subscribe(rows => { T.list = rows; T.source = "cloud"; T.ready = true; onChange(); },
+        () => { T.list = []; T.source = "cloud"; T.ready = true; onChange(); EM().toast("Les tâches n'ont pas pu être lues. Rechargez la page."); });
+      T.profiles.subscribe(rows => { P.photos = {}; rows.forEach(r => { if (r.data) P.photos[r.id] = { data: r.data }; }); onChange(); }, () => {});
+      return;
+    }
     const hasRuntime = typeof window.claude === "object" && window.claude && typeof window.claude.use === "function";
     if (!hasRuntime) { T.list = loadLocal(); T.source = "local"; T.ready = true; onChange(); return; }
     T.source = "loading"; onChange();
@@ -51,12 +61,14 @@
   async function putTask(task) {
     const i = T.list.findIndex(t => t.id === task.id);
     if (i >= 0) T.list[i] = task; else T.list.push(task);
-    if (T.source === "db") { try { await T.db.collection("tasks").doc(task.id).set(clean(task)); } catch (e) { EM().toast("Pas enregistré : la base n'a pas répondu. Réessayez."); } }
+    if (T.source === "cloud") { try { await T.cloud.set(task.id, clean(task)); } catch (e) { EM().toast("Pas enregistré : la base n'a pas répondu. Réessayez."); } }
+    else if (T.source === "db") { try { await T.db.collection("tasks").doc(task.id).set(clean(task)); } catch (e) { EM().toast("Pas enregistré : la base n'a pas répondu. Réessayez."); } }
     else saveLocal();
   }
   async function removeTask(id) {
     T.list = T.list.filter(t => t.id !== id);
-    if (T.source === "db") { try { await T.db.collection("tasks").doc(id).delete(); } catch (e) { EM().toast("Pas supprimé : la base n'a pas répondu. Réessayez."); } }
+    if (T.source === "cloud") { try { await T.cloud.remove(id); } catch (e) { EM().toast("Pas supprimé : la base n'a pas répondu. Réessayez."); } }
+    else if (T.source === "db") { try { await T.db.collection("tasks").doc(id).delete(); } catch (e) { EM().toast("Pas supprimé : la base n'a pas répondu. Réessayez."); } }
     else saveLocal();
   }
 
@@ -231,7 +243,7 @@
       </section>`;
     };
     const mWho = S.boardWho || S.who;
-    const syncNote = T.source === "db" ? `${icon("users")}Partagé avec l'équipe` : T.source === "loading" ? "Connexion…" : `${icon("info")}Exemple, gardé dans ce navigateur`;
+    const syncNote = T.source === "db" || T.source === "cloud" ? `${icon("users")}Partagé avec l'équipe` : T.source === "loading" ? "Connexion…" : `${icon("info")}Exemple, gardé dans ce navigateur`;
     return `
     <div class="head">
       <div class="head-text"><h1 class="h1">Tâches de l'équipe</h1><p class="sub">À faire, et déjà fait.</p></div>
@@ -508,7 +520,8 @@
     if (act === "photo-remove") {
       EM().confirm({ title: "Retirer votre photo de profil ?", text: "Vos initiales s'afficheront à la place.", ok: "Retirer" }).then(ok => { if (!ok) return;
       delete P.photos[S.who];
-      if (T.source === "db" && T.db) T.db.collection("profiles").doc(S.who).delete().catch(() => {});
+      if (T.profiles) T.profiles.remove(S.who).catch(() => {});
+      else if (T.source === "db" && T.db) T.db.collection("profiles").doc(S.who).delete().catch(() => {});
       else { try { localStorage.setItem("entremis-app-photos", JSON.stringify(P.photos)); } catch (e) {} }
       haptic("warn"); render(); toast("Photo retirée."); });
       return true;
@@ -544,7 +557,11 @@
     try {
       const { blob, data } = await squareJpeg(file);
       const assets = T.source === "db" && window.claude ? await window.claude.use("assets") : null;
-      if (assets && T.db) {
+      if (T.profiles) {
+        // Site en ligne : la photo (320 px, quelques dizaines de Ko) est rangée dans la base, visible par l'équipe
+        await T.profiles.set(S.who, { data, updatedAt: nowIso() });
+        P.photos[S.who] = { data };
+      } else if (assets && T.db) {
         const r = await assets.upload(blob, { filename: S.who + ".jpg" });
         await T.db.collection("profiles").doc(S.who).set({ asset: r.id, updatedAt: nowIso() });
         P.photos[S.who] = { asset: r.id };

@@ -49,7 +49,8 @@ alter table public.docs enable row level security;
 create index if not exists docs_client_idx on public.docs (client_id);
 
 -- L'équipe lit et écrit tout. Un client lit seulement ce qui le concerne,
--- et n'écrit que ses résultats de visite, son avis, ses disponibilités et ses parrainages.
+-- et n'écrit que ses résultats de visite, son avis, ses disponibilités, ses parrainages et sa préparation de visite.
+-- Ce qui « le concerne » porte son identifiant (client_id) : un lead qu'on lui a donné, le résultat d'une de ses visites…
 drop policy if exists "docs : l'équipe lit et écrit tout" on public.docs;
 create policy "docs : l'équipe lit et écrit tout" on public.docs
   for all to authenticated using (public.is_team()) with check (public.is_team());
@@ -61,13 +62,22 @@ create policy "docs : un client lit ce qui le concerne" on public.docs
 drop policy if exists "docs : un client ajoute les siens" on public.docs;
 create policy "docs : un client ajoute les siens" on public.docs
   for insert to authenticated
-  with check (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals'));
+  with check (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals', 'prep'));
 
 drop policy if exists "docs : un client modifie les siens" on public.docs;
 create policy "docs : un client modifie les siens" on public.docs
   for update to authenticated
-  using (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals'))
-  with check (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals'));
+  using (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals', 'prep'))
+  with check (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals', 'prep'));
+
+-- Les scripts de visite et les métiers (parcours) : lus par tous les comptes, équipe et clients ; écrits par l'équipe seulement.
+create or replace function public.is_member() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.members m where m.user_id = auth.uid());
+$$;
+drop policy if exists "docs : tout compte lit les scripts et les métiers" on public.docs;
+create policy "docs : tout compte lit les scripts et les métiers" on public.docs
+  for select to authenticated using (collection in ('scripts', 'sectors') and public.is_member());
 
 -- 3. Les données de chacun, invisibles pour les autres ----------------------------
 create table if not exists public.private_docs (
@@ -109,6 +119,66 @@ create policy "fichiers : l'équipe dépose" on storage.objects
 drop policy if exists "fichiers : l'équipe supprime" on storage.objects;
 create policy "fichiers : l'équipe supprime" on storage.objects
   for delete to authenticated using (bucket_id = 'files' and public.is_team());
+
+-- 6 bis. Les accès des clients ----------------------------------------------------------
+-- L'équipe les crée depuis l'app (Clients > Accès clients). Ces fonctions tournent dans la base, avec ses droits :
+-- la clé secrète ne quitte jamais Supabase. Elles refusent tout compte qui n'est pas de l'équipe.
+-- Un client se connecte avec son identifiant (ex. thermo) : l'app en fait thermo@entremisagency.github.io.
+-- Le mot de passe provisoire ne sert qu'une fois : à la première connexion, l'app lui en fait choisir un.
+create or replace function public.creer_acces_client(p_login text, p_password text, p_client text)
+  returns text language plpgsql security definer set search_path = public, extensions, auth as $$
+declare
+  v_login  text := lower(trim(coalesce(p_login, '')));
+  v_client text := lower(trim(coalesce(p_client, '')));
+  v_email  text;
+  v_id     uuid := gen_random_uuid();
+begin
+  if not public.is_team() then raise exception 'Réservé à l''équipe Entremis.'; end if;
+  if v_login !~ '^[a-z0-9][a-z0-9._-]{1,39}$' then raise exception 'Identifiant : lettres et chiffres, sans espace ni accent.'; end if;
+  if v_client !~ '^[a-z0-9][a-z0-9._-]{1,39}$' then raise exception 'Client inconnu.'; end if;
+  if length(coalesce(p_password, '')) < 6 then raise exception 'Mot de passe provisoire : 6 caractères au moins.'; end if;
+  v_email := v_login || '@entremisagency.github.io';
+  if exists (select 1 from auth.users where lower(email) = v_email) then raise exception 'Cet identifiant est déjà pris.'; end if;
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                          confirmation_token, recovery_token, email_change_token_new, email_change)
+  values ('00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', v_email,
+          crypt(p_password, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), v_id, v_id::text, jsonb_build_object('sub', v_id::text, 'email', v_email, 'email_verified', true), 'email', now(), now(), now());
+  insert into public.members (user_id, who, role, client_id) values (v_id, v_login, 'client', v_client);
+  return v_login;
+end $$;
+
+-- Remettre un mot de passe provisoire à un client (il en choisira un nouveau à la connexion)
+create or replace function public.nouveau_mot_de_passe_client(p_login text, p_password text)
+  returns void language plpgsql security definer set search_path = public, extensions, auth as $$
+declare v_email text := lower(trim(coalesce(p_login, ''))) || '@entremisagency.github.io';
+begin
+  if not public.is_team() then raise exception 'Réservé à l''équipe Entremis.'; end if;
+  if length(coalesce(p_password, '')) < 6 then raise exception 'Mot de passe provisoire : 6 caractères au moins.'; end if;
+  update auth.users set encrypted_password = crypt(p_password, gen_salt('bf')),
+         raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) - 'pw_set', updated_at = now()
+   where lower(email) = v_email and id in (select user_id from public.members where role = 'client');
+  if not found then raise exception 'Accès introuvable.'; end if;
+end $$;
+
+-- Retirer l'accès d'un client (son compte disparaît ; ses données restent dans la base)
+create or replace function public.retirer_acces_client(p_login text)
+  returns void language plpgsql security definer set search_path = public, auth as $$
+declare v_email text := lower(trim(coalesce(p_login, ''))) || '@entremisagency.github.io';
+begin
+  if not public.is_team() then raise exception 'Réservé à l''équipe Entremis.'; end if;
+  delete from auth.users where lower(email) = v_email and id in (select user_id from public.members where role = 'client');
+  if not found then raise exception 'Accès introuvable.'; end if;
+end $$;
+
+revoke all on function public.creer_acces_client(text, text, text) from public, anon;
+revoke all on function public.nouveau_mot_de_passe_client(text, text) from public, anon;
+revoke all on function public.retirer_acces_client(text) from public, anon;
+grant execute on function public.creer_acces_client(text, text, text) to authenticated;
+grant execute on function public.nouveau_mot_de_passe_client(text, text) to authenticated;
+grant execute on function public.retirer_acces_client(text) to authenticated;
 
 -- 7. Les comptes de l'équipe ------------------------------------------------------------
 -- On se connecte avec son prénom (marc, richard, gianni) : l'app en fait l'adresse prenom@entremisagency.github.io,

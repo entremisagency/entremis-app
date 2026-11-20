@@ -335,7 +335,8 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
 
   /* =================== Marge par campagne =================== */
   const HYP_KEY = "entremis-app-marge";
-  const hyp = () => { try { return Object.assign({ hour: 30, minutes: 8 }, JSON.parse(localStorage.getItem(HYP_KEY) || "{}")); } catch (_) { return { hour: 30, minutes: 8 }; } };
+  const SETS = () => store("reglages");   // réglages partagés de l'agence (une ligne par sujet)
+  const hyp = () => { const r = SETS().list.find(x => x.id === "marge"); if (r) return Object.assign({ hour: 30, minutes: 8 }, r); try { return Object.assign({ hour: 30, minutes: 8 }, JSON.parse(localStorage.getItem(HYP_KEY) || "{}")); } catch (_) { return { hour: 30, minutes: 8 }; } };
   // Pub : le budget pub du mois (Finances) réparti selon les demandes reçues par chaque client. Frais fixes (outils, envois, comptable) : partagés à parts égales.
   function margins() {
     const h = hyp(), rs = rows(), costs = TD().costs || [], ads = (costs.find(c => /publicit/i.test(c.label)) || { value: 0 }).value;
@@ -547,7 +548,7 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
     }
     if (f.id === "marge-form") {
       e.preventDefault(); const fd = new FormData(f);
-      try { localStorage.setItem(HYP_KEY, JSON.stringify({ hour: Math.max(0, Number(fd.get("hour")) || 0), minutes: Math.max(0, Number(fd.get("minutes")) || 0) })); } catch (_) {}
+      SETS().put({ id: "marge", hour: Math.max(0, Number(fd.get("hour")) || 0), minutes: Math.max(0, Number(fd.get("minutes")) || 0) });
       render(); EM().toast("Marges recalculées.");
       return true;
     }
@@ -571,6 +572,6 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
     otherRdv: id => OTHER_RDV.filter(a => a.client === id),                                  // les rendez-vous d'exemple d'un client (sa vue client)
     rdvClient: id => { const a = allRdv().find(x => x.id === id); return a ? a.client : null; },   // à quel client appartient ce rendez-vous
     reset: () => { G.zone = null; G.why = null; },
-    init: render => [ZONES, PROPS, CASES, ERAS, SEOP, CTS, GOALS, SITEST].forEach(f => f().init(render))
+    init: render => [ZONES, PROPS, CASES, ERAS, SEOP, CTS, GOALS, SITEST, SETS].forEach(f => f().init(render))
   };
 })();

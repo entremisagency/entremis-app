@@ -985,7 +985,8 @@
       // Compte client : son espace seulement, sur son entreprise (la base ne lui envoie que ses propres données)
       S.lock = true; S.space = "client"; S.viewAs = m.client || ""; document.documentElement.classList.add("is-locked");
     } else {
-      if (m.who) S.who = m.who; S.space = "team";
+      if (m.who && D.team.members.some(x => x.id === m.who)) S.who = m.who; else S.shared = true;   // compte agence partagé : on choisit son portail
+      S.space = "team";
       if (location.hash === "" || location.hash === "#accueil") location.hash = "#equipe";
     }
     render();

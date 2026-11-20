@@ -71,6 +71,7 @@
       <div class="set-me">${TM().avatar(S.who, "av av-xl")}<div><b>${esc(me.name)}</b><span>${esc(me.role || "")}</span></div>
         <div class="set-me-acts"><label class="btn btn-ghost${busy ? " is-busy" : ""}"><input class="sr" type="file" accept="image/png,image/jpeg,image/webp,image/heic" data-photo>${EM().icon("user")}${busy ? "Envoi…" : url ? "Changer la photo" : "Choisir une photo"}</label>${url ? `<button class="link" type="button" data-act="photo-remove">Retirer</button>` : ""}</div></div>
       ${CL() ? row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`) + pwRow()
+          + (S.shared ? row("C'est moi", "Compte de l'agence, partagé : choisis ton portail (tes tâches, tes clients, tes alertes).", seg("data-who", TD().members.map(m => [m.id, m.name]), S.who)) : "")
         : row("C'est moi", "Ton portail : tes tâches, tes clients, tes alertes, tes connexions.", seg("data-who", TD().members.map(m => [m.id, m.name]), S.who))}
     </section>
     ${CL() ? "" : `<p class="set-note">${EM().icon("info")}Dans la maquette, n'importe qui peut choisir son nom ici. Sur le site en ligne, chacun se connecte avec son compte.</p>`}`;

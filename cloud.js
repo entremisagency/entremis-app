@@ -109,7 +109,8 @@
     if (error || !data) { gate("Ce compte n'est pas encore activé. Demandez à Marc de l'ajouter à l'équipe (dernière étape du fichier schema.sql)."); return; }
     me = { id: session.user.id, email: session.user.email, who: data.who, role: data.role, client: data.client_id };
     // Premier passage : le mot de passe provisoire donné par Marc ne sert qu'une fois, on en choisit un à soi
-    if (!pwOk && !((session.user && session.user.user_metadata) || {}).pw_set) { pwMode = "first"; passwordGate(""); return; }
+    const provisional = String(session.user.email || "").endsWith("@" + LOGIN_DOMAIN);   // compte à identifiant : mot de passe donné par Marc
+    if (provisional && !pwOk && !((session.user && session.user.user_metadata) || {}).pw_set) { pwMode = "first"; passwordGate(""); return; }
     const p = await client.from("private_docs").select("collection, id, data");
     priv = {}; (p.data || []).forEach(r => { priv[r.collection + "/" + r.id] = r.data; });
     closeGate(); readyResolve(me);
@@ -179,7 +180,8 @@
           }).subscribe();
       },
       async set(id, data) {
-        const { error } = await client.from("docs").upsert({ collection: name, id, data, client_id: data && data.client_id ? data.client_id : null });
+        const owner = data && data.client_id ? data.client_id : name === "leads" && data && data.to ? data.to : null;
+        const { error } = await client.from("docs").upsert({ collection: name, id, data, client_id: owner });
         if (error) throw error;
       },
       async remove(id) {

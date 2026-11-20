@@ -203,14 +203,14 @@
     if (t.dataset.scriptDel) { const s = scripts().list.find(x => x.id === t.dataset.scriptDel); if (!s) return true;
       EM().confirm({ title: `Supprimer le script « ${s.title} » ?`, text: "Il disparaît aussi de l'espace de vos clients." }).then(ok => { if (!ok) return; scripts().remove(s.id); render(); EM().toast("Script supprimé.", () => { scripts().put(s); render(); }); });
       return true; }
-    if (t.dataset.prepReset) { const p = prepFor(CLIENT(), t.dataset.prepReset); if (p) { prep().put(Object.assign({}, p, { done: [] })); render(); } return true; }
+    if (t.dataset.prepReset) { const p = prepFor(CLIENT(), t.dataset.prepReset); if (p) { prep().put(Object.assign({}, p, { client_id: EM().viewId(), done: [] })); render(); } return true; }
     return false;
   }
   function onChange(e, render) {
     const el = e.target.closest("[data-prep]"); if (!el) return false;
     const [sid, k] = el.dataset.prep.split(":"), cur = prepFor(CLIENT(), sid) || { id: CLIENT().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "") + "-" + sid, client: CLIENT(), script: sid, done: [] };
     const done = new Set(cur.done); el.checked ? done.add(k) : done.delete(k);
-    prep().put(Object.assign({}, cur, { done: [...done], updatedAt: new Date().toISOString().slice(0, 16) }));
+    prep().put(Object.assign({}, cur, { client_id: EM().viewId(), done: [...done], updatedAt: new Date().toISOString().slice(0, 16) }));   // la préparation du client, visible par lui
     TM().haptic(el.checked ? "done" : "tap"); render();
     return true;
   }
