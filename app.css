@@ -2783,3 +2783,6 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .card .field input,.card .field select,.card .field textarea,.card textarea,.card .pp-num input,.card .pw-wrap input{background:var(--color-white);box-shadow:inset 0 0 0 1px var(--color-hairline-strong)}
 .card .field input:focus,.card .field select:focus,.card .field textarea:focus,.card textarea:focus,.card .pp-num input:focus{box-shadow:inset 0 0 0 2px var(--color-action);outline:none}
 .card .field input::placeholder,.card textarea::placeholder{color:var(--color-muted)}
+
+/* Menus déroulants : un vrai chevron, lisible, à distance du bord (Marc, 21 nov. 2026) */
+.card .field select,.sheet .field select,.gen-form select{appearance:none;-webkit-appearance:none;background-image:var(--select-chevron);background-repeat:no-repeat;background-position:right var(--space-4) center;background-size:var(--space-4) var(--space-4);padding-right:calc(var(--space-4) * 2 + var(--space-4))}
