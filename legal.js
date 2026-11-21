@@ -7,7 +7,7 @@
   "use strict";
   const EM = () => window.EM, OPS = () => window.ENTREMIS_OPS, TM = () => window.ENTREMIS_TEAM;
   let ST = null; const ACTES = () => ST || (ST = OPS().makeStore("actes", () => []));
-  const X = { tpl: null, cid: "", vals: {}, me: false };
+  const X = { tpl: null, cid: "", vals: {}, me: false, full: false, shut: {}, mname: "" };
   const today = () => window.ENTREMIS_DATA.today.iso;
   const fr = iso => iso ? String(iso).slice(8, 10) + "/" + String(iso).slice(5, 7) + "/" + String(iso).slice(0, 4) : "";
   // Le client : ce que la fiche sait (adresse, SIRET, contact) + le contrat (prix, zone, pays)
@@ -28,16 +28,18 @@
   const T = [
     { id: "image", group: "Tournage", name: "Autorisation de droit à l'image", what: "Pour chaque personne filmée : présentateur, technicien, client témoin.",
       fields: [["p_nom", "Nom et prénom de la personne filmée", ""], ["p_adresse", "Son adresse", ""], ["p_role", "Son rôle dans la vidéo", "client témoin"], ["install", "Installateur (pour qui sont les vidéos)", c => c ? c.name : ""],
-        ["t_date", "Date du tournage", () => today(), "date"], ["t_lieu", "Lieu du tournage", ""], ["duree", "Durée d'utilisation (années)", "5"], ["territoire", "Territoire", "France et pays francophones"], ["contrepartie", "Contrepartie", "à titre gracieux"]],
+        ["t_date", "Date du tournage", () => today(), "date"], ["t_lieu", "Lieu du tournage", ""], ["duree", "Durée d'utilisation (années)", "5"], ["territoire", "Territoire", "France et pays francophones"], ["montant", "Montant si rémunérée (€)", ""]],
+      cases: [["c_contre", "Contrepartie", [["gratuit", "À titre gracieux"], ["paye", "Rémunérée"]]], ["c_mineur", "Personne mineure", [["non", "Non"], ["oui", "Oui"]]]],
+      sum: [["Personne filmée", "p_nom"], ["Rôle", "p_role"], ["Pour", "install"], ["Tournage", "t_date"], ["Lieu", "t_lieu"], ["Durée", "duree", " ans"], ["Territoire", "territoire"], ["Contrepartie", "c_contre"]],
       body: [["h", "Autorisation d'utilisation de l'image et de la voix"],
         ["p", "Je soussigné(e) {{p_nom}}, demeurant {{p_adresse}}, autorise {{ent_nom}} et {{install}} à me filmer, me photographier et enregistrer ma voix lors du tournage du {{t_date}} à {{t_lieu}}, en tant que {{p_role}}, et à utiliser ces images et enregistrements dans les conditions suivantes."],
         ["h", "1. Utilisations autorisées"], ["l", "Vidéos et photos de présentation et de promotion des services de {{install}}|Publicités sur les réseaux sociaux (Facebook, Instagram et autres), site internet, pages de contact|Montages, recadrages, sous-titres et versions courtes, sans dénaturer mes propos"],
         ["h", "2. Durée et territoire"], ["p", "Cette autorisation vaut pour {{duree}} ans à compter du tournage, sur le territoire suivant : {{territoire}}. Les contenus déjà publiés à la fin de cette durée peuvent rester en ligne sans nouvelle diffusion payante."],
-        ["h", "3. Contrepartie"], ["p", "Cette autorisation est consentie {{contrepartie}}."],
+        ["h", "3. Contrepartie"], ["p", "Cette autorisation est consentie à titre gracieux.", { c_contre: "gratuit" }], ["p", "En contrepartie, la personne filmée reçoit {{montant}} €, payés sous 30 jours. Ce montant couvre toutes les utilisations prévues ci-dessus.", { c_contre: "paye" }],
         ["h", "4. Témoignage"], ["p", "Mes propos reflètent mon expérience réelle. Aucune parole ne me sera prêtée que je n'ai pas prononcée."],
         ["h", "5. Mes données et mes droits"], ["p", "Je peux demander à tout moment l'arrêt de nouvelles diffusions en écrivant à {{ent_mail}}. Mes données sont traitées conformément au RGPD : accès, rectification, effacement et opposition à la même adresse."],
-        ["h", "6. Mineurs"], ["p", "Si la personne filmée est mineure, l'autorisation est signée par ses deux représentants légaux."],
-        ["sign", "La personne filmée (« Lu et approuvé »)|Pour {{ent_nom}}"]] },
+        ["h", "6. Personne mineure", { c_mineur: "oui" }], ["p", "La personne filmée est mineure : cette autorisation est signée par ses deux représentants légaux, qui consentent pour elle.", { c_mineur: "oui" }],
+        ["sign", "La personne filmée (« Lu et approuvé »)|Pour {{ent_nom}}", { c_mineur: "non" }], ["sign", "Les deux représentants légaux|Pour {{ent_nom}}", { c_mineur: "oui" }]] },
     { id: "acteur", group: "Tournage", name: "Contrat de prestation d'un acteur ou figurant", what: "Pour un comédien payé : rémunération, durée d'utilisation, cession.",
       fields: [["p_nom", "Nom de l'acteur", ""], ["p_adresse", "Son adresse", ""], ["p_statut", "Son statut", "auto-entrepreneur (SIRET : …)"], ["t_date", "Date du tournage", () => today(), "date"], ["t_lieu", "Lieu", ""], ["remu", "Rémunération (€ HT)", "300"], ["duree", "Durée d'utilisation (années)", "3"], ["install", "Installateur concerné", c => c ? c.name : ""]],
       body: [["h", "Contrat de prestation – tournage"],
@@ -50,18 +52,25 @@
     { id: "prestation", group: "Clients", name: "Contrat de prestation (leads exclusifs)", what: "Le contrat de la machine à leads : prix par lead, zone, engagement, contestation, vidéos.",
       fields: C_FIELDS.concat([["prix", "Prix par lead vérifié (€ HT)", c => contract(c).prix], ["plafond", "Plafond mensuel (€ HT)", c => contract(c).plafond], ["engagement", "Engagement (mois)", c => contract(c).engagement], ["zone", "Zone exclusive (codes postaux)", c => contract(c).zone],
         ["budget", "Budget pub minimum (€ par jour)", "30"], ["rappel", "Délai de rappel des prospects (heures)", "24"], ["rachat", "Rachat du tournage si départ anticipé (€ HT)", c => c && window.ENTREMIS_PILOT ? window.ENTREMIS_PILOT.engagement(c.id).rachat : 2000], ["debut", "Date de début", () => today(), "date"]]),
+      cases: [["c_pay", "Paiement", [["virement", "Virement à 30 jours"], ["sepa", "Prélèvement SEPA chaque mois"]]], ["c_excl", "Exclusivité", [["zone", "Zone exclusive"], ["aucune", "Sans exclusivité"]]], ["c_vid", "Les vidéos", [["rachat", "Au client à la fin, rachat si départ anticipé"], ["cedees", "Au client dès la livraison"], ["entremis", "Restent à Entremis"]]]],
+      sum: [["Prix par lead", "prix", " € HT"], ["Plafond mensuel", "plafond", " € HT"], ["Engagement", "engagement", " mois"], ["Début", "debut"], ["Zone", "zone"], ["Budget pub minimum", "budget", " € par jour"], ["Rappel des prospects", "rappel", " heures"], ["Paiement", "c_pay"], ["Vidéos", "c_vid"]],
       body: [["h", "Contrat de prestation de génération de leads exclusifs"],
         ["p", "Entre {{ent_nom}}, {{ent_forme}}, {{ent_siege}}, SIRET {{ent_siret}}, RCS {{ent_rcs}}, représentée par {{ent_rep}}, {{ent_qualite}}, ci-après « Entremis »,"],
         ["p", "et {{cli_nom}}, {{cli_adresse}}, SIRET {{cli_siret}}, représentée par {{cli_rep}}, ci-après « le Client »."],
         ["h", "1. Objet"], ["p", "Entremis tourne des vidéos chez le Client, gère ses campagnes publicitaires sur son propre compte Meta, qualifie les demandes des particuliers et lui transmet des leads exclusifs."],
         ["h", "2. Le lead facturé"], ["p", "Un lead est une demande d'un particulier dont le numéro de téléphone est vérifié par code SMS. Il est transmis au seul Client, jamais revendu. Trois niveaux, au même prix : rendez-vous pris, qualifié, vérifié."],
         ["p", "Ne sont pas facturés : les locataires, les adresses hors de la zone, les doublons sur 90 jours, les numéros non vérifiés."],
-        ["h", "3. Prix et facturation"], ["p", "{{prix}} € HT par lead facturable. Facture le 1er de chaque mois avec le relevé détaillé, payable à 30 jours. Plafond mensuel : {{plafond}} € HT ; une fois atteint, les publicités sont mises en pause jusqu'au mois suivant."],
+        ["h", "3. Prix et facturation"], ["p", "{{prix}} € HT par lead facturable. Facture le 1er de chaque mois avec le relevé détaillé. Plafond mensuel : {{plafond}} € HT ; une fois atteint, les publicités sont mises en pause jusqu'au mois suivant."],
+        ["p", "Paiement par virement à 30 jours à compter de la facture.", { c_pay: "virement" }],
+        ["p", "Paiement par prélèvement SEPA 10 jours après la facture, selon le mandat signé par le Client. La facture annonce le montant et la date du prélèvement.", { c_pay: "sepa" }],
         ["h", "4. Contestation"], ["p", "Le Client peut contester un lead dans les 7 jours suivant sa transmission, depuis son espace, en indiquant le motif. Une contestation acceptée retire le lead de la facture."],
-        ["h", "5. Exclusivité de zone"], ["p", "Entremis ne travaille avec aucun autre installateur sur la zone suivante : {{zone}}. L'exclusivité est maintenue tant que le Client tient un budget publicitaire d'au moins {{budget}} € par jour et rappelle ses prospects sous {{rappel}} heures. Un point est fait tous les 3 mois."],
+        ["h", "5. Zone"], ["p", "Entremis ne travaille avec aucun autre installateur sur la zone suivante : {{zone}}. L'exclusivité est maintenue tant que le Client tient un budget publicitaire d'au moins {{budget}} € par jour et rappelle ses prospects sous {{rappel}} heures. Un point est fait tous les 3 mois.", { c_excl: "zone" }],
+        ["p", "Pas d'exclusivité de zone : Entremis peut travailler avec d'autres installateurs sur la zone {{zone}}. Chaque lead reste transmis à un seul installateur.", { c_excl: "aucune" }],
         ["h", "6. Publicité"], ["p", "Les campagnes tournent sur le compte publicitaire du Client, qui paie directement Meta et voit chaque dépense. Entremis y accède comme partenaire et peut couper une publicité trop chère."],
         ["h", "7. Durée"], ["p", "Le contrat commence le {{debut}} pour {{engagement}} mois, puis se poursuit de mois en mois, résiliable avec un préavis d'un mois."],
-        ["h", "8. Les vidéos"], ["p", "Les vidéos appartiennent au Client à la fin de l'engagement. En cas de départ avant cette date, le Client peut les racheter pour {{rachat}} € HT ; sinon elles restent la propriété d'Entremis."],
+        ["h", "8. Les vidéos"], ["p", "Les vidéos appartiennent au Client à la fin de l'engagement. En cas de départ avant cette date, le Client peut les racheter pour {{rachat}} € HT ; sinon elles restent la propriété d'Entremis.", { c_vid: "rachat" }],
+        ["p", "Les vidéos appartiennent au Client dès leur livraison. Entremis peut les utiliser pour ses campagnes pendant toute la durée du contrat.", { c_vid: "cedees" }],
+        ["p", "Les vidéos restent la propriété d'Entremis, qui en concède l'usage au Client pendant la durée du contrat.", { c_vid: "entremis" }],
         ["h", "9. Conformité"], ["p", "Chaque vidéo porte la mention France Rénov' en vigueur et ne cite aucun montant d'aide. Aucun démarchage n'est fait : les particuliers viennent d'eux-mêmes. L'assistant WhatsApp se présente comme un assistant automatique."],
         ["h", "10. Données personnelles"], ["p", "Pour les données des prospects, Entremis agit comme sous-traitant du Client au sens de l'article 28 du RGPD. Les engagements figurent dans l'accord de sous-traitance annexé."],
         ["h", "11. Litiges"], ["p", "Droit français. À défaut d'accord amiable, tribunal de commerce du siège d'Entremis."],
@@ -139,11 +148,14 @@
         ["p", "Entremis cesse toute diffusion de ces vidéos et ne les réutilise pas pour un autre installateur."],
         ["sign", "Pour le Client|Pour {{ent_nom}}"]] },
     { id: "relance", group: "Paiement", name: "Relance et mise en demeure de payer", what: "Une facture impayée : pénalités et indemnité de 40 €.",
-      fields: C_FIELDS.concat([["facture", "Facture n°", ""], ["montant", "Montant TTC dû (€)", ""], ["echeance", "Échéance dépassée le", "", "date"], ["delai", "Nouveau délai (jours)", "8"], ["niveau", "Niveau", "Mise en demeure"]]),
-      body: [["h", "{{niveau}}"],
+      fields: C_FIELDS.concat([["facture", "Facture n°", ""], ["montant", "Montant TTC dû (€)", ""], ["echeance", "Échéance dépassée le", "", "date"], ["delai", "Nouveau délai (jours)", "8"]]),
+      cases: [["c_niv", "Niveau", [["relance", "Relance amiable"], ["demeure", "Mise en demeure"]]]],
+      sum: [["Facture", "facture"], ["Montant dû", "montant", " € TTC"], ["Échéance dépassée", "echeance"], ["Nouveau délai", "delai", " jours"]],
+      body: [["h", "Relance de paiement", { c_niv: "relance" }], ["h", "Mise en demeure de payer", { c_niv: "demeure" }],
         ["p", "À l'attention de {{cli_nom}}, {{cli_adresse}}."],
         ["p", "Sauf erreur de notre part, la facture n° {{facture}} d'un montant de {{montant}} € TTC, échue le {{echeance}}, reste impayée."],
-        ["p", "Nous vous demandons de la régler sous {{delai}} jours. À défaut, nous appliquerons les pénalités de retard prévues (trois fois le taux d'intérêt légal) et l'indemnité forfaitaire de 40 € pour frais de recouvrement (article L441-10 du Code de commerce), puis nous engagerons une procédure de recouvrement. Les publicités pourront être mises en pause d'ici là."],
+        ["p", "Pouvez-vous nous indiquer la date du règlement, ou la régler sous {{delai}} jours ? Nous restons disponibles si un point de la facture pose question.", { c_niv: "relance" }],
+        ["p", "Par la présente, nous vous mettons en demeure de la régler sous {{delai}} jours. À défaut, nous appliquerons les pénalités de retard prévues (trois fois le taux d'intérêt légal) et l'indemnité forfaitaire de 40 € pour frais de recouvrement (article L441-10 du Code de commerce), puis nous engagerons une procédure de recouvrement. Les publicités pourront être mises en pause d'ici là.", { c_niv: "demeure" }],
         ["p", "Si le paiement est déjà parti, merci de ne pas tenir compte de ce courrier."],
         ["sign", "|Pour {{ent_nom}}"]] },
     { id: "resiliation", group: "Clients", name: "Lettre de résiliation", what: "Mettre fin au contrat, côté Entremis ou côté client.",
@@ -175,54 +187,80 @@
   let LOGO = null;
   function logoPng() {
     if (LOGO) return LOGO;
-    LOGO = new Promise(ok => { const img = new Image(); img.onload = () => { const cv = document.createElement("canvas"); cv.width = cv.height = 480; cv.getContext("2d").drawImage(img, 0, 0, 480, 480); ok(cv.toDataURL("image/png")); }; img.onerror = () => ok(null);
+    LOGO = new Promise(ok => { const img = new Image(); img.onload = () => { const cv = document.createElement("canvas"); cv.width = cv.height = 160; cv.getContext("2d").drawImage(img, 0, 0, 160, 160); ok(cv.toDataURL("image/png")); }; img.onerror = () => ok(null);
       img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(LOGO_SVG); });
     return LOGO;
   }
-  // En-tête et pied de chaque page (logo, nom, coordonnées, numéro de page)
-  function brandPages(doc, logo, v, title) {
-    const n = doc.getNumberOfPages();
-    for (let i = 1; i <= n; i++) {
-      doc.setPage(i);
-      if (logo) doc.addImage(logo, "PNG", 20, 11, 9, 9);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...INK); doc.text(String(v.ent_nom || "Entremis"), 31.5, 17.2);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...MUTE); doc.text(String(title), 190, 17.2, { align: "right" });
-      doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(20, 24, 190, 24);
-      doc.line(20, 282, 190, 282);
-      doc.setFontSize(7.5); doc.text([v.ent_nom, v.ent_forme, v.ent_siege, v.ent_siret ? "SIRET " + v.ent_siret : "", v.ent_rcs ? "RCS " + v.ent_rcs : ""].filter(Boolean).join(" · "), 20, 287, { maxWidth: 150 });
-      doc.text(`Page ${i} sur ${n}`, 190, 287, { align: "right" });
-    }
+  const tpl = () => T.find(t => t.id === X.tpl);
+  const cases = t => t.cases || [];
+  const KIND = { Clients: "Contrat client", Tournage: "Tournage", Paiement: "Paiement", Partenaires: "Partenariat" };
+  // Les valeurs du document : coordonnées d'Entremis, puis ce que l'app sait du client, puis ce qui a été tapé
+  const vals = () => { const t = tpl(), c = cl(X.cid), base = me(); if (!t) return base;
+    t.fields.forEach(([k, , d]) => { if (X.vals[k] === undefined) X.vals[k] = typeof d === "function" ? d(c) : d; });
+    cases(t).forEach(([k, , o]) => { if (X.vals[k] === undefined) X.vals[k] = o[0][0]; });
+    return Object.assign({}, base, X.vals); };
+  const fill = (s, v) => String(s).replace(/\{\{(\w+)\}\}/g, (_, k) => { const x = v[k]; return x === undefined || x === "" ? "……" : (/^\d{4}-\d{2}-\d{2}$/.test(String(x)) ? fr(x) : String(x)); });
+  const keep = (cond, v) => !cond || Object.entries(cond).every(([k, x]) => v[k] === x);
+  const blocks = (t, v) => t.body.filter(b => keep(b[2], v));
+  const caseLabel = (t, k, v) => { const c = cases(t).find(x => x[0] === k); const o = c && c[2].find(x => x[0] === v[k]); return o ? o[1] : ""; };
+  // Les conditions particulières : le tableau en tête du document
+  const summary = (t, v) => (t.sum || t.fields.filter(f => !/^cli_/.test(f[0])).map(f => [f[1].replace(/\s*\(.*\)$/, ""), f[0]]))
+    .map(([l, k, unit]) => [l, k.startsWith("c_") ? caseLabel(t, k, v) : (v[k] === undefined || v[k] === "" ? "—" : (/^\d{4}-\d{2}-\d{2}$/.test(String(v[k])) ? fr(v[k]) : String(v[k]) + (unit || "")))]);
+  const party = (t, v) => v.cli_nom ? `${v.cli_nom} × ${v.ent_nom || "Entremis"}` : v.p_nom ? `${v.p_nom} × ${v.ent_nom || "Entremis"}` : v.part_nom ? `${v.part_nom} × ${v.ent_nom || "Entremis"}` : (v.ent_nom || "Entremis");
+  const refNo = () => { const n = ACTES().list.filter(a => a.ref).length + 1; return `ENT-${today().slice(0, 4)}-${String(n).padStart(3, "0")}`; };
+  const heading = (s, i) => i === 0 ? s : s.replace(/^(\d+)\.\s+/, "Article $1. ");
+  const plain = (t, v) => [heading(fill(t.body[0][1], v), 0), party(t, v), "", "Conditions particulières", ...summary(t, v).map(([l, x]) => `${l} : ${x}`), ""]
+    .concat(blocks(t, v).slice(1).map(([k, s]) => k === "h" ? "\n" + heading(fill(s, v), 1) : k === "l" ? fill(s, v).split("|").map(x => "• " + x).join("\n") : k === "sign" ? "\n" + fill(s, v).split("|").filter(Boolean).map(x => x + " : ________________").join("\n") : fill(s, v))).join("\n");
+
+  function paper(t, v) {
+    const esc = EM().esc, sum = summary(t, v), bs = blocks(t, v);
+    return `<article class="lx-paper">
+      <header class="lx-top"><div class="lx-brand"><svg aria-hidden="true"><use href="#logo-e"/></svg><div><b>${esc(v.ent_nom || "Entremis")}</b><span>Génération de leads pour installateurs</span></div></div>
+        <div class="lx-meta"><b>${esc(KIND[t.group] || t.group)}</b><span>Réf. ${esc(refNo())} · ${fr(today())}</span><span>Confidentiel</span></div></header>
+      <h3 class="lx-title">${esc(fill(bs[0][1], v))}</h3><p class="lx-parties">${esc(party(t, v))}</p>
+      ${sum.length ? `<section class="lx-sum"><p class="lx-sum-h">Conditions particulières</p><dl>${sum.map(([l, x]) => `<div><dt>${esc(l)}</dt><dd>${esc(x)}</dd></div>`).join("")}</dl></section>` : ""}
+      ${bs.slice(1).map(([k, s]) => k === "h" ? `<h4>${esc(heading(fill(s, v), 1))}</h4>` : k === "l" ? `<ul>${fill(s, v).split("|").map(x => `<li>${esc(x)}</li>`).join("")}</ul>`
+        : k === "sign" ? `<div class="lx-sign">${fill(s, v).split("|").filter(Boolean).map(x => `<div><span>${esc(x)}</span><i>Date et signature</i></div>`).join("")}</div>` : `<p>${esc(fill(s, v))}</p>`).join("")}
+      <footer class="lx-foot">Fait à ${esc(v.ent_ville || "……")}, le ${fr(today())}, en deux exemplaires.</footer></article>`;
   }
 
-  const tpl = () => T.find(t => t.id === X.tpl);
-  const vals = () => { const t = tpl(), c = cl(X.cid), base = me(); (t ? t.fields : []).forEach(([k, , d]) => { if (X.vals[k] === undefined) X.vals[k] = typeof d === "function" ? d(c) : d; }); return Object.assign({}, base, X.vals); };
-  const fill = (s, v) => String(s).replace(/\{\{(\w+)\}\}/g, (_, k) => { const x = v[k]; return x === undefined || x === "" ? "……" : (/^\d{4}-\d{2}-\d{2}$/.test(String(x)) ? fr(x) : String(x)); });
-  function paper(t, v) {
-    const esc = EM().esc;
-    return `<article class="paper legal-paper"><header><span class="legal-brand"><svg aria-hidden="true"><use href="#logo-e"/></svg><b>${esc(v.ent_nom || "Entremis")}</b></span><span>${esc(t.name)}</span></header>
-      ${t.body.map(([k, s]) => k === "h" ? `<h3>${esc(fill(s, v))}</h3>` : k === "l" ? `<ul>${fill(s, v).split("|").map(x => `<li>${esc(x)}</li>`).join("")}</ul>`
-        : k === "sign" ? `<div class="legal-sign">${fill(s, v).split("|").map(x => `<div><span>${esc(x)}</span><i></i></div>`).join("")}</div>` : `<p>${esc(fill(s, v))}</p>`).join("")}
-      <footer>Fait à ${esc(v.ent_ville || "……")}, le ${fr(today())}, en deux exemplaires.</footer></article>`;
-  }
-  function view(S) {
-    const esc = EM().esc, icon = EM().icon, t = tpl();
-    if (!t) return `<div class="head"><div class="head-text"><h1 class="h1">Documents juridiques</h1><p class="sub">Choisissez un modèle : il se remplit avec ce que l'app sait du client.</p></div>
+  function list(S) {
+    const esc = EM().esc, icon = EM().icon;
+    return `<div class="head"><div class="head-text"><h1 class="h1">Documents juridiques</h1><p class="sub">Choisissez un modèle : il se remplit avec ce que l'app sait du client.</p></div>
         <div class="head-actions"><button class="btn btn-ghost" type="button" data-legal-me>${icon("sliders")}Coordonnées d'Entremis</button></div></div>
       ${X.me ? meCard() : ""}
       ${GROUPS.map(g => `<section class="lg-group"><h2 class="h2">${g} <span class="muted tabnum">${T.filter(x => x.group === g).length}</span></h2><div class="lg-grid">${T.filter(x => x.group === g).map(x => `<button class="lg-tile" type="button" data-legal-tpl="${x.id}"><span class="lg-ico">${icon(ICONS[x.id] || "book")}</span><span class="lg-txt"><b>${esc(x.name)}</b><small>${esc(x.what)}</small></span><span class="lg-go">Remplir ${icon("arrow")}</span></button>`).join("")}</div></section>`).join("")}
       ${recent()}
       <p class="set-note">${icon("info")}Modèles de travail, pas un conseil juridique : à faire relire par un avocat ou un juriste avant le premier usage. Les coordonnées bancaires ne sont jamais saisies dans l'app.</p>`;
-    const v = vals(), c = cl(X.cid);
+  }
+  const models = () => ACTES().list.filter(a => a.kind === "model" && a.tpl === X.tpl && (a.cid || "") === (X.cid || ""));
+  function view(S) {
+    const t = tpl(); if (!t) return list(S);
+    const esc = EM().esc, icon = EM().icon, v = vals(), ms = models(), clientFields = t.fields.filter(f => /^cli_/.test(f[0])), other = t.fields.filter(f => !/^cli_/.test(f[0]));
+    const input = ([k, l, , type]) => `<label class="field"><span>${esc(l)}</span><input name="${k}" ${type === "date" ? 'type="date"' : ""} value="${esc(v[k] == null ? "" : v[k])}"></label>`;
+    const sec = (id, title, sub, inner) => `<details class="lx-sec" ${X.shut[id] ? "" : "open"} data-lx-sec="${id}"><summary><span><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span>${icon("chev")}</summary><div class="lx-sec-body">${inner}</div></details>`;
     return `<div class="head"><div class="head-text"><button class="link" type="button" data-legal-back>${icon("back")} Tous les modèles</button><h1 class="h1">${esc(t.name)}</h1><p class="sub">${esc(t.what)}</p></div></div>
-      <div class="gen">
-        <form class="card gen-form" id="legal-form" autocomplete="off">
-          <div class="field"><label for="legal-cli">Client</label><select id="legal-cli" name="__cid"><option value="">Aucun</option>${EM().allClients().map(x => `<option value="${esc(x.id)}"${x.id === X.cid ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
-          ${t.fields.map(([k, l, , type]) => `<label class="field"><span>${esc(l)}</span><input name="${k}" ${type === "date" ? 'type="date"' : ""} value="${esc(v[k] == null ? "" : v[k])}"></label>`).join("")}
-          ${!me().ent_siret ? `<p class="kpi-note t-warn">${icon("alert")} Les coordonnées d'Entremis (SIRET, siège…) sont à compléter une fois : bouton « Coordonnées d'Entremis » sur la page des modèles.</p>` : ""}
-          <div class="form-actions"><button class="btn btn-primary" type="submit">${icon("download")}Télécharger le PDF</button></div>
+      <div class="lx">
+        <form class="lx-form" id="legal-form" autocomplete="off">
+          <div class="lx-sec lx-first">
+            <div class="lx-sec-body">
+              <div class="field"><label for="legal-cli">Client</label><select id="legal-cli" name="__cid"><option value="">Aucun client</option>${EM().allClients().map(x => `<option value="${esc(x.id)}"${x.id === X.cid ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
+              <div class="field"><span class="lx-lab">Modèles enregistrés</span>${ms.length ? `<div class="lx-models">${ms.map(m => `<span class="lx-model"><button class="pill" type="button" data-lx-load="${esc(m.id)}">${esc(m.name)}</button><button class="icon-btn" type="button" data-lx-del="${esc(m.id)}" aria-label="Supprimer le modèle ${esc(m.name)}">${icon("trash")}</button></span>`).join("")}</div>` : `<p class="field-help">Aucun modèle${X.cid ? " pour ce client" : ""}. Réglez le document, puis enregistrez-le sous un nom pour le retrouver.</p>`}
+                <div class="lx-save"><input name="__mname" placeholder="Ex. : Standard" maxlength="40" value="${esc(X.mname || "")}" aria-label="Nom du modèle"><button class="btn btn-ghost" type="button" data-lx-save>${icon("download")}Enregistrer le modèle</button></div></div>
+            </div>
+          </div>
+          ${clientFields.length ? sec("client", "Le client", "Rempli depuis sa fiche, modifiable ici.", clientFields.map(input).join("")) : ""}
+          ${sec("conditions", "Conditions", "", `<div class="lx-grid">${other.map(input).join("")}</div>`)}
+          ${cases(t).length ? sec("cas", "Cas de figure", "Chaque choix réécrit les clauses du document.", cases(t).map(([k, l, o]) => `<div class="field"><label for="lx-${k}">${esc(l)}</label><select id="lx-${k}" name="${k}">${o.map(([x, lab]) => `<option value="${x}"${v[k] === x ? " selected" : ""}>${esc(lab)}</option>`).join("")}</select></div>`).join("")) : ""}
+          ${!me().ent_siret ? `<p class="kpi-note t-warn lx-warn">${icon("alert")} Coordonnées d'Entremis à compléter une fois (SIRET, siège…) : bouton « Coordonnées d'Entremis » sur la page des modèles.</p>` : ""}
         </form>
-        <div class="gen-preview" data-legal-preview>${paper(t, v)}</div>
-      </div>`;
+        <section class="lx-doc">
+          <header class="lx-bar"><div><b>Document</b><span>${esc(t.name)} · ${esc(party(t, v))} · Réf. ${esc(refNo())}</span></div>
+            <div class="lx-acts"><button class="icon-btn lx-btn" type="button" data-lx-copy aria-label="Copier le texte">${icon("copy")}</button><button class="icon-btn lx-btn" type="button" data-lx-full aria-label="Plein écran">${icon("eye")}</button><button class="btn btn-primary" type="submit" form="legal-form">${icon("download")}PDF</button></div></header>
+          <div class="lx-scroll" data-legal-preview>${paper(t, v)}</div>
+        </section>
+      </div>
+      ${X.full ? `<div class="lx-full" role="dialog" aria-label="Document en plein écran"><div class="lx-full-bar"><b>${esc(t.name)}</b><button class="btn btn-ghost" type="button" data-lx-full>Fermer</button></div><div class="lx-full-scroll">${paper(t, v)}</div></div>` : ""}`;
   }
   function meCard() {
     const v = me(), esc = EM().esc;
@@ -231,45 +269,77 @@
       <div class="form-actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div></form>`;
   }
   function recent() {
-    const list = ACTES().list.filter(a => a.id !== "me").sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1).slice(0, 8), esc = EM().esc;
+    const list = ACTES().list.filter(a => a.id !== "me" && a.kind !== "model").sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1).slice(0, 8), esc = EM().esc;
     if (!list.length) return "";
-    return `<section class="card"><div class="card-head"><h2 class="h2">Derniers documents faits</h2></div><ul class="history">${list.map(a => `<li>${EM().icon("book")}<div><b>${esc(a.name)}</b><span>${esc(a.client || "")} – ${fr(a.at)} – ${esc(TM().member(a.by).name)}</span></div></li>`).join("")}</ul></section>`;
+    return `<section class="card"><div class="card-head"><h2 class="h2">Derniers documents faits</h2></div><ul class="history">${list.map(a => `<li>${EM().icon("book")}<div><b>${esc(a.name)}${a.ref ? " · " + esc(a.ref) : ""}</b><span>${esc(a.client || "")} – ${fr(a.at)} – ${esc(TM().member(a.by).name)}</span></div></li>`).join("")}</ul></section>`;
   }
+
+  // Le PDF : même mise en page que l'aperçu
   async function pdf(S) {
-    const t = tpl(), v = vals(), jsPDF = await window.ENTREMIS_GEN.loadPdf(), logo = await logoPng(), doc = new jsPDF({ unit: "mm", format: "a4" }), L = 20, W = 170, TOP = 34, BOTTOM = 274;
-    let y = TOP;
-    const need = h => { if (y + h > BOTTOM) { doc.addPage(); y = TOP; } };
-    const body = (size, color, bold) => { doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(...color); };
-    t.body.forEach(([k, s], idx) => {
+    const t = tpl(), v = vals(), ref = refNo(), jsPDF = await window.ENTREMIS_GEN.loadPdf(), logo = await logoPng(), doc = new jsPDF({ unit: "mm", format: "a4" }), L = 22, R = 188, W = R - L, TOP = 30, BOTTOM = 272;
+    let y = 0;
+    const font = (size, color, bold) => { doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(...color); };
+    const head = () => {
+      if (logo) doc.addImage(logo, "PNG", L, 13, 8, 8);
+      font(10.5, INK, true); doc.text(String(v.ent_nom || "Entremis"), L + 10.5, 16.6); font(7.5, MUTE); doc.text("Génération de leads pour installateurs", L + 10.5, 20.4);
+      font(7.5, INK, true); doc.text(KIND[t.group] || t.group, R, 14.5, { align: "right" }); font(7.5, MUTE); doc.text(`Réf. ${ref} · ${fr(today())}`, R, 18.3, { align: "right" }); doc.text("Confidentiel", R, 22.1, { align: "right" });
+      doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(L, 25, R, 25);
+    };
+    const page = () => { doc.addPage(); head(); y = TOP + 2; };
+    const need = h => { if (y + h > BOTTOM) page(); };
+    head(); y = 44;
+    const bs = blocks(t, v);
+    font(18, INK, true); const tl = doc.splitTextToSize(fill(bs[0][1], v), W - 20); tl.forEach((l, i) => doc.text(l, (L + R) / 2, y + i * 7.5, { align: "center" })); y += tl.length * 7.5;
+    font(9, MUTE); doc.text(party(t, v), (L + R) / 2, y + 1, { align: "center" }); y += 6;
+    doc.setFillColor(...BLUE); doc.roundedRect((L + R) / 2 - 8, y, 16, 1.3, 0.65, 0.65, "F"); y += 10;
+    const sum = summary(t, v);
+    if (sum.length) {
+      font(9.5, INK, true); doc.text("Conditions particulières", L, y); y += 3;
+      const colW = (W - 8) / 2, rows = Math.ceil(sum.length / 2);
+      for (let r = 0; r < rows; r++) {
+        const cells = [sum[r * 2], sum[r * 2 + 1]].filter(Boolean), hs = cells.map(([, x]) => doc.splitTextToSize(String(x), colW - 34).length);
+        const h = Math.max(...hs) * 4 + 4; need(h);
+        cells.forEach(([l, x], i) => { const X0 = L + i * (colW + 8); doc.setDrawColor(...LINE); doc.line(X0, y, X0 + colW, y); font(7.8, MUTE); doc.text(doc.splitTextToSize(l, 30), X0, y + 4.2); font(8.6, INK); doc.text(doc.splitTextToSize(String(x), colW - 34), X0 + 34, y + 4.2); });
+        y += h;
+      }
+      doc.setDrawColor(...LINE); doc.line(L, y, L + colW, y); doc.line(L + colW + 8, y, R, y); y += 8;
+    }
+    bs.slice(1).forEach(([k, s]) => {
       const txt = fill(s, v);
-      if (k === "h" && idx === 0) {   // le titre du document, avec le trait bleu de la marque
-        body(19, INK, true); const ls = doc.splitTextToSize(txt, W); need(ls.length * 8 + 14); doc.text(ls, L, y + 4); y += ls.length * 8 + 1;
-        doc.setFillColor(...BLUE); doc.roundedRect(L, y, 18, 1.6, 0.8, 0.8, "F"); y += 9;
-      } else if (k === "h") { body(10.5, INK, true); const ls = doc.splitTextToSize(txt, W); need(ls.length * 5 + 10); y += 3; doc.text(ls, L, y); y += ls.length * 5 + 1.5; }
-      else if (k === "l") { body(9.6, INK); txt.split("|").forEach(x => { const ls = doc.splitTextToSize(x, W - 7); need(ls.length * 4.7 + 1.5); doc.setFillColor(...BLUE); doc.circle(L + 1.6, y - 1.2, 0.7, "F"); doc.text(ls, L + 6, y); y += ls.length * 4.7 + 1.5; }); y += 1; }
-      else if (k === "sign") {
-        const cols = txt.split("|"); need(46); y += 6;
-        cols.forEach((x, i) => { if (!x && cols.length > 1 && i === 0) return; const X0 = cols.length === 1 || (!cols[0] && i === 1) ? (cols.length === 1 ? L : L + 88) : L + i * 88;
-          doc.setFillColor(...SOFT); doc.setDrawColor(...LINE); doc.roundedRect(X0, y, 82, 36, 2.5, 2.5, "FD");
-          body(8.5, MUTE); doc.text(doc.splitTextToSize(x || "Signature", 74), X0 + 4, y + 6); doc.text("Date et signature", X0 + 4, y + 32); });
-        y += 42;
-      } else { body(9.6, INK); const ls = doc.splitTextToSize(txt, W); need(ls.length * 4.7 + 2.5); doc.text(ls, L, y); y += ls.length * 4.7 + 2.5; }
+      if (k === "h") { font(9.8, INK, true); const ls = doc.splitTextToSize(heading(txt, 1), W); need(ls.length * 4.8 + 9); y += 2.5; doc.text(ls, L, y); y += ls.length * 4.8 + 0.8; }
+      else if (k === "l") { font(9, INK); txt.split("|").forEach(x => { const ls = doc.splitTextToSize(x, W - 6); need(ls.length * 4.4 + 1.4); doc.setFillColor(...BLUE); doc.circle(L + 1.4, y - 1.15, 0.65, "F"); doc.text(ls, L + 5, y); y += ls.length * 4.4 + 1.4; }); y += 1; }
+      else if (k === "sign") { const cols = txt.split("|").filter(Boolean); need(44); y += 5; const w = cols.length > 1 ? (W - 8) / 2 : (W - 8) / 2;
+        cols.forEach((x, i) => { const X0 = cols.length === 1 ? R - w : L + i * (w + 8); doc.setFillColor(...SOFT); doc.setDrawColor(...LINE); doc.roundedRect(X0, y, w, 34, 2.4, 2.4, "FD"); font(8.4, INK, true); doc.text(doc.splitTextToSize(x, w - 8), X0 + 4, y + 6); font(7.6, MUTE); doc.text("Date et signature", X0 + 4, y + 30); }); y += 40; }
+      else { font(9, INK); const ls = doc.splitTextToSize(txt, W); need(ls.length * 4.4 + 2.6); doc.text(ls, L, y); y += ls.length * 4.4 + 2.6; }
     });
-    need(12); body(9, MUTE); doc.text(`Fait à ${v.ent_ville || "……"}, le ${fr(today())}, en deux exemplaires.`, L, y + 5);
-    brandPages(doc, logo, v, t.name);
-    const name = `${t.name} – ${(cl(X.cid) || {}).name || v.p_nom || v.part_nom || "Entremis"}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
+    need(10); font(8.4, MUTE); doc.text(`Fait à ${v.ent_ville || "……"}, le ${fr(today())}, en deux exemplaires.`, L, y + 4);
+    const n = doc.getNumberOfPages();
+    for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setDrawColor(...LINE); doc.line(L, 280, R, 280); font(7, MUTE);
+      doc.text([v.ent_nom, v.ent_forme, v.ent_siege, v.ent_siret ? "SIRET " + v.ent_siret : ""].filter(Boolean).join(" · "), L, 284.5, { maxWidth: 140 }); doc.text(`${ref} · page ${i} sur ${n}`, R, 284.5, { align: "right" }); }
+    return { doc, ref, name: `${t.name} – ${(cl(X.cid) || {}).name || v.p_nom || v.part_nom || "Entremis"}.pdf`.replace(/[\\/:*?"<>|]/g, "-") };
+  }
+  async function download(S) {
+    const t = tpl(), v = vals(), { doc, ref, name } = await pdf(S);
     doc.save(name);
-    ACTES().put({ id: "a" + Date.now().toString(36), tpl: t.id, name: t.name, client: (cl(X.cid) || {}).name || v.p_nom || v.part_nom || "", cid: X.cid, at: new Date().toISOString().slice(0, 16), by: S.who });
-    TM().haptic("done"); EM().toast("PDF prêt. À relire avant de le faire signer.");
+    ACTES().put({ id: "a" + Date.now().toString(36), ref, tpl: t.id, name: t.name, client: (cl(X.cid) || {}).name || v.p_nom || v.part_nom || "", cid: X.cid, at: new Date().toISOString().slice(0, 16), by: S.who });
+    TM().haptic("done"); EM().toast(`PDF ${ref} prêt. À relire avant de le faire signer.`);
   }
 
   function onClick(e, S, render) {
-    const t = e.target.closest("[data-legal-tpl],[data-legal-back],[data-legal-me],[data-legal-for]"); if (!t) return false;
+    const t = e.target.closest("[data-legal-tpl],[data-legal-back],[data-legal-me],[data-legal-for],[data-lx-copy],[data-lx-full],[data-lx-save],[data-lx-load],[data-lx-del]"); if (!t) return false;
     const d = t.dataset;
     if (d.legalFor) { X.cid = d.legalFor; X.tpl = null; return false; }   // le lien de la fiche client : on garde le client, la navigation continue
-    if (d.legalTpl) { X.tpl = d.legalTpl; X.vals = {}; render(); window.scrollTo(0, 0); return true; }
+    if (d.legalTpl) { X.tpl = d.legalTpl; X.vals = {}; X.mname = ""; render(); window.scrollTo(0, 0); return true; }
     if ("legalBack" in d) { X.tpl = null; X.vals = {}; render(); return true; }
     if ("legalMe" in d) { X.me = !X.me; render(); return true; }
+    if ("lxCopy" in d) { const txt = plain(tpl(), vals()); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => EM().toast("Texte copié."), () => EM().toast("La copie n'a pas marché.")); return true; }
+    if ("lxFull" in d) { X.full = !X.full; render(); return true; }
+    if ("lxSave" in d) { const name = (X.mname || "").trim() || "Standard", keepV = Object.assign({}, X.vals);
+      const cur = models().find(m => m.name.toLowerCase() === name.toLowerCase());
+      ACTES().put({ id: cur ? cur.id : "m" + Date.now().toString(36), kind: "model", tpl: X.tpl, cid: X.cid || "", name, vals: keepV, by: S.who, at: new Date().toISOString().slice(0, 16) });
+      X.mname = ""; TM().haptic("done"); render(); EM().toast(`Modèle « ${name} » enregistré.`); return true; }
+    if (d.lxLoad) { const m = ACTES().list.find(a => a.id === d.lxLoad); if (m) { X.vals = Object.assign({}, m.vals); render(); EM().toast(`Modèle « ${m.name} » chargé.`); } return true; }
+    if (d.lxDel) { EM().confirm({ title: "Supprimer ce modèle ?", text: "Les documents déjà faits ne changent pas.", ok: "Supprimer" }).then(y => { if (!y) return; ACTES().remove(d.lxDel); render(); }); return true; }
     return false;
   }
   function onSubmit(e, S, render) {
@@ -277,15 +347,20 @@
     if (id === "legal-me-form") { e.preventDefault(); const fd = new FormData(e.target), vals = {}; ME_FIELDS.forEach(([k]) => { vals[k] = String(fd.get(k) || "").trim(); });
       ACTES().put({ id: "me", vals, by: S.who, at: new Date().toISOString().slice(0, 16) }); X.me = false; TM().haptic("done"); render(); EM().toast("Coordonnées enregistrées pour tous les modèles."); return true; }
     if (id !== "legal-form") return false;
-    e.preventDefault(); pdf(S).catch(() => EM().toast("Le PDF n'a pas pu être créé. Vérifiez la connexion, puis réessayez.")); return true;
+    e.preventDefault(); download(S).catch(() => EM().toast("Le PDF n'a pas pu être créé. Vérifiez la connexion, puis réessayez.")); return true;
   }
+  const refresh = () => { const pv = document.querySelector("[data-legal-preview]"), t = tpl(); if (pv && t) pv.innerHTML = paper(t, vals()); };
   document.addEventListener("input", e => {
-    const f = e.target.closest && e.target.closest("#legal-form"); if (!f) return;
-    if (e.target.name === "__cid") { X.cid = e.target.value; X.vals = {}; EM().render(); return; }
-    X.vals[e.target.name] = e.target.value;
-    const pv = document.querySelector("[data-legal-preview]"), t = tpl(); if (pv && t) pv.innerHTML = paper(t, vals());
+    const f = e.target.closest && e.target.closest("#legal-form"); if (!f || e.target.tagName === "SELECT") return;
+    if (e.target.name === "__mname") { X.mname = e.target.value; return; }
+    X.vals[e.target.name] = e.target.value; refresh();
   });
-  document.addEventListener("change", e => { if (e.target.name === "__cid" && e.target.closest("#legal-form")) { X.cid = e.target.value; X.vals = {}; EM().render(); } });
+  document.addEventListener("change", e => {
+    const f = e.target.closest && e.target.closest("#legal-form"); if (!f || e.target.tagName !== "SELECT") return;
+    if (e.target.name === "__cid") { X.cid = e.target.value; X.vals = {}; EM().render(); return; }
+    X.vals[e.target.name] = e.target.value; refresh();
+  });
+  document.addEventListener("toggle", e => { const s = e.target.closest && e.target.closest("[data-lx-sec]"); if (s) X.shut[s.dataset.lxSec] = !s.open; }, true);
 
-  window.ENTREMIS_LEGAL = { logoPng, view, onClick, onSubmit, TEMPLATES: T, init: render => ACTES().init(render), reset: () => { X.tpl = null; X.vals = {}; X.me = false; } };
+  window.ENTREMIS_LEGAL = { logoPng, view, onClick, onSubmit, TEMPLATES: T, makePdf: pdf, init: render => ACTES().init(render), reset: () => { X.tpl = null; X.vals = {}; X.me = false; X.full = false; } };
 })();
