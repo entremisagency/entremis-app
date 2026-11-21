@@ -27,7 +27,7 @@
   function paper(s) {
     const esc = EM().esc, c = (s.to && FI().info(s.to)) || { name: s.client || "Client", contact: "", address: "", siret: "" }, t = totals(s);
     return `<article class="paper" aria-label="Aperçu du document">
-      <header class="paper-top"><div><p class="paper-brand">ENTREMIS</p><p>${esc(ME.email)}</p><p>${esc(ME.address)}</p><p>${esc(ME.siret)}</p></div>
+      <header class="paper-top"><div><p class="paper-brand legal-brand"><svg aria-hidden="true"><use href="#logo-e"/></svg><b>ENTREMIS</b></p><p>${esc(ME.email)}</p><p>${esc(ME.address)}</p><p>${esc(ME.siret)}</p></div>
         <div class="paper-id"><p class="paper-kind">${s.kind === "devis" ? "Devis" : "Facture"}</p><p class="tabnum">${esc(number(s))}</p><p>Le ${frDate(s.date)}</p></div></header>
       <div class="paper-to"><p class="paper-label">${s.kind === "devis" ? "Pour" : "Facturé à"}</p><p><b>${esc(c.name)}</b></p>${c.contact ? `<p>À l'attention de ${esc(c.contact)}</p>` : ""}<p>${esc(c.address || "")}</p>${c.siret ? `<p>SIRET ${esc(c.siret)}</p>` : ""}</div>
       <table class="paper-lines"><thead><tr><th>Désignation</th><th>Qté</th><th>Prix unitaire HT</th><th>Total HT</th></tr></thead>
@@ -90,6 +90,7 @@
     const m = n.match(/^(d|q|pu)-(\d+)$/);
     if (m) s.lines[+m[2]][m[1]] = e.target.value;
     else if (["to", "date", "due", "tva", "note"].includes(n)) s[n] = e.target.value;
+    if (n === "to" && window.ENTREMIS_MACHINE) { const v = window.ENTREMIS_MACHINE.vatFor(s.to); if (v.note) { s.tva = "0"; if (!String(s.note).includes(v.note)) s.note = (s.note ? s.note + " " : "") + v.note; setTimeout(() => EM().render(), 0); } }
     const pv = document.querySelector("[data-gen-preview]"); if (pv) pv.innerHTML = paper(s);
     const tt = document.querySelector("[data-gen-total]"); if (tt) tt.textContent = money(totals(s).ttc);
     const tb = document.querySelector("[data-gen-total-bar]"); if (tb) tb.textContent = money(totals(s).ttc);
@@ -148,7 +149,10 @@
     const c = (s.to && FI().info(s.to)) || { name: s.client || "Client" }, t = totals(s), no = s.number || number(s), doc = new jsPDF({ unit: "mm", format: "a4" });
     const ink = [6, 18, 28], mute = [100, 122, 141], L = 20, R = 190;
     let y = 24;
-    doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(...ink); doc.text("ENTREMIS", L, y);
+    const logo = window.ENTREMIS_LEGAL ? await window.ENTREMIS_LEGAL.logoPng() : null;
+    if (logo) doc.addImage(logo, "PNG", L, y - 7, 9, 9);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(...ink); doc.text("ENTREMIS", logo ? L + 11.5 : L, y);
+    doc.setFillColor(47, 91, 234); doc.roundedRect(R - 18, y + 14, 18, 1.4, 0.7, 0.7, "F");
     doc.setFontSize(20); doc.text(s.kind === "devis" ? "Devis" : "Facture", R, y, { align: "right" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...mute);
     [ME.email, ME.address, ME.siret].forEach((l, i) => doc.text(l, L, y + 6 + i * 4.5));

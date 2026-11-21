@@ -20,7 +20,7 @@
     ["ia", "Ton IA et tes outils (MCP)"], ["bot", "Bots et messages"], ["auto", "Automatisations"], ["outils", "Agenda et mail"], ["socle", "Le socle, à l'étape Supabase et GitHub"]
   ];
   const CONNECT = [
-    { id: "claude", group: "ia", name: "Claude", mark: "C", what: "Ton assistant : rédige, résume, prépare les messages.", can: ["Lire les leads et les fiches que tu lui ouvres", "Préparer un message, tu valides avant l'envoi"] },
+    { id: "claude", group: "ia", name: "Claude", mark: "C", live: true, what: "Branché par la clé MCP ci-dessus : il lit l'app et crée des tâches.", can: ["Lire les leads et les fiches que tu lui ouvres", "Préparer un message, tu valides avant l'envoi"] },
     { id: "chatgpt", group: "ia", name: "ChatGPT", mark: "G", what: "Un autre assistant, si tu préfères.", can: ["Lire les leads et les fiches que tu lui ouvres", "Préparer un message, tu valides avant l'envoi"] },
     { id: "mcp", group: "ia", name: "Serveur MCP", mark: "M", what: "Donne à ton IA un accès à un outil : base, agenda, fichiers.", field: "Adresse du serveur", ph: "https://…", can: ["Ce que le serveur autorise, rien de plus", "Seulement sur ton compte"] },
     { id: "telegram", group: "bot", name: "Bot Telegram", mark: "T", what: "Tes alertes et tes tâches du jour sur Telegram.", field: "Nom du bot", ph: "@…", can: ["T'envoyer tes alertes", "Noter une tâche quand tu lui écris"] },
@@ -107,7 +107,7 @@
       : perm === "absent" || (ios && !standalone) ? `<span class="state state-neutral">Pas ici</span>` : `<button class="btn btn-ghost" type="button" data-alerts-on>${EM().icon("bell")}Activer</button>`;
     const devSub = perm === "denied" ? "Refusées dans ce navigateur : à rétablir dans ses réglages (site entremisagency.github.io)."
       : ios && !standalone ? "Sur iPhone : ajoutez d'abord l'app à l'écran d'accueil (Partager, puis « Sur l'écran d'accueil »), puis ouvrez-la depuis l'icône."
-      : "Un nouveau lead, une demande du site, un nouveau rendez-vous : une alerte sur cet appareil, tant que l'app est ouverte ou en arrière-plan.";
+      : "Un nouveau lead, une demande du site, un rendez-vous, une contestation, une tâche : une alerte sur cet appareil, même quand l'app est fermée.";
     return `<section class="set-group">${CL() ? row("Alertes sur cet appareil", devSub, dev) : ""}${linkRow("#notifications", "Ce qui vous prévient", "Choisir les événements, et comment : dans l'app, par e-mail, par SMS.")}
       ${row("Non lues", n ? `${n} notification${n > 1 ? "s" : ""} à lire` : "Tout est lu", `<a class="btn btn-ghost" href="#notifications">${EM().icon("bell")}Voir</a>`)}</section>`;
   }
@@ -120,6 +120,36 @@
       ${row("Vibrations", "Sur téléphone, quand on choisit, enregistre, supprime ou change de page. Sur iPhone : iOS 18 ou plus.", seg("data-set-haptics", [["on", "Oui"], ["off", "Non"]], haptics()))}</section>
       <p class="set-note">${EM().icon("info")}Gardé dans ce navigateur. Le logo reste en Outfit.</p>`;
   }
+  /* ---------- Ton Claude (MCP) : une clé personnelle, l'adresse à coller dans Claude ---------- */
+  const MC = { list: undefined, loading: false, fresh: null, busy: false };
+  function loadKeys() { const c = CL(); if (!c || MC.loading) return; MC.loading = true; c.mcpKeys().then(l => { MC.list = l; MC.loading = false; EM().render(); }); }
+  const when = iso => iso ? new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "jamais";
+  function mcpSection(S) {
+    const esc = EM().esc, icon = EM().icon, c = CL();
+    if (S.space !== "team") return "";
+    if (!c) return `<section class="set-group"><p class="set-title">Ton Claude (MCP)</p>${row("Brancher ton Claude sur l'app", "Sur le site en ligne : une clé personnelle, puis Claude lit les leads, les clients, les factures et crée des tâches.", `<span class="state state-neutral">Site en ligne</span>`)}</section>`;
+    if (MC.list === undefined) loadKeys();
+    const fresh = MC.fresh ? `<div class="mcp-fresh"><p><b>Ta clé est prête.</b> Elle ne s'affichera qu'une fois : copie l'adresse maintenant.</p>
+        <div class="mcp-url"><code>${esc(MC.fresh.url)}</code><button class="btn btn-ghost" type="button" data-copy="${esc(MC.fresh.url)}">${icon("copy")}Copier</button></div>
+        <ol class="mcp-steps"><li><b>claude.ai ou l'app Claude</b> : Paramètres › Connecteurs › Ajouter un connecteur personnalisé. Nom : Entremis. Colle l'adresse.</li>
+        <li><b>Claude Code</b> : <code>claude mcp add --transport http entremis "${esc(MC.fresh.url)}"</code> <button class="link" type="button" data-copy='claude mcp add --transport http entremis "${esc(MC.fresh.url)}"'>Copier</button></li>
+        <li>Demande-lui par exemple : « Qu'est-ce qui m'attend aujourd'hui chez Entremis ? »</li></ol>
+        <p class="field-help">Cette adresse vaut un mot de passe : ne la partage pas. Si elle fuite, retire la clé ci-dessous.</p>
+        <button class="btn btn-ghost" type="button" data-mcp-done>J'ai copié l'adresse</button></div>` : "";
+    const list = MC.list === null ? `<p class="field-help">La liste des clés n'a pas pu être lue : le SQL des connexions Claude n'est peut-être pas encore lancé.</p>`
+      : (MC.list || []).map(k => row(esc(k.label), `Créée le ${when(k.created_at)} · dernière utilisation : ${when(k.last_used)}`, `<button class="btn btn-ghost" type="button" data-mcp-del="${esc(k.hash)}">${icon("trash")}Retirer</button>`)).join("");
+    return `<section class="set-group"><p class="set-title">Ton Claude (MCP)</p>
+      ${row("Brancher ton propre Claude", "Claude lit les leads, les clients, les rendez-vous, les factures et les documents de travail, et peut créer des tâches. Il ne supprime et n'envoie rien.", `<button class="btn btn-primary" type="button" data-mcp-new ${MC.busy ? "disabled" : ""}>${icon("plus")}Créer une clé</button>`)}
+      ${fresh}${list}</section>`;
+  }
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-mcp-new],[data-mcp-del],[data-mcp-done]"); if (!t) return;
+    const c = CL(); if (!c) return;
+    if ("mcpNew" in t.dataset) { const label = window.prompt("Nom de cette connexion (pour la reconnaître)", "Claude de " + TM().member(EM().S.who).name); if (label == null) return;
+      MC.busy = true; EM().render(); c.mcpCreate(label).then(r => { MC.fresh = r; MC.busy = false; MC.list = undefined; TM().haptic("done"); EM().render(); }).catch(() => { MC.busy = false; EM().render(); EM().toast("La clé n'a pas pu être créée. Le SQL des connexions Claude est-il lancé ?"); }); }
+    if (t.dataset.mcpDel) EM().confirm({ title: "Retirer cette clé ?", text: "Le Claude branché avec elle n'aura plus accès à l'app, tout de suite.", ok: "Retirer" }).then(y => { if (!y) return; c.mcpDelete(t.dataset.mcpDel).then(() => { MC.list = undefined; EM().render(); EM().toast("Clé retirée."); }).catch(() => EM().toast("La clé n'a pas pu être retirée. Réessayez.")); });
+    if ("mcpDone" in t.dataset) { MC.fresh = null; EM().render(); }
+  });
   function secConnexions(S) {
     const esc = EM().esc, me = TM().member(S.who), m = mine(S.who);
     const card = c => { const [l, k] = state(c, m), note = m.cx[c.id] && m.cx[c.id].note;
@@ -127,7 +157,7 @@
         <span class="cx-mark">${c.brand ? EM().brand(c.brand, c.name) : esc(c.mark)}</span>
         <span class="cx-main"><b>${esc(c.name)}</b><small>${esc(note || c.what)}</small></span>
         <span class="state state-${k}">${l}</span></button></li>`; };
-    return `<p class="set-private">${EM().icon("shield")}<span><b>Visible seulement par ${esc(me.name)}.</b> ${TD().members.filter(x => x.id !== S.who).map(x => x.name).join(" et ")} ont les leurs et ne voient pas les tiennes.</span></p>
+    return `${mcpSection(S)}<p class="set-private">${EM().icon("shield")}<span><b>Visible seulement par ${esc(me.name)}.</b> ${TD().members.filter(x => x.id !== S.who).map(x => x.name).join(" et ")} ont les leurs et ne voient pas les tiennes.</span></p>
       ${GROUPS.map(([g, title]) => `<section class="set-group"><p class="set-title">${title}</p><ul class="cx-list">${CONNECT.filter(c => c.group === g).map(card).join("")}</ul></section>`).join("")}
       <section class="set-group"><p class="set-title">Mes automatisations</p>
         ${AUTO.map(a => { const ok = ready(a, m), on = !!m.auto[a.id] && ok;
@@ -143,6 +173,7 @@
       ${row("Fichiers déposés", "Rangés avec l'app, visibles par l'équipe.", "")}
       ${row("Comptes séparés", "Un compte et un mot de passe chacun. Un client ne reçoit que ses propres données.", CL() ? `<span class="state state-ok">En place</span>` : `<span class="state state-neutral">Site en ligne</span>`)}
     </section>
+    ${window.ENTREMIS_PILOT.backupRows(S, row)}
     <p class="set-note">${EM().icon("info")}${S.space === "team" ? "Un compte client n'ouvre que son espace. La base ne lui envoie que ce qui le concerne : ses résultats de visite, son avis, ses disponibilités, ses parrainages." : "Vos demandes et vos rendez-vous ne sont jamais revendus ni partagés."}</p>`;
   }
   function secAide(S) {

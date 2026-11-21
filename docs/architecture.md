@@ -56,6 +56,8 @@ Chaque liste a `.list`, `.put(ligne)`, `.remove(id)` et `.init(rendu)`.
 | `gen.js` | Devis et factures en vrai PDF (jsPDF), partage |
 | `chat.js`, `scripts.js`, `process.js`, `sectors.js`, `metrics.js`, `calc.js`, `guide.js`, `search.js`, `pickers.js`, `gcal.js` | Discussions, scripts de visite, processus, métiers et parcours, chiffres, calculateur, guide, recherche (⌘K), sélecteurs de date, Google Agenda |
 | `machine.js` | La machine à leads (documents de Gianni) : niveau et facturation d'un lead, facture du mois d'un client (prix par lead, plafond), page client « Leads et facture » avec contestation sous 7 jours (collection `contests`), fiche d'appel d'un prospect, simulateur de rentabilité (Marketing › Calcul), chiffres de la semaine (Chiffres) |
+| `pilotage.js` | Les 8 étapes par client et le tournage (collection `flow`, lisible par le client), les pubs Meta et leurs règles d'arrêt (`ads`), les risques (30 % du CA, fins d'engagement), les documents de travail de l'équipe (`refs`), la sauvegarde sur le Drive commun (`backups`, droit Google « drive ») |
+| `legal.js` | Les documents juridiques à remplir (contrat, droit à l'image, SEPA, rétractation, RGPD, CGV…), PDF avec le logo ; coordonnées d'Entremis et historique dans `actes` (équipe seulement) |
 
 ## Ajouter une page
 

@@ -264,5 +264,5 @@
     return false;
   }
 
-  window.ENTREMIS_GCAL = { init, panel, onClick, addState, addTask, addLive, linked, gmailSend, gmailReady: () => web() && webReady(), preload: () => { if (web() && webReady()) loadGis().catch(() => {}); } };
+  window.ENTREMIS_GCAL = { tokenFor, init, panel, onClick, addState, addTask, addLive, linked, gmailSend, gmailReady: () => web() && webReady(), preload: () => { if (web() && webReady()) loadGis().catch(() => {}); } };
 })();

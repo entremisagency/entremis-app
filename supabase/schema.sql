@@ -219,23 +219,30 @@ grant execute on function public.creer_compte_equipe(text, text, text) to authen
 create table if not exists public.entrees (jour date primary key, n int not null default 0);
 alter table public.entrees enable row level security;   -- aucune règle : personne ne la lit depuis l'app
 
+-- France et pays francophones (21/11/2026) : p_pays (FR, BE, CH, LU, MC, CA, XX). Numéros de 8 chiffres au moins (Luxembourg).
+-- Doublon : même numéro sur 90 jours (règle de facturation de Gianni) = pas de nouveau lead.
+drop function if exists public.nouveau_lead(text, text, text, text, text, text, text, text, boolean);
 create or replace function public.nouveau_lead(p_nom text, p_telephone text, p_ville text default '', p_projet text default '',
-  p_source text default 'Site', p_email text default '', p_message text default '', p_code_postal text default '', p_consentement boolean default false)
+  p_source text default 'Site', p_email text default '', p_message text default '', p_code_postal text default '', p_consentement boolean default false,
+  p_pays text default 'FR')
   returns text language plpgsql security definer set search_path = public as $$
 declare
   v_tel text := regexp_replace(coalesce(p_telephone, ''), '[^0-9+]', '', 'g');
   v_id  text := 'w' || to_char(clock_timestamp(), 'YYMMDDHH24MISSMS') || substr(md5(random()::text), 1, 4);
+  v_pays text := upper(left(coalesce(nullif(trim(p_pays), ''), 'FR'), 2));
+  v_cp  text := upper(trim(coalesce(p_code_postal, '')));
   v_n   int;
 begin
   if not coalesce(p_consentement, false) then raise exception 'Il faut accepter d''être rappelé.'; end if;
   if length(trim(coalesce(p_nom, ''))) < 2 then raise exception 'Écrivez votre nom.'; end if;
-  if length(v_tel) < 10 then raise exception 'Le numéro de téléphone est incomplet.'; end if;
-  if exists (select 1 from public.docs where collection = 'leads' and data->>'phone_n' = v_tel and updated_at > now() - interval '30 days') then return 'deja'; end if;
+  if length(regexp_replace(v_tel, '[^0-9]', '', 'g')) < 8 then raise exception 'Le numéro de téléphone est incomplet.'; end if;
+  if exists (select 1 from public.docs where collection = 'leads' and data->>'phone_n' = v_tel and updated_at > now() - interval '90 days') then return 'deja'; end if;
   insert into public.entrees (jour, n) values (current_date, 1) on conflict (jour) do update set n = public.entrees.n + 1 returning n into v_n;
   if v_n > 300 then raise exception 'Trop de demandes aujourd''hui. Réessayez demain.'; end if;
   insert into public.docs (collection, id, data, client_id) values ('leads', v_id, jsonb_build_object(
     'name', left(trim(p_nom), 80), 'phone', left(trim(p_telephone), 20), 'phone_n', v_tel, 'email', left(trim(coalesce(p_email, '')), 120),
-    'city', left(trim(coalesce(p_ville, '')), 60), 'zip', left(trim(coalesce(p_code_postal, '')), 10), 'zone', left(trim(coalesce(p_code_postal, '')), 2),
+    'city', left(trim(coalesce(p_ville, '')), 60), 'zip', left(v_cp, 10), 'country', v_pays,
+    'zone', case when v_pays in ('FR', 'MC') then left(v_cp, 2) when v_pays = 'CA' then 'CA-' || left(v_cp, 3) else v_pays || '-' || left(regexp_replace(v_cp, '[^0-9]', '', 'g'), 2) end,
     'trade', left(trim(coalesce(p_projet, '')), 60), 'source', left(coalesce(nullif(trim(p_source), ''), 'Site'), 30), 'note', left(trim(coalesce(p_message, '')), 500),
     'status', 'nouveau', 'consent', true, 'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
   return v_id;
@@ -260,9 +267,9 @@ begin
     'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
   return v_id;
 end $$;
-revoke all on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean) from public;
+revoke all on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text) from public;
 revoke all on function public.demande_site(text, text, text, text, text, text, text, text, text) from public;
-grant execute on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean) to anon, authenticated;
+grant execute on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text) to anon, authenticated;
 grant execute on function public.demande_site(text, text, text, text, text, text, text, text, text) to anon, authenticated;
 
 -- 7. Les comptes de l'équipe ------------------------------------------------------------
@@ -280,3 +287,63 @@ grant execute on function public.demande_site(text, text, text, text, text, text
 --
 -- Plus tard, un compte client (il ne verra que l'espace de son entreprise, et la base ne lui enverra que ses propres données) :
 -- insert into public.members (user_id, who, role, client_id) select id, null, 'client', 'IDENTIFIANT_DU_CLIENT' from auth.users where email = 'identifiant@entremisagency.github.io' on conflict (user_id) do nothing;
+
+-- ===== 9. Notifications sur téléphone (fonction « push », voir supabase/functions/push) =====
+-- 1. Les téléphones abonnés (chacun ne voit et ne gère que les siens)
+create table if not exists public.push_subs (
+  endpoint text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  sub jsonb not null,
+  created_at timestamptz not null default now()
+);
+alter table public.push_subs enable row level security;
+drop policy if exists "push : les siens" on public.push_subs;
+create policy "push : les siens" on public.push_subs for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- 2. Les clés d'envoi et le code secret du déclencheur : aucune règle = personne ne les lit, sauf le service « push »
+create table if not exists public.push_config (
+  id int primary key default 1 check (id = 1),
+  public_key text, private_key text,
+  hook_secret text not null default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
+);
+alter table public.push_config enable row level security;
+insert into public.push_config (id) values (1) on conflict (id) do nothing;
+
+-- 3. À chaque événement utile, la base prévient le service « push » (qui choisit qui alerter)
+create extension if not exists pg_net;
+create or replace function public.push_hook() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare v_secret text; o jsonb := case when tg_op = 'UPDATE' then old.data else '{}'::jsonb end;
+begin
+  if new.collection not in ('leads', 'site-requests', 'contests', 'rdv', 'results', 'chat', 'tasks') then return new; end if;
+  if tg_op = 'UPDATE' and not (
+       (new.collection = 'leads' and coalesce(new.data->>'to', '') <> coalesce(o->>'to', '') and coalesce(new.data->>'to', '') <> '')
+    or (new.collection = 'contests' and coalesce(new.data->>'state', '') <> coalesce(o->>'state', ''))) then return new; end if;
+  select hook_secret into v_secret from public.push_config where id = 1;
+  perform net.http_post(
+    url := 'https://cnhxrhyugghigkozfpde.supabase.co/functions/v1/push',
+    body := jsonb_build_object('op', tg_op, 'collection', new.collection, 'id', new.id, 'client_id', new.client_id,
+                               'data', new.data, 'old', o, 'actor', auth.uid()),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-entremis-hook', v_secret));
+  return new;
+exception when others then return new;   -- une alerte ratée ne bloque jamais l'enregistrement
+end $$;
+drop trigger if exists docs_push on public.docs;
+create trigger docs_push after insert or update on public.docs for each row execute function public.push_hook();
+
+-- ===== 10. Brancher son propre Claude (fonction « mcp », voir supabase/functions/mcp) =====
+create table if not exists public.mcp_keys (
+  hash text primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  label text,
+  created_at timestamptz not null default now(),
+  last_used timestamptz
+);
+alter table public.mcp_keys enable row level security;
+drop policy if exists "mcp : voir les siennes" on public.mcp_keys;
+create policy "mcp : voir les siennes" on public.mcp_keys for select to authenticated using (user_id = auth.uid());
+drop policy if exists "mcp : créer (équipe)" on public.mcp_keys;
+create policy "mcp : créer (équipe)" on public.mcp_keys for insert to authenticated with check (user_id = auth.uid() and public.is_team());
+drop policy if exists "mcp : retirer les siennes" on public.mcp_keys;
+create policy "mcp : retirer les siennes" on public.mcp_keys for delete to authenticated using (user_id = auth.uid());

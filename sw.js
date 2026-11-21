@@ -11,3 +11,11 @@ self.addEventListener("notificationclick", e => {
     return self.clients.openWindow("./" + href);
   }));
 });
+// Une notification envoyée par la base (fonction « push »), même quand l'app est fermée
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Entremis", {
+    body: d.body || "", icon: "img/apple-touch-icon.png", badge: "img/favicon-32.png", tag: d.tag || undefined, data: { href: d.href || "" }
+  }));
+});

@@ -101,7 +101,9 @@
           </div>
         </section>
         ${e.kind === "client" ? window.ENTREMIS_MACHINE.billingCard(e.id) : window.ENTREMIS_MACHINE.callCard(e.id)}
+        ${e.kind === "client" ? window.ENTREMIS_PILOT.flowCard(e.id) : ""}
         ${e.c ? window.ENTREMIS_LIVE.metaCard(e.id) : ""}
+        ${e.c ? window.ENTREMIS_PILOT.adsCard(e.id) : ""}
         <section class="card">
           <div class="card-head"><h2 class="h2">Historique</h2></div>
           ${calls.length || tasks.length || docs.length ? `<ul class="history">

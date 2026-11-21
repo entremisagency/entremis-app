@@ -2732,3 +2732,49 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 #mc-call-form{max-height:min(88vh,var(--sheet-max-h,88vh));overflow-y:auto;overscroll-behavior:contain;background:var(--color-panel)}
 #mc-call-form .sheet-head{position:sticky;top:calc(-1 * var(--space-5));z-index:1;margin:calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) 0;padding:var(--space-4) var(--space-5);background:var(--color-panel)}
 @media (max-width:640px){#mc-call-form .sheet-head{top:calc(-1 * var(--space-2));margin:calc(-1 * var(--space-2)) calc(-1 * var(--gutter)) 0;padding:var(--space-3) var(--gutter)}}
+
+/* Pilotage (pilotage.js) : les 8 étapes, les risques, la lecture d'un document */
+.pl-steps{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-2)}
+.pl-step{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-3)}
+.pl-n{display:grid;place-items:center;width:var(--space-5);height:var(--space-5);border-radius:50%;background:var(--color-surface-2);font-size:var(--text-caption);font-weight:var(--weight-strong);color:var(--color-muted)}
+.pl-n svg{width:var(--space-3);height:var(--space-3)}
+.pl-step.is-done .pl-n{background:var(--color-ink);color:var(--color-white)}
+.pl-l{display:grid;min-width:0}
+.pl-l small{font-size:var(--text-caption);color:var(--color-muted)}
+.pl-cycle{border:0;cursor:pointer;font:inherit}
+.pl-risks{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3)}
+.pl-risk{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);align-items:start;font-size:var(--text-small);color:var(--color-body)}
+.pl-doc{display:grid;gap:var(--space-3);margin-top:var(--space-4);font-size:var(--text-body);line-height:1.55;color:var(--color-body);white-space:pre-wrap}
+.pl-doc p{margin:0}
+.pl-sheet,#pl-ad-form{max-height:88vh;overflow-y:auto;overscroll-behavior:contain;background:var(--color-panel)}
+.pl-sheet textarea{min-height:calc(var(--button-h) * 6)}
+.t-warn{color:var(--warn-ink,var(--color-body))}
+
+/* Documents juridiques (legal.js) : l'aperçu du document */
+.legal-paper{aspect-ratio:auto;gap:var(--space-3);font-size:var(--text-small);line-height:1.5}
+.legal-paper header{display:grid;gap:var(--space-1);padding-bottom:var(--space-3);border-bottom:1px solid var(--color-hairline)}
+.legal-paper header span{font-size:var(--text-caption);color:var(--color-muted)}
+.legal-paper h3{margin:var(--space-2) 0 0;font-size:var(--text-body);font-weight:var(--weight-strong);color:var(--color-ink)}
+.legal-paper h3:first-of-type{font-size:var(--text-app-h2,var(--text-body))}
+.legal-paper ul{margin:0;padding-left:var(--space-5);display:grid;gap:var(--space-1)}
+.legal-sign{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5);margin-top:var(--space-4)}
+.legal-sign div{display:grid;gap:var(--space-6)}
+.legal-sign i{display:block;border-bottom:1px solid var(--color-ink)}
+.legal-paper footer{font-size:var(--text-caption);color:var(--color-muted)}
+.field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:var(--space-3)}
+
+/* Ton Claude (MCP) dans les réglages */
+.mcp-fresh{display:grid;gap:var(--space-3);padding:var(--space-4);border-radius:var(--radius-md);background:var(--color-surface-2);font-size:var(--text-small)}
+.mcp-fresh p{margin:0}
+.mcp-url{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-2);align-items:center}
+.mcp-url code,.mcp-steps code{overflow-wrap:anywhere;font-size:var(--text-caption);padding:var(--space-1) var(--space-2);border-radius:var(--radius-xs);background:var(--color-white)}
+.mcp-steps{margin:0;padding-left:var(--space-5);display:grid;gap:var(--space-2)}
+.legal-brand{display:inline-flex;align-items:center;gap:var(--space-2);color:var(--color-ink)}
+.legal-brand svg{width:var(--space-5);height:var(--space-5);color:var(--color-ink)}
+.legal-paper header{display:flex;justify-content:space-between;align-items:center;gap:var(--space-3)}
+.legal-paper h3:first-of-type{font-size:var(--text-app-h2);letter-spacing:-0.01em}
+.legal-paper h3:first-of-type::after{content:"";display:block;width:var(--space-6);height:3px;margin-top:var(--space-2);border-radius:2px;background:var(--color-action)}
+.legal-paper ul li::marker{color:var(--color-action)}
+.legal-sign div{padding:var(--space-3);border-radius:var(--radius-sm);background:var(--color-surface-2);min-height:calc(var(--space-8) + var(--space-5))}
+.legal-sign i{margin-top:auto}
+.pl-todo{display:inline-flex;align-items:center;padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);background:transparent;box-shadow:inset 0 0 0 1px var(--color-hairline);font-size:var(--text-caption);font-weight:var(--weight-strong);color:var(--color-muted)}

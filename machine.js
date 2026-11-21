@@ -19,6 +19,18 @@
   const eur = n => (Math.round(n * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
   const daysBetween = (a, b) => Math.round((new Date(String(b).slice(0, 10) + "T12:00:00") - new Date(String(a).slice(0, 10) + "T12:00:00")) / 864e5);
 
+  /* ---------- France et pays francophones (Marc, 21 nov. 2026) ----------
+     La facture d'Entremis (société française) à un installateur : TVA française en France et à Monaco ;
+     autoliquidation dans l'Union européenne (Belgique, Luxembourg) ; hors UE (Suisse, Canada…) pas de TVA française.
+     À faire valider par le comptable avant la première facture hors de France. */
+  const PAYS = { FR: "France", BE: "Belgique", CH: "Suisse", LU: "Luxembourg", MC: "Monaco", CA: "Canada (Québec)", XX: "Autre pays francophone" };
+  function vatFor(cid) {
+    const c = EM().allClients().find(x => x.id === cid) || {}, p = c.pays || "FR";
+    if (p === "FR" || p === "MC") return { tva: 20, note: "" };
+    if (p === "BE" || p === "LU") return { tva: 0, note: `Autoliquidation : TVA due par le preneur (article 196 de la directive 2006/112/CE).${c.tvaIntra ? " N° de TVA du client : " + c.tvaIntra + "." : ""}` };
+    return { tva: 0, note: "TVA non applicable, article 259-1 du CGI (prestation à un professionnel établi hors de l'Union européenne)." };
+  }
+
   /* ---------- Un lead : son niveau, et s'il est facturable ---------- */
   const LEVEL = { rdv: ["RDV pris", "ok"], qualifie: ["Qualifié", "info"], verifie: ["Vérifié", "neutral"] };
   const EXCL = { "": "Facturable", locataire: "Locataire", "hors-zone": "Hors zone", doublon: "Doublon (90 jours)", "faux-numero": "Numéro non vérifié", conteste: "Contestation acceptée" };
@@ -64,7 +76,7 @@
         ${row("Prix par lead", eur(b.price) + " HT")}
         ${row("Montant du mois", `<b>${eur(b.amount)} HT</b>${b.capped ? ` <small class="muted">(plafond ${eur(b.cap)} atteint)</small>` : ""}`)}
         ${row("Plafond mensuel", b.cap ? eur(b.cap) + " HT" : "à définir")}
-        ${row("Zone exclusive", k.zone ? esc(k.zone) : "à définir")}
+        ${row("Zone exclusive", (k.zone ? esc(k.zone) : "à définir") + ((EM().allClients().find(x => x.id === cid) || {}).pays && (EM().allClients().find(x => x.id === cid) || {}).pays !== "FR" ? ` <small class="muted">(${esc(PAYS[(EM().allClients().find(x => x.id === cid) || {}).pays] || "")})</small>` : ""))}
       </dl>
       <div class="form-actions"><button class="btn btn-primary" type="button" data-mc-invoice="${esc(cid)}" ${b.ok.length ? "" : "disabled"}>${icon("euro")}Préparer la facture</button><button class="btn btn-ghost" type="button" data-mc-list="${esc(cid)}">${X.open[cid] ? "Masquer le relevé" : "Voir le relevé"}</button></div>
       ${list}
@@ -76,8 +88,9 @@
     const due = (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); })();
     const lines = [{ d: `Leads vérifiés exclusifs – ${monthLabel(m)} (${b.levels.rdv} RDV pris, ${b.levels.qualifie} qualifiés, ${b.levels.verifie} vérifiés)`, q: b.ok.length, pu: b.price }];
     if (b.capped) lines.push({ d: `Plafond mensuel convenu (${eur(b.cap)} HT)`, q: 1, pu: -(b.raw - b.cap) });
-    const d = { id: "d" + Date.now().toString(36), kind: "facture", number: OPS().nextNumber("facture"), client: b.contract.name, to: cid, amount: Math.round(b.amount * 100) / 100, tva: 20,
-      lines, note: `Relevé détaillé joint. 7 jours pour contester un lead selon les exclusions prévues au contrat.`, date: today(), due, status: "brouillon", by: S.who, createdAt: new Date().toISOString().slice(0, 16), made: true, period: m };
+    const vat = vatFor(cid);
+    const d = { id: "d" + Date.now().toString(36), kind: "facture", number: OPS().nextNumber("facture"), client: b.contract.name, to: cid, amount: Math.round(b.amount * 100) / 100, tva: vat.tva,
+      lines, note: `Relevé détaillé joint. 7 jours pour contester un lead selon les exclusions prévues au contrat.${vat.note ? " " + vat.note : ""}`, date: today(), due, status: "brouillon", by: S.who, createdAt: new Date().toISOString().slice(0, 16), made: true, period: m };
     OPS().stores.DOCS.put(d); TM().haptic("done");
     location.hash = "#finances"; setTimeout(() => { window.ENTREMIS_GEN.openDoc(d.id); EM().render(); }, 80); EM().toast(`Facture de ${monthLabel(m)} prête en brouillon : vérifiez-la, puis envoyez-la.`);
   }
@@ -101,11 +114,12 @@
     </div>
     <section class="card"><div class="card-head"><h2 class="h2">Vos leads de ${monthLabel(m)}</h2><span class="mc-month"><button class="icon-btn" type="button" data-mc-month="-1" aria-label="Mois précédent">${icon("back")}</button><button class="icon-btn" type="button" data-mc-month="1" aria-label="Mois suivant">${icon("chev")}</button></span></div>
       ${rows ? `<ul class="ac-list">${rows}</ul>` : `<p class="body">Aucun lead ce mois-ci.</p>`}
-      <p class="kpi-note">Ne sont jamais facturés : les locataires, les adresses hors de votre zone, les doublons sur 90 jours et les numéros non vérifiés. La facture part le 1er du mois avec ce relevé.</p></section>`;
+      <p class="kpi-note">Ne sont jamais facturés : les locataires, les adresses hors de votre zone, les doublons sur 90 jours et les numéros non vérifiés. La facture part le 1er du mois avec ce relevé.</p></section>
+    ${window.ENTREMIS_PILOT.flowCard(cid, true)}`;
   }
 
   /* ---------- Fiche d'appel d'un prospect installateur (critères, 10 questions, décision) ---------- */
-  const CRIT = ["RGE QualiPAC vérifié dans l'annuaire France Rénov'", "Grosse structure, plusieurs équipes de pose", "Une personne dédiée au téléphone", "2-3 ans d'activité minimum", "Avis Google 4,5 ou plus", "Zone avec beaucoup de maisons au fioul ou au gaz", "Gère déjà les dossiers d'aides", "Aucun signal d'alerte (pubs « 1 € », démarchage, litiges, mauvais payeur)"];
+  const CRIT = ["RGE QualiPAC vérifié dans l'annuaire France Rénov' (hors de France : la qualification reconnue dans son pays)", "Grosse structure, plusieurs équipes de pose", "Une personne dédiée au téléphone", "2-3 ans d'activité minimum", "Avis Google 4,5 ou plus", "Zone avec beaucoup de maisons au fioul ou au gaz", "Gère déjà les dossiers d'aides", "Aucun signal d'alerte (pubs « 1 € », démarchage, litiges, mauvais payeur)"];
   const QUEST = ["PAC posées par mois, autres métiers", "Capacité en plus", "D'où viennent ses clients", "Leads déjà achetés : prix et résultat", "Prix moyen d'un chantier PAC, marge", "Qui rappelle les prospects, en combien de temps", "Zone couverte, délai de visite", "Gestion des aides", "Budget pub mensuel possible", "D'accord pour être filmé"];
   const DECIDE = { pilote: ["Pilote", "ok"], plustard: ["Plus tard", "warn"], non: ["Non", "neutral"] };
   function callCard(pid) {
@@ -230,6 +244,6 @@
     return true;
   }
 
-  window.ENTREMIS_MACHINE = { leadBox, billingCard, callCard, callSheet, viewClientBilling, simView, weekPanel, onClick, onSubmit, billing, levelOf, billable,
+  window.ENTREMIS_MACHINE = { PAYS, vatFor, leadBox, billingCard, callCard, callSheet, viewClientBilling, simView, weekPanel, onClick, onSubmit, billing, levelOf, billable,
     init: render => CONTESTS().init(render), reset: () => { X.call = null; } };
 })();

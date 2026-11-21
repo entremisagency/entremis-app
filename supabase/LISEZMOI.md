@@ -78,3 +78,12 @@ Puis tester avec les trois comptes, sur ordinateur et téléphone.
 
 - Mettre la clé secrète Supabase ou la clé Resend dans un fichier de l'app : n'importe quel visiteur pourrait la lire.
 - Envoyer sur GitHub un fichier `.env` (il est exclu par `.gitignore`).
+
+## Notifications sur téléphone et connexion Claude (21/11/2026)
+Deux fonctions à créer une fois dans Supabase › Edge Functions › « Deploy a new function » › « Via Editor » :
+1. **push** : coller `functions/push/index.ts`. Les notifications partent même app fermée (sur iPhone : app ajoutée à l'écran d'accueil). Les clés d'envoi se créent toutes seules dans la table `push_config`.
+2. **mcp** : coller `functions/mcp/index.ts`. Chacun crée sa clé dans Réglages › Connexions › Ton Claude, puis colle l'adresse dans Claude (connecteur personnalisé) ou dans Claude Code.
+Pour les deux : dans les réglages de la fonction, désactiver « Verify JWT ». Le SQL correspondant est dans `schema.sql` (sections 9 et 10).
+
+## Sauvegarde sur le Drive commun
+Google Cloud (projet de l'app) : activer l'API Google Drive, et ajouter le droit `https://www.googleapis.com/auth/drive` à l'écran de consentement. Puis dans l'app : Réglages › Données et sécurité › Dossier du Drive commun.

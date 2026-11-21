@@ -170,7 +170,7 @@
       </div>
       ${L.pick === l.id ? `<div class="q-pick">${TD().clients.map(cl => `<button class="pill" type="button" data-lead-give="${l.id}:${cl.id}">${esc(cl.name)}</button>`).join("")}</div>` : ""}
       <dl class="lp-dl">
-        ${row("Projet", esc(l.trade))}${row("Ville", esc(l.city))}${row("Zone", esc(l.zone))}${row("Reçu", when(l.at))}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
+        ${row("Projet", esc(l.trade))}${row("Ville", esc(l.city))}${row("Zone", esc(l.zone))}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
       </dl>
       ${window.ENTREMIS_MACHINE.leadBox(l)}
       ${(() => { const f = window.ENTREMIS_SECTORS.forLead(l), okN = { rappele: 2, qualifie: 4, attribue: 4, rdv: 4 }[l.status] || 0;

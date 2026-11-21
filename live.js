@@ -117,6 +117,8 @@
     rdvs().filter(r => r.state === "replaced" && !r.replacedBy).forEach(r => add("a-" + r.id, "warn", "swap", `Absence chez ${nameOf(r.client_id)} : ${r.name}. Un remplaçant à placer.`, "À faire", short(r.absentAt || r.date), { label: "Placer un RDV", href: "#rendez-vous" }));
     TASKS().list.filter(k => k.status !== "done" && k.due && k.due < t).forEach(k => add("k-" + k.id, "danger", "alert", `Tâche en retard : « ${k.title} »`, "À faire", short(k.due), { label: "Voir la tâche", task: k.id }));
     DOCS().list.filter(d => d.kind === "facture" && d.status !== "paye" && d.due && d.due < t).forEach(d => add("d-" + d.id, "warn", "euro", `Facture ${d.number || ""} de ${d.client || ""} : échéance passée le ${short(d.due)}`, "À faire", short(d.due), { label: "Relancer", doc: d.id }));
+    const bd = window.ENTREMIS_PILOT && window.ENTREMIS_PILOT.backupDue();
+    if (bd !== null && bd !== undefined) add("bk-" + t, "info", "download", bd < 0 ? "Aucune sauvegarde sur le Drive commun pour l'instant" : `Dernière sauvegarde sur le Drive il y a ${bd} jours`, "À faire", "", { label: "Sauvegarder", href: "#reglages" });
     clients.filter(c => c.pace === "late").forEach(c => add("p-" + c.id + "-" + c.done, "info", "chart", `${c.name} est en retard sur son objectif : ${c.done} sur ${c.target}, jour ${c.day} sur ${c.days}`, "À suivre", "", { label: "Voir la fiche", href: "#fiche-" + c.id }));
     return out;
   }
@@ -163,6 +165,7 @@
       <div class="field-row">${field("contact", "Personne à contacter", d.contact, 'maxlength="80"')}${field("phone", "Téléphone", d.phone, 'type="tel" maxlength="20"')}</div>
       <div class="field-row">${select("owner", "Suivi par", members(), d.owner || S.who)}${field("target", "Objectif (rendez-vous)", d.target || 10, 'type="number" min="0" max="500"')}</div>
       <div class="field-row">${field("start", "Début de la campagne", d.start || today(), 'type="date"')}${field("days", "Durée (jours)", d.days || 30, 'type="number" min="1" max="365"')}</div>
+      <div class="field-row">${select("pays", "Pays", Object.entries(window.ENTREMIS_MACHINE.PAYS), d.pays || "FR")}${field("tvaIntra", "N° de TVA du client (hors France)", d.tvaIntra, 'maxlength="30" placeholder="Ex. : BE0123456789"')}</div>
       <div class="field-row">${field("prixLead", "Prix par lead (€ HT)", d.prixLead || 50, 'type="number" min="0" step="1"')}${field("plafond", "Plafond par mois (€ HT)", d.plafond || "", 'type="number" min="0" step="50" placeholder="Ex. : 1500"')}</div>
       <div class="field-row">${field("engagement", "Engagement (mois)", d.engagement || 3, 'type="number" min="0" max="24"')}${field("zoneCP", "Zone exclusive (codes postaux)", d.zoneCP, 'maxlength="200" placeholder="Ex. : 69001, 69002, 69003"')}</div>`;
     if (k === "prospect") body = `${field("name", "Nom de l'entreprise", d.name, 'required maxlength="80"')}
@@ -253,7 +256,7 @@
       const id = d.id || slug(v("name"));
       if (!id) return say("Ce nom ne convient pas : ajoutez des lettres."), true;
       if (!d.id && (CLIENTS().list.some(c => c.id === id) || TD().clients.some(c => c.id === id))) return say("Ce client existe déjà."), true;
-      await CLIENTS().put(Object.assign({}, d, { id, client_id: id, name: v("name"), trade: v("trade"), zone: v("zone"), contact: v("contact"), phone: v("phone"), owner: v("owner"), target: Number(v("target")) || 0, start: v("start") || today(), days: Number(v("days")) || 30, prixLead: Number(v("prixLead")) || 50, plafond: Number(v("plafond")) || 0, engagement: Number(v("engagement")) || 0, zoneCP: v("zoneCP"), createdAt: d.createdAt || now }));
+      await CLIENTS().put(Object.assign({}, d, { id, client_id: id, name: v("name"), trade: v("trade"), zone: v("zone"), contact: v("contact"), phone: v("phone"), owner: v("owner"), target: Number(v("target")) || 0, start: v("start") || today(), days: Number(v("days")) || 30, prixLead: Number(v("prixLead")) || 50, plafond: Number(v("plafond")) || 0, engagement: Number(v("engagement")) || 0, zoneCP: v("zoneCP"), pays: v("pays") || "FR", tvaIntra: v("tvaIntra"), createdAt: d.createdAt || now }));
     }
     if (k === "prospect") {
       if (!v("name")) return say("Écrivez le nom de l'entreprise."), true;
@@ -307,6 +310,7 @@
     EM().toast(`${title} : ${body}`); window.ENTREMIS_TEAM.haptic("done");
     try {
       if (!("Notification" in window) || Notification.permission !== "granted") return;
+      try { if (localStorage.getItem("entremis-push") === "1") return; } catch (_) {}   // le téléphone reçoit déjà la vraie notification
       const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
       const opts = { body, icon: "img/apple-touch-icon.png", badge: "img/favicon-32.png", tag: title + body, data: { href } };
       if (reg) reg.showNotification(title, opts); else new Notification(title, opts);
@@ -323,7 +327,7 @@
   }
   async function askAlerts() {
     if (!("Notification" in window)) return "absent";
-    try { const r = await Notification.requestPermission(); return r; } catch (_) { return "refuse"; }
+    try { const r = await Notification.requestPermission(); if (r === "granted") await window.ENTREMIS_CLOUD.pushSubscribe(); return r; } catch (_) { return "refuse"; }
   }
 
   window.ENTREMIS_LIVE = {

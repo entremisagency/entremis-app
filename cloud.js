@@ -124,8 +124,15 @@
   });
 
   async function afterLogin(session) {
-    const { data, error } = await client.from("members").select("who, role, client_id").eq("user_id", session.user.id).maybeSingle();
-    if (error || !data) { gate("Ce compte n'est pas encore activé. Demandez à Marc de l'ajouter à l'équipe (dernière étape du fichier schema.sql)."); return; }
+    // Téléphone qui se réveille, réseau qui hésite : on réessaie au lieu d'afficher « compte pas activé » (Marc, 21 nov. 2026)
+    let data = null, error = null;
+    for (let i = 0; i < 4; i++) {
+      ({ data, error } = await client.from("members").select("who, role, client_id").eq("user_id", session.user.id).maybeSingle());
+      if (!error) break;
+      gate("Connexion à la base…", "ok"); await wait(1500 * (i + 1));
+    }
+    if (error) { gate("Pas de réseau pour l'instant. L'app réessaie dès que la connexion revient.", "ok"); retryLater(); return; }
+    if (!data) { gate("Ce compte n'est pas encore activé. Demandez à Marc de l'ajouter à l'équipe (dernière étape du fichier schema.sql)."); return; }
     me = { id: session.user.id, email: session.user.email, who: data.who, role: data.role, client: data.client_id };
     // Premier passage : le mot de passe provisoire donné par Marc ne sert qu'une fois, on en choisit un à soi
     const provisional = String(session.user.email || "").endsWith("@" + LOGIN_DOMAIN);   // compte à identifiant : mot de passe donné par Marc
@@ -133,15 +140,40 @@
     const p = await client.from("private_docs").select("collection, id, data");
     priv = {}; (p.data || []).forEach(r => { priv[r.collection + "/" + r.id] = r.data; });
     closeGate(); readyResolve(me);
+    setTimeout(pushSubscribe, 3000);   // déjà autorisé sur cet appareil : on renouvelle l'abonnement
   }
+
+  const STORE_KEY = "sb-cnhxrhyugghigkozfpde-auth-token";
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const isNetwork = e => !!e && (/fetch|network|load failed|timeout|offline/i.test(String(e.message || "")) || e.name === "AuthRetryableFetchError" || Number(e.status) === 0 || Number(e.status) >= 500);
+  const hasSaved = () => { try { return !!localStorage.getItem(STORE_KEY); } catch (_) { return false; } };
+  let retrying = false;
+  function retryLater() {
+    if (retrying) return; retrying = true;
+    const again = () => { if (!retrying) return; retrying = false; window.removeEventListener("online", again); location.reload(); };
+    window.addEventListener("online", again); setTimeout(again, 15000);
+  }
+  // Retour sur l'app (téléphone sorti de veille) : on relance tout de suite le renouvellement de la session
+  document.addEventListener("visibilitychange", () => {
+    if (!client) return;
+    try { if (document.visibilityState === "visible") { client.auth.startAutoRefresh(); client.auth.getSession(); } else client.auth.stopAutoRefresh(); } catch (_) {}
+  });
 
   async function start() {
     if (!on) return;
     document.documentElement.classList.add("is-cloud");
     gate("Connexion à la base…", "ok");
     try { await loadLib(); } catch (_) { gate("La base ne répond pas. Vérifiez la connexion, puis rechargez la page."); return; }
-    client = window.supabase.createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true } });
-    const { data } = await client.auth.getSession();
+    client = window.supabase.createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: STORE_KEY } });
+    // Rester connecté : la session reste sur l'appareil. Si le réseau manque au démarrage, on réessaie ; on ne renvoie à
+    // l'écran de connexion que si la base dit vraiment que la session n'est plus valable.
+    let data = null, error = null;
+    for (let i = 0; i < 4; i++) {
+      ({ data, error } = await client.auth.getSession());
+      if (!error || !isNetwork(error)) break;
+      await wait(1500 * (i + 1));
+    }
+    if (error && isNetwork(error) && hasSaved()) { gate("Pas de réseau pour l'instant. L'app réessaie dès que la connexion revient.", "ok"); retryLater(); return; }
     if (data && data.session && LINK) { passwordGate(""); return; }
     if (data && data.session) await afterLogin(data.session);
     else gate(LINK ? "Ce lien n'est plus valable. Demandez une nouvelle invitation, ou « Mot de passe oublié »." : "");
@@ -229,11 +261,39 @@
   }
 
   // Pour la page Accès clients (équipe) : les comptes, et les fonctions de la base (créer, réinitialiser, retirer un accès)
+  // Toute la table docs (équipe seulement, règles de la base) : pour la sauvegarde sur le Drive
+  async function dumpAll() { await ready; const out = []; for (let from = 0; ; from += 1000) { const { data, error } = await client.from("docs").select("collection, id, data, client_id").range(from, from + 999); if (error) throw error; out.push(...(data || [])); if (!data || data.length < 1000) break; } return out; }
+  // Les clés MCP : brancher son propre Claude. On ne garde que l'empreinte ; la clé ne se montre qu'une fois.
+  const sha = async t => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))).map(b => b.toString(16).padStart(2, "0")).join("");
+  async function mcpKeys() { await ready; if (!client) return []; const { data, error } = await client.from("mcp_keys").select("hash, label, created_at, last_used").order("created_at", { ascending: false }); return error ? null : (data || []); }
+  async function mcpCreate(label) {
+    await ready; const raw = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2, "0")).join(""), key = "ent_" + raw;
+    const { error } = await client.from("mcp_keys").insert({ hash: await sha(key), label: String(label || "Claude").slice(0, 60), user_id: me.id });
+    if (error) throw error; return { key, url: URL_ + "/functions/v1/mcp?key=" + key };
+  }
+  async function mcpDelete(hash) { await ready; const { error } = await client.from("mcp_keys").delete().eq("hash", hash); if (error) throw error; }
   async function listMembers() { await ready; if (!client) return []; const { data, error } = await client.from("members").select("user_id, who, role, client_id, created_at"); return error ? [] : (data || []); }
   async function rpc(fn, args) { if (!client) return { error: { message: "Pas connecté." } }; return client.rpc(fn, args); }
 
+  // Notifications sur le téléphone, même app fermée : on abonne cet appareil (clé publique donnée par la fonction « push »)
+  const b64u = s => { const p = "=".repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+  async function pushSubscribe() {
+    try {
+      if (!on || !client || !me || !("serviceWorker" in navigator) || !("PushManager" in window) || Notification.permission !== "granted") return "absent";
+      const reg = await navigator.serviceWorker.ready;
+      const r = await fetch(URL_ + "/functions/v1/push", { headers: { apikey: KEY } });
+      const key = r.ok ? (await r.json()).key : ""; if (!key) return "absent";
+      let s = await reg.pushManager.getSubscription();
+      if (!s) s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(key) });
+      const j = s.toJSON();
+      const { error } = await client.from("push_subs").upsert({ endpoint: j.endpoint, sub: j, user_id: me.id });
+      if (error) return "absent";
+      try { localStorage.setItem("entremis-push", "1"); } catch (_) {}
+      return "granted";
+    } catch (_) { return "absent"; }
+  }
   async function signOut() { if (client) await client.auth.signOut(); try { sessionStorage.removeItem("entremis-cloud"); } catch (_) {} location.reload(); }
 
-  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start };
+  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start, pushSubscribe, dumpAll, mcpKeys, mcpCreate, mcpDelete };
   if (on) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start(); }
 })();
