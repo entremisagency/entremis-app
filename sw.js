@@ -19,3 +19,9 @@ self.addEventListener("push", e => {
     body: d.body || "", icon: "img/apple-touch-icon.png", badge: "img/favicon-32.png", tag: d.tag || undefined, data: { href: d.href || "" }
   }));
 });
+// À chaque ouverture de l'app (écran d'accueil compris), la page vient toujours du site, jamais de la mémoire du téléphone :
+// une mise à jour est donc visible dès l'ouverture suivante. Sans réseau, on retombe sur ce que le navigateur a gardé.
+self.addEventListener("fetch", e => {
+  if (e.request.mode !== "navigate") return;
+  e.respondWith(fetch(e.request, { cache: "no-store" }).catch(() => fetch(e.request)));
+});
