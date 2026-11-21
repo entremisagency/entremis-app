@@ -811,7 +811,7 @@
   document.addEventListener("click", e => {
     if (e.target.closest("[data-cloud-out]")) { window.ENTREMIS_CLOUD.signOut(); return; }
     // Une petite vibration à chaque geste : changer de page, ouvrir, cocher, choisir un onglet (Marc, 22 nov. 2026)
-    if (e.target.closest('a[href], button:not([disabled]), [role="button"], [role="tab"], summary, label:has(input), .lg-tile, [data-lead-open], [data-task-open]')) TM().haptic("tap");
+    if (e.target.closest('a[href], button:not([disabled]), [role="button"], [role="tab"], summary, label:has(input), .lg-tile, [data-lead-open], [data-task-open]') && !e.target.closest("[data-haptic-try]")) TM().haptic("tap");
     if (e.target.closest('[data-act="toast-undo"]')) { const u = toastUndo; toastUndo = null; $("#toast").classList.remove("on"); if (u) u(); return; }
     const cp = e.target.closest("[data-copy]");
     if (cp) { copyText(cp.dataset.copy, cp); return; }

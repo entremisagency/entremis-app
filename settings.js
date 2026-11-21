@@ -120,7 +120,7 @@
       ${row("Vibrations", "Sur téléphone, quand on choisit, enregistre, supprime ou change de page.", seg("data-set-haptics", [["on", "Oui"], ["off", "Non"]], haptics()))}
       ${(() => { const ua = navigator.userAgent, m = ua.match(/OS (\d+)_(\d+)/), ios = /iP(hone|ad|od)/.test(ua), v = m ? Number(m[1]) + Number(m[2]) / 100 : 0;
         const how = navigator.vibrate ? "Ce téléphone accepte les vibrations." : ios ? (v >= 17.04 ? `iPhone, iOS ${m[1]}.${m[2]} : retour haptique possible si « Retour haptique du système » est activé (Réglages › Sons et vibrations).` : `iPhone, iOS ${m ? m[1] + "." + m[2] : "?"} : trop ancien, il faut iOS 17.4 ou plus.`) : "Cet appareil ne vibre pas (ordinateur).";
-        return row("Tester la vibration", how, `<button class="btn btn-ghost" type="button" data-haptic-test>Tester</button>`); })()}</section>
+        return row("Tester la vibration", how + " Essayez A, puis B, puis C : celui que vous sentez reste choisi.", `<span class="hx-tries">${["a", "b", "c"].map(k => `<button class="btn btn-ghost${TM().hapticMode() === k ? " is-on" : ""}" type="button" data-haptic-try="${k}" aria-pressed="${TM().hapticMode() === k}">${k.toUpperCase()}</button>`).join("")}</span>`); })()}</section>
       <p class="set-note">${EM().icon("info")}Gardé dans ce navigateur. Le logo reste en Outfit.</p>`;
   }
   /* ---------- Ton Claude (MCP) : une clé personnelle, l'adresse à coller dans Claude ---------- */
@@ -218,6 +218,8 @@
   }
 
   function onClick(e, S, render) {
+    const ht = e.target.closest("[data-haptic-try]");
+    if (ht) { e.stopPropagation(); TM().hapticTry(ht.dataset.hapticTry); document.querySelectorAll("[data-haptic-try]").forEach(b => { const on = b === ht; b.classList.toggle("is-on", on); b.setAttribute("aria-pressed", String(on)); }); EM().toast(`Essai ${ht.dataset.hapticTry.toUpperCase()} envoyé. Senti ? Gardez-le. Sinon, essayez le suivant.`); return true; }
     if (e.target.closest("[data-haptic-test]")) { TM().haptic("done"); EM().toast(haptics() === "off" ? "Les vibrations sont sur « Non » : passez-les sur « Oui »." : "Vibration envoyée. Rien senti ? Voir la ligne au-dessus."); return true; }
     if (e.target.closest("[data-upd-check]")) { const U = window.ENTREMIS_UPDATE; if (U) U.check().then(v => { if (!v) EM().toast("L'app est à jour."); }); return true; }
     if (e.target.closest("[data-alerts-on]")) { window.ENTREMIS_LIVE.askAlerts().then(r => { render(); EM().toast(r === "granted" ? "Alertes activées sur cet appareil." : "Alertes non activées."); }); return true; }

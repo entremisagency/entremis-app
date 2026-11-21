@@ -101,13 +101,21 @@
   const HAPTIC_KEY = "entremis-app-haptics";
   const hapticsOn = () => { try { return localStorage.getItem(HAPTIC_KEY) !== "off"; } catch (_) { return true; } };
   const coarse = () => { try { return window.matchMedia("(pointer: coarse)").matches; } catch (_) { return false; } };
-  function iosTick() {
-    const label = document.createElement("label"), input = document.createElement("input");
-    label.setAttribute("aria-hidden", "true"); label.style.display = "none";
+  /* iPhone : Safari n'a pas de vibration ; on fait basculer un interrupteur invisible, ce qui donne un petit retour haptique.
+     Trois façons de le faire, selon les versions d'iOS ; celle qui marche sur le téléphone est choisie dans Réglages (essais A, B, C). */
+  const HMODE_KEY = "entremis-app-haptic-mode";
+  const hMode = () => { try { return localStorage.getItem(HMODE_KEY) || "b"; } catch (_) { return "b"; } };
+  function iosTick(mode) {
+    const m = mode || hMode(), label = document.createElement("label"), input = document.createElement("input");
     input.type = "checkbox"; input.setAttribute("switch", ""); input.tabIndex = -1;
-    label.appendChild(input);
-    ["click", "change", "input"].forEach(ev => label.addEventListener(ev, e => e.stopPropagation()));   // ne réveille aucun autre bouton de l'app
-    document.head.appendChild(label); label.click(); label.remove();
+    label.setAttribute("aria-hidden", "true"); label.appendChild(input);
+    ["click", "change", "input"].forEach(ev => { label.addEventListener(ev, e => e.stopPropagation()); input.addEventListener(ev, e => e.stopPropagation()); });   // ne réveille aucun autre bouton de l'app
+    if (m === "a") { label.style.display = "none"; document.head.appendChild(label); label.click(); label.remove(); return; }
+    // B et C : l'interrupteur est vraiment affiché (hors de l'écran, transparent), ce que demandent les iOS récents
+    label.style.cssText = "position:fixed;left:-60px;top:0;width:51px;height:31px;opacity:0.01;pointer-events:none;z-index:-1";
+    document.body.appendChild(label);
+    if (m === "c") input.click(); else label.click();
+    setTimeout(() => label.remove(), 400);
   }
   let lastHaptic = 0, lastKind = "";
   function haptic(kind) {
@@ -118,6 +126,11 @@
     const p = { tap: 10, done: [12, 40, 18], warn: [30, 60, 30] }[kind] || 10;
     try { if (navigator.vibrate) { navigator.vibrate(p); return; } } catch (e) {}
     if (coarse()) { try { iosTick(); } catch (e) {} }
+  }
+  function hapticTry(mode) {
+    try { localStorage.setItem(HMODE_KEY, mode); } catch (_) {}
+    try { if (navigator.vibrate) { navigator.vibrate([12, 40, 18]); return; } } catch (e) {}
+    try { iosTick(mode); } catch (e) {}
   }
 
   const av = (id, cls = "av av-md") => {
@@ -681,7 +694,7 @@
 
   window.ENTREMIS_TEAM = {
     avatar: av, taskSheet,
-    TEAM_ROUTES, SHARED_ROUTES, T, initTasks, pipe: () => pipe(), STAGES, setStage, initSwipe, onClick, onChange, onSubmit, member, haptic, photoUrl, photoBusy: () => P.busy,
+    TEAM_ROUTES, SHARED_ROUTES, T, initTasks, pipe: () => pipe(), STAGES, setStage, initSwipe, onClick, onChange, onSubmit, member, haptic, hapticTry, hapticMode: () => hMode(), photoUrl, photoBusy: () => P.busy,
     views: { equipe: viewPortal, taches: viewTasks, clients: viewClients, pipeline: viewPipeline, avancement: viewProgress, notifications: viewNotifications, reglages: S => window.ENTREMIS_SETTINGS.view(S) },
     unreadCount: S => notifs(S.space).filter(n => !(S.read || {})[n.id]).length
   };
