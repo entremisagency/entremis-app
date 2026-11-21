@@ -2778,3 +2778,8 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .legal-sign div{padding:var(--space-3);border-radius:var(--radius-sm);background:var(--color-surface-2);min-height:calc(var(--space-8) + var(--space-5))}
 .legal-sign i{margin-top:auto}
 .pl-todo{display:inline-flex;align-items:center;padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);background:transparent;box-shadow:inset 0 0 0 1px var(--color-hairline);font-size:var(--text-caption);font-weight:var(--weight-strong);color:var(--color-muted)}
+
+/* Champs visibles sur les cartes grises (Marc, 21 nov. 2026) : fond blanc et contour fin, comme dans les fenêtres */
+.card .field input,.card .field select,.card .field textarea,.card textarea,.card .pp-num input,.card .pw-wrap input{background:var(--color-white);box-shadow:inset 0 0 0 1px var(--color-hairline-strong)}
+.card .field input:focus,.card .field select:focus,.card .field textarea:focus,.card textarea:focus,.card .pp-num input:focus{box-shadow:inset 0 0 0 2px var(--color-action);outline:none}
+.card .field input::placeholder,.card textarea::placeholder{color:var(--color-muted)}
