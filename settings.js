@@ -180,7 +180,8 @@
     const team = S.space === "team";
     return `<section class="set-group">${linkRow(team ? "#guide" : "#aide", team ? "Guide de l'app" : "Comment ça marche", "Ce que fait chaque page, en cinq minutes de lecture.")}
       ${team ? linkRow("#secteurs", "Secteurs et parcours", "Ajouter un métier, choisir comment on livre.") : linkRow("#messages", "Poser une question à Entremis", "Richard vous répond dans la journée.")}
-      ${row("Version", "Maquette du 20 novembre 2026", "")}</section>`;
+      ${(() => { const U = window.ENTREMIS_UPDATE, v = U ? U.version() : ""; const lab = v ? `Version du ${v.slice(6, 8)}/${v.slice(4, 6)}/${v.slice(0, 4)} à ${v.slice(9, 11)} h ${v.slice(11, 13)}` : "Version de l'app";
+        return row("Version de l'app", `${lab}. L'app se met à jour toute seule, même installée sur l'écran d'accueil.`, `<button class="btn btn-ghost" type="button" data-upd-check>${EM().icon("swap")}Vérifier</button>`); })()}</section>`;
   }
   const SECTION = { profil: secProfil, espace: secEspace, notifs: secNotifs, apparence: secApparence, connexions: secConnexions, donnees: secDonnees, aide: secAide };
 
@@ -214,6 +215,7 @@
   }
 
   function onClick(e, S, render) {
+    if (e.target.closest("[data-upd-check]")) { const U = window.ENTREMIS_UPDATE; if (U) U.check().then(v => { if (!v) EM().toast("L'app est à jour."); }); return true; }
     if (e.target.closest("[data-alerts-on]")) { window.ENTREMIS_LIVE.askAlerts().then(r => { render(); EM().toast(r === "granted" ? "Alertes activées sur cet appareil." : "Alertes non activées."); }); return true; }
     if (e.target.closest("[data-pw-open]")) { X.pw = true; render(); setTimeout(() => { const i = document.querySelector('#pw-form input[name="current"]'); if (i) i.focus(); }, 60); return true; }
     if (e.target.closest("[data-pw-close]")) { X.pw = false; render(); return true; }

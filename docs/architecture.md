@@ -60,6 +60,7 @@ Chaque liste a `.list`, `.put(ligne)`, `.remove(id)` et `.init(rendu)`.
 | `legal.js` | Les documents juridiques à remplir (contrat, droit à l'image, SEPA, rétractation, RGPD, CGV…), PDF avec le logo ; coordonnées d'Entremis et historique dans `actes` (équipe seulement) |
 | `crm.js` | Le CRM (#contacts) : clients et prospects ensemble, recherche, vues, tri, prochaine action et étiquettes (`crm`), actions groupées, import/export CSV, doublons ; glisser-déposer du pipeline |
 | `help.js` | Le petit « i » à côté du titre de chaque page, avec le texte de chaque page |
+| `update.js` | La mise à jour toute seule : compare le numéro ?v= de la page en ligne (outils/version.sh) au sien ; recharge au retour sur l'app si rien n'est en cours, sinon bandeau « Mettre à jour ». Ne pas oublier `sh outils/version.sh` avant chaque envoi |
 
 ## Ajouter une page
 
