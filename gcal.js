@@ -36,15 +36,23 @@
     const s = document.createElement("script"); s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.onload = ok; s.onerror = () => ko(new Error("gis")); document.head.appendChild(s);
   });
   // Demande (ou renouvelle) l'accès : à appeler pendant un clic, sinon le navigateur bloque la fenêtre Google
+  // Le jeton Google (valable une heure) est gardé sur l'appareil : un rechargement de page ne coupe plus le lien
+  const TOK_KEY = sc => "entremis-gtok-" + (sc === CAL ? "cal" : sc === MAIL ? "mail" : "drive");
+  const saved = sc => { try { const x = JSON.parse(localStorage.getItem(TOK_KEY(sc)) || "null"); return x && x.token && Date.now() < x.until - 60000 ? x : null; } catch (_) { return null; } };
   function tokenFor(scope, known) {
-    const k = TK[scope] || (TK[scope] = { token: null, until: 0, client: null, pending: null });
+    const k = TK[scope] || (TK[scope] = Object.assign({ token: null, until: 0, client: null, pending: null }, saved(scope) || {}));
     if (k.token && Date.now() < k.until - 60000) return Promise.resolve(k.token);
-    return loadGis().then(() => new Promise((ok, ko) => {
+    const ask = (ok, ko) => {
       if (!k.client) k.client = window.google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope,
-        callback: r => { const p = k.pending; k.pending = null; if (r && r.access_token) { k.token = r.access_token; k.until = Date.now() + (Number(r.expires_in) || 3600) * 1000; p && p.ok(k.token); } else p && p.ko(r); },
+        callback: r => { const p = k.pending; k.pending = null;
+          if (r && r.access_token) { k.token = r.access_token; k.until = Date.now() + (Number(r.expires_in) || 3600) * 1000; try { localStorage.setItem(TOK_KEY(scope), JSON.stringify({ token: k.token, until: k.until })); } catch (_) {} p && p.ok(k.token); }
+          else p && p.ko({ type: (r && r.error) || "refus", message: (r && (r.error_description || r.error)) || "" }); },
         error_callback: e => { const p = k.pending; k.pending = null; p && p.ko(e); } });
       k.pending = { ok, ko }; k.client.requestAccessToken({ prompt: known ? "" : "consent" });
-    }));
+    };
+    // Google déjà chargé : la fenêtre s'ouvre tout de suite, pendant le clic (sinon le navigateur la bloque)
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) return new Promise(ask);
+    return loadGis().then(() => new Promise(ask));
   }
   const token = () => tokenFor(CAL, remembered());
 
@@ -93,8 +101,20 @@
     return G.mcp;
   }
 
+  // Les erreurs de Google sur le site en ligne, dites simplement
+  function webError(err) {
+    const t = err && err.type, m = String((err && err.message) || ""), st = err && err.status;
+    if (t === "popup_failed_to_open") return { code: "web", text: "La fenêtre Google a été bloquée par le navigateur.", fix: "Autorisez les fenêtres pour ce site, puis réessayez.", retry: true };
+    if (t === "popup_closed") return { code: "web", text: "La fenêtre Google a été fermée avant la fin.", fix: "Réessayez et allez jusqu'à « Continuer ».", retry: true };
+    if (t === "access_denied") return { code: "web", text: "Google a refusé l'accès.", fix: "Ce compte Google doit être dans les utilisateurs test (Google Cloud › Audience), et il faut cocher l'accès à l'agenda.", retry: true };
+    if (st === 403 && /has not been used|disabled|not enabled/i.test(m)) return { code: "web", text: "L'API Google Agenda n'est pas activée dans Google Cloud.", fix: "Google Cloud › API et services › Google Calendar API › Activer.", retry: true };
+    if (st === 403 && /insufficient/i.test(m)) return { code: "web", text: "L'accès à l'agenda n'a pas été coché.", fix: "Réessayez et cochez « Afficher et modifier les événements ».", retry: true };
+    if (st === 401) { Object.keys(TK).forEach(k => { TK[k].token = null; }); try { localStorage.removeItem(TOK_KEY(CAL)); } catch (_) {} return { code: "web", text: "La connexion à Google a expiré.", fix: "Cliquez sur Réessayer.", retry: true }; }
+    return { code: "web", text: "Google Agenda a répondu par une erreur.", fix: m.slice(0, 160), retry: true };
+  }
   // Ce que chaque code d'erreur veut dire pour la personne, et ce qu'elle peut faire
   function explain(err) {
+    if (err && err.code === "web") return err;
     const c = err && err.code;
     if (c === "server_not_connected" || c === "server_not_found") return { text: "Google Agenda n'est pas encore relié à votre compte Claude.", fix: "Ajoutez-le dans claude.ai › Réglages › Connecteurs, puis revenez ici." };
     if (c === "needs_reauth") return { text: "La connexion à Google Agenda a expiré.", fix: "Reconnectez-le dans claude.ai › Réglages › Connecteurs." };
@@ -138,7 +158,7 @@
       if (!webReady()) { G.state = "setup"; EM().render(); return; }
       G.state = "loading"; G.error = null; EM().render();
       try { G.events = await webList(); G.state = "ready"; G.storedAt = Date.now(); remember(true); }
-      catch (err) { G.error = { code: err && err.status === 401 ? "needs_reauth" : err && err.type === "popup_closed" ? "consent_required" : "web", message: err && err.message }; G.state = "error"; }
+      catch (err) { G.error = webError(err); G.state = "error"; }
       EM().render(); return;
     }
     const mcp = await getMcp();
@@ -154,11 +174,13 @@
 
   function disconnect() {
     if (G.unwatch) { G.unwatch(); G.unwatch = null; }
-    remember(false); G.events = []; G.state = web() && !webReady() ? "setup" : "idle"; G.error = null; W.token = null; EM().render();
+    remember(false); G.events = []; G.state = web() && !webReady() ? "setup" : "idle"; G.error = null; W.token = null; if (TK[CAL]) TK[CAL].token = null; try { localStorage.removeItem(TOK_KEY(CAL)); } catch (_) {} EM().render();
   }
 
   async function init() {
-    if (web()) { G.state = webReady() ? (remembered() ? "again" : "idle") : "setup"; EM().render(); return; }
+    if (web()) { G.state = webReady() ? (remembered() ? "again" : "idle") : "setup"; if (webReady()) loadGis().catch(() => {}); EM().render();
+      if (G.state === "again" && saved(CAL)) connect();   // jeton encore valable : la semaine s'affiche sans clic
+      return; }
     if (remembered()) { const mcp = await getMcp(); if (mcp) startWatch(); else G.state = "unavailable"; EM().render(); }
   }
 
