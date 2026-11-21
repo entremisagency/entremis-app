@@ -118,7 +118,7 @@
 
   const av = (id, cls = "av av-md") => {
     const m = member(id), src = photoUrl(m.id);
-    return `<span class="${cls} av-${m.id}${src ? " has-photo" : ""}" title="${m.name}">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ""}<em>${m.initials}</em></span>`;
+    return `<span class="${cls} av-${m.id}${src ? " has-photo" : ""}" title="${m.name}">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ""}<em>${String(m.name || m.initials || "?").charAt(0).toUpperCase()}</em></span>`;
   };
   const PACE = { ahead: ["En avance", "ok"], ontrack: ["Dans les temps", "info"], late: ["En retard", "danger"] };
   const tone = (label, kind) => `<span class="state state-${kind}">${label}</span>`;
@@ -144,7 +144,7 @@
         <div class="task-text" data-task-open="${t.id}" role="button" tabindex="0" aria-label="Ouvrir : ${EM().esc(t.title)}">
           <b>${EM().esc(t.title)}</b>
           ${t.desc ? `<small class="task-desc">${EM().esc(t.desc.length > 120 ? t.desc.slice(0, 117) + "…" : t.desc)}</small>` : ""}
-          <span class="task-meta">${dueChip(t)}${t.client ? `<span class="tm-chip">${EM().icon("building")}${EM().esc(t.client)}</span>` : ""}${t.status === "doing" ? `<span class="tm-chip">En cours</span>` : ""}${done && t.doneAt ? `<span class="tm-chip">${EM().icon("check")}Faite${t.doneBy ? " par " + EM().esc(member(t.doneBy).name) : ""} ${whenDone(t.doneAt)}</span>` : ""}${!done && t.by && t.by !== t.who ? `<span class="tm-chip">Créée par ${EM().esc(member(t.by).name)}</span>` : ""}
+          <span class="task-meta">${dueChip(t)}${t.client && t.client !== "Entremis" ? `<span class="tm-chip">${EM().icon("building")}${EM().esc(t.client)}</span>` : ""}${t.status === "doing" ? `<span class="tm-chip">En cours</span>` : ""}${done && t.doneAt ? `<span class="tm-chip">${EM().icon("check")}Faite${t.doneBy ? " par " + EM().esc(member(t.doneBy).name) : ""} ${whenDone(t.doneAt)}</span>` : ""}${!done && t.by && t.by !== t.who ? `<span class="tm-chip">Créée par ${EM().esc(member(t.by).name)}</span>` : ""}
             ${opts.showWho || forWho(t).length > 1 ? `<span class="tm-who" title="${EM().esc(whoNames(t))}">${forWho(t).map(id => av(id, "av")).join("")}<span>${EM().esc(whoNames(t))}</span></span>` : ""}</span>
         </div>
         <div class="task-acts">
