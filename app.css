@@ -3017,3 +3017,6 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .upd{position:fixed;left:50%;bottom:calc(var(--space-5) + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:var(--z-toast);display:flex;align-items:center;gap:var(--space-3);width:max-content;max-width:calc(100vw - var(--space-4) * 2);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-4);border-radius:var(--radius-pill);background:var(--color-panel);box-shadow:var(--shadow-sheet),0 0 0 1px var(--color-hairline);font-size:var(--text-small);color:var(--color-ink)}
 .upd .btn{height:var(--control-h)}
 @media (max-width:640px){ .upd{bottom:calc(var(--tabbar-h) + var(--space-5) + env(safe-area-inset-bottom,0px));flex-wrap:wrap;border-radius:var(--radius-lg);padding:var(--space-3)} }
+/* Avatars dans une tâche : la lettre bien centrée (une ancienne règle les passait en bloc) */
+.task-text .tm-who .av{display:grid;place-items:center;font-size:var(--text-micro);line-height:1;color:var(--color-ink)}
+.task-text .tm-who .av em{display:block}
