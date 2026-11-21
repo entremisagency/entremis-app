@@ -44,7 +44,7 @@
     const cur = ts.find(t => t.id === C.thread);
     if (cur) markRead(me, cur.id);
     const list = `<section class="card chat-list"><ul>${ts.map(t => { const n = unread(me, t.id), last = msgs(t.id).slice(-1)[0];
-      return `<li><button type="button" class="chat-th${cur && cur.id === t.id ? " is-on" : ""}" data-chat-thread="${t.id}">${t.id === "equipe" ? `<span class="av chat-team">${icon("users")}</span>` : `<span class="av">${esc(t.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase())}</span>`}
+      return `<li><button type="button" class="chat-th${cur && cur.id === t.id ? " is-on" : ""}" data-chat-thread="${t.id}">${t.id === "equipe" ? `<span class="av chat-team"><svg class="chat-logo" aria-hidden="true"><use href="#logo-e"/></svg></span>` : `<span class="av">${esc(t.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase())}</span>`}
         <span class="chat-th-main"><b>${esc(t.name)}</b><small>${last ? esc(TM().member(last.who).name + " : " + last.text) : esc(t.sub)}</small></span>
         ${n ? `<span class="count">${n}</span>` : last ? `<span class="chat-at tabnum">${when(last.at)}</span>` : ""}</button></li>`; }).join("")}</ul></section>`;
     const conv = cur ? `<section class="card chat-conv">

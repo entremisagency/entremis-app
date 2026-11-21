@@ -58,6 +58,8 @@ Chaque liste a `.list`, `.put(ligne)`, `.remove(id)` et `.init(rendu)`.
 | `machine.js` | La machine à leads (documents de Gianni) : niveau et facturation d'un lead, facture du mois d'un client (prix par lead, plafond), page client « Leads et facture » avec contestation sous 7 jours (collection `contests`), fiche d'appel d'un prospect, simulateur de rentabilité (Marketing › Calcul), chiffres de la semaine (Chiffres) |
 | `pilotage.js` | Les 8 étapes par client et le tournage (collection `flow`, lisible par le client), les pubs Meta et leurs règles d'arrêt (`ads`), les risques (30 % du CA, fins d'engagement), les documents de travail de l'équipe (`refs`), la sauvegarde sur le Drive commun (`backups`, droit Google « drive ») |
 | `legal.js` | Les documents juridiques à remplir (contrat, droit à l'image, SEPA, rétractation, RGPD, CGV…), PDF avec le logo ; coordonnées d'Entremis et historique dans `actes` (équipe seulement) |
+| `crm.js` | Le CRM (#contacts) : clients et prospects ensemble, recherche, vues, tri, prochaine action et étiquettes (`crm`), actions groupées, import/export CSV, doublons ; glisser-déposer du pipeline |
+| `help.js` | Le petit « i » à côté du titre de chaque page, avec le texte de chaque page |
 
 ## Ajouter une page
 

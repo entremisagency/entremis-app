@@ -104,7 +104,7 @@
       <tbody>${shown.map(l => { const c = client(l.to), [t, k] = STATUS[l.status] || [l.status, "info"]; return `<tr>
         <td class="org"><button class="lead-name" type="button" data-lead-open="${l.id}">${esc(l.name)}</button><span>${esc(l.trade)} – ${esc(l.city)} – ${when(l.at)}</span></td>
         <td>${srcTag(l.source)}</td>
-        <td><span class="state state-${k}">${t}</span>${l.why ? `<span class="why">${esc(l.why)}</span>` : ""}</td>
+        <td><span class="state state-${k}">${t}</span>${(() => { const a = lastAct(l); return a && a.who ? `<button class="why who-trace" type="button" data-lead-open="${l.id}" title="Voir l'historique">par ${esc(TM().member(a.who).name)}, ${whenShort(a.at)}</button>` : l.why ? `<span class="why">${esc(l.why)}</span>` : ""; })()}${l.why && lastAct(l) ? `<span class="why">${esc(l.why)}</span>` : ""}</td>
         <td${c ? "" : ' class="td-empty"'}>${c ? `<a class="given" href="#fiche-${c.id}">${icon("shield")}<b>${esc(c.name)}</b></a>` : `<span class="muted">—</span>`}</td>
         <td class="${c ? "td-act" : "td-empty"}">${c ? `<button class="link" type="button" data-lead-take="${l.id}">Reprendre</button>` : ""}</td>
       </tr>`; }).join("")}</tbody></table>
@@ -113,6 +113,33 @@
     ${window.ENTREMIS_GROWTH.leadReasons()}
     ${panel()}`;
   }
+
+  /* ---------- Traçabilité : chaque changement d'un lead garde qui, quoi, quand (Marc, 21 nov. 2026) ---------- */
+  const LEVELS = { rdv: "RDV pris", qualifie: "qualifié", verifie: "vérifié" }, EXCLS = { "": "facturable", locataire: "non facturé (locataire)", "hors-zone": "non facturé (hors zone)", doublon: "non facturé (doublon)", "faux-numero": "non facturé (numéro non vérifié)" };
+  function changes(a, b) {
+    const out = [], cn = id => (client(id) || { name: id }).name;
+    if (b.erased && !a.erased) out.push("Données effacées (RGPD)");
+    if ((a.to || null) !== (b.to || null)) out.push(b.to ? `Donné à ${cn(b.to)}` : `Repris à ${cn(a.to)}`);
+    if (a.status !== b.status && !(b.to && !a.to && b.status === "attribue")) out.push({ perdu: "Écarté", rdv: "Rendez-vous placé", qualifie: "Qualifié", rappele: "Rappelé", attribue: "Attribué", nouveau: "Remis en nouveau" }[b.status] || `Statut : ${b.status}`);
+    if ((a.level || "") !== (b.level || "") && b.level) out.push(`Niveau : ${LEVELS[b.level] || b.level}`);
+    if ((a.excl || "") !== (b.excl || "")) out.push(`Facturation : ${EXCLS[b.excl || ""] || b.excl}`);
+    return out;
+  }
+  function tput(next) {
+    const prev = store().list.find(x => x.id === next.id) || {}, who = (EM().S && EM().S.who) || "", at = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 16).replace(" ", "T");
+    const what = changes(prev, next);
+    const row = Object.assign({}, next);
+    if (what.length) { row.hist = (prev.hist || []).concat(what.map(w => ({ at, who, what: w }))).slice(-40); row.by = who; row.byAt = at; }
+    return store().put(row);
+  }
+  // La dernière action, pour l'afficher sous le statut : « par Marc, 20/11 à 20:36 »
+  function lastAct(l) {
+    const h = (l.hist || [])[l.hist ? l.hist.length - 1 : -1];
+    if (h) return h;
+    if (l.givenBy && l.givenAt) return { at: l.givenAt, who: l.givenBy, what: "Donné" };
+    return null;
+  }
+  const whenShort = iso => iso ? `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)} à ${String(iso).slice(11, 16)}` : "";
 
   function onClick(e, S, render) {
     const t = e.target.closest("[data-lead-give],[data-lead-pick],[data-lead-lose],[data-lead-status],[data-lead-client],[data-lead-take],[data-lead-open],[data-lead-close]");
@@ -123,20 +150,20 @@
     if (t.dataset.leadGive) {
       const [lid, cid] = t.dataset.leadGive.split(":"), l = find(lid), c = client(cid); if (!l || !c) return true;
       const before = Object.assign({}, l);
-      store().put(Object.assign({}, l, { to: cid, status: l.status === "nouveau" || l.status === "rappele" ? "attribue" : l.status, givenAt: new Date().toISOString().slice(0, 16), givenBy: S.who }));
+      tput(Object.assign({}, l, { to: cid, status: l.status === "nouveau" || l.status === "rappele" ? "attribue" : l.status, givenAt: new Date().toISOString().slice(0, 16), givenBy: S.who }));
       L.pick = null; TM().haptic("done"); render();
-      EM().toast(`${l.name} est donné à ${c.name}. Le lead lui est réservé.`, () => { store().put(before); render(); });
+      EM().toast(`${l.name} est donné à ${c.name}. Le lead lui est réservé.`, () => { tput(before); render(); });
       return true;
     }
     if (t.dataset.leadPick) { L.pick = L.pick === t.dataset.leadPick ? null : t.dataset.leadPick; render(); return true; }
     if (t.dataset.leadLose) {
       const l = find(t.dataset.leadLose); if (!l) return true;
-      EM().confirm({ title: `Écarter le lead ${l.name} ?`, text: "Il ne sera donné à aucun client. Vous pourrez le reprendre plus tard.", ok: "Écarter" }).then(ok => { if (!ok) return; store().put(Object.assign({}, l, { status: "perdu", why: "Écarté par l'équipe" })); L.pick = null; render(); });
+      EM().confirm({ title: `Écarter le lead ${l.name} ?`, text: "Il ne sera donné à aucun client. Vous pourrez le reprendre plus tard.", ok: "Écarter" }).then(ok => { if (!ok) return; tput(Object.assign({}, l, { status: "perdu", why: "" })); L.pick = null; render(); });
       return true;
     }
     if (t.dataset.leadTake) {
       const l = find(t.dataset.leadTake); if (!l) return true; const c = client(l.to);
-      EM().confirm({ title: `Reprendre ${l.name} à ${c ? c.name : "ce client"} ?`, text: "Le lead revient dans « À attribuer ». Le client ne le verra plus.", ok: "Reprendre" }).then(ok => { if (!ok) return; store().put(Object.assign({}, l, { to: null, status: "qualifie" })); render(); EM().toast("Lead repris : il est de nouveau à attribuer."); });
+      EM().confirm({ title: `Reprendre ${l.name} à ${c ? c.name : "ce client"} ?`, text: "Le lead revient dans « À attribuer ». Le client ne le verra plus.", ok: "Reprendre" }).then(ok => { if (!ok) return; tput(Object.assign({}, l, { to: null, status: "qualifie" })); render(); EM().toast("Lead repris : il est de nouveau à attribuer."); });
       return true;
     }
     if (t.dataset.leadStatus) { L.status = t.dataset.leadStatus; TM().haptic("tap"); render(); return true; }
@@ -170,8 +197,10 @@
       </div>
       ${L.pick === l.id ? `<div class="q-pick">${TD().clients.map(cl => `<button class="pill" type="button" data-lead-give="${l.id}:${cl.id}">${esc(cl.name)}</button>`).join("")}</div>` : ""}
       <dl class="lp-dl">
-        ${row("Projet", esc(l.trade))}${row("Ville", esc(l.city))}${row("Zone", esc(l.zone))}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
+        ${l.phone ? row("Téléphone", `<a class="link" href="tel:${esc(String(l.phone).replace(/\s/g, ""))}">${esc(l.phone)}</a>`) : ""}${l.email ? row("E-mail", `<a class="link" href="mailto:${esc(l.email)}">${esc(l.email)}</a>`) : ""}
+        ${row("Projet", esc(l.trade))}${row("Ville", esc(l.city))}${l.zip ? row("Code postal", esc(l.zip)) : ""}${row("Zone", esc(l.zone))}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.source ? row("Venu de", esc(l.source)) : ""}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
       </dl>
+      ${l.note ? `<section class="lp-box"><p class="lp-label">Son message</p><p class="body">${esc(l.note)}</p></section>` : ""}
       ${window.ENTREMIS_MACHINE.leadBox(l)}
       ${(() => { const f = window.ENTREMIS_SECTORS.forLead(l), okN = { rappele: 2, qualifie: 4, attribue: 4, rdv: 4 }[l.status] || 0;
         return `<section class="lp-box"><p class="lp-label">${esc(f.sector.name)} – ${f.parcours.name}</p><ul class="lp-checks">${f.criteria.map((q, i) => `<li class="${i < okN ? "is-ok" : ""}">${i < okN ? icon("check") : "<i></i>"}<span>${esc(q)}</span></li>`).join("")}</ul></section>`; })()}
@@ -180,9 +209,12 @@
           : s ? `<a class="lp-client" href="#fiche-${s.id}">${TM().avatar(s.owner, "av")}<div><b>${esc(s.name)}</b><span>Même métier et même zone</span></div>${icon("chev")}</a>`
           : `<p class="body">Aucun client sur ce métier et cette zone.</p>`}
       </section>
+      ${(() => { const h = (l.hist || []).slice().reverse(), first = l.givenBy && !(l.hist || []).length ? [{ at: l.givenAt, who: l.givenBy, what: "Donné à " + (c ? c.name : "un client") }] : [];
+        const all = h.concat(first).concat([{ at: l.at, who: "", what: "Reçu" + (l.source ? " depuis " + l.source : "") }]);
+        return `<section class="lp-box"><p class="lp-label">Historique</p><ol class="lp-hist">${all.map(x => `<li>${x.who ? TM().avatar(x.who, "av") : `<span class="av lp-hist-dot">${icon("inbox")}</span>`}<div><b>${esc(x.what)}</b><span>${x.who ? esc(TM().member(x.who).name) + " · " : ""}${whenShort(x.at)}</span></div></li>`).join("")}</ol></section>`; })()}
     </aside>`;
   }
   const srcTag = s => `<span class="src">${srcIcon(s)}${EM().esc(s)}</span>`;
   document.addEventListener("keydown", e => { if (e.key === "Escape" && L.open && !document.querySelector("#spot,.confirm")) { L.open = null; L.pick = null; EM().render(); } });
-  window.ENTREMIS_LEADS = { view, onClick, init: render => store().init(render), list: () => store().list, put: l => store().put(l), client, srcTag, queueCard, focus: id => { L.open = id; }, closePanel: () => { L.open = null; } };
+  window.ENTREMIS_LEADS = { view, onClick, init: render => store().init(render), list: () => store().list, put: l => tput(l), lastAct, client, srcTag, queueCard, focus: id => { L.open = id; }, closePanel: () => { L.open = null; L.pick = null; }, panel: () => panel(), isOpen: () => !!L.open };
 })();

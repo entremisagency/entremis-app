@@ -117,6 +117,7 @@
     rdvs().filter(r => r.state === "replaced" && !r.replacedBy).forEach(r => add("a-" + r.id, "warn", "swap", `Absence chez ${nameOf(r.client_id)} : ${r.name}. Un remplaçant à placer.`, "À faire", short(r.absentAt || r.date), { label: "Placer un RDV", href: "#rendez-vous" }));
     TASKS().list.filter(k => k.status !== "done" && k.due && k.due < t).forEach(k => add("k-" + k.id, "danger", "alert", `Tâche en retard : « ${k.title} »`, "À faire", short(k.due), { label: "Voir la tâche", task: k.id }));
     DOCS().list.filter(d => d.kind === "facture" && d.status !== "paye" && d.due && d.due < t).forEach(d => add("d-" + d.id, "warn", "euro", `Facture ${d.number || ""} de ${d.client || ""} : échéance passée le ${short(d.due)}`, "À faire", short(d.due), { label: "Relancer", doc: d.id }));
+    (window.ENTREMIS_CRM ? window.ENTREMIS_CRM.dueList() : []).forEach(r => add("crm-" + r.id + "-" + r.nextAt, r.nextAt < t ? "warn" : "info", "phone", `Relancer ${r.name}${r.nextText ? " : " + r.nextText : ""}`, r.nextAt < t ? "En retard" : "Aujourd'hui", short(r.nextAt), { label: "Voir la fiche", href: "#fiche-" + r.id }));
     const bd = window.ENTREMIS_PILOT && window.ENTREMIS_PILOT.backupDue();
     if (bd !== null && bd !== undefined) add("bk-" + t, "info", "download", bd < 0 ? "Aucune sauvegarde sur le Drive commun pour l'instant" : `Dernière sauvegarde sur le Drive il y a ${bd} jours`, "À faire", "", { label: "Sauvegarder", href: "#reglages" });
     clients.filter(c => c.pace === "late").forEach(c => add("p-" + c.id + "-" + c.done, "info", "chart", `${c.name} est en retard sur son objectif : ${c.done} sur ${c.target}, jour ${c.day} sur ${c.days}`, "À suivre", "", { label: "Voir la fiche", href: "#fiche-" + c.id }));
@@ -260,7 +261,11 @@
     }
     if (k === "prospect") {
       if (!v("name")) return say("Écrivez le nom de l'entreprise."), true;
-      await PROSPECTS().put(Object.assign({}, d, { id: d.id || "p" + Date.now().toString(36), name: v("name"), trade: v("trade"), city: v("city"), owner: v("owner"), value: Number(v("value")) || 0, stage: v("stage"), source: v("source"), phone: v("phone"), next: v("next") || "Premier appel à caler", createdAt: d.createdAt || now }));
+      // Doublon : même nom ou même téléphone qu'une entreprise déjà connue. Un second clic crée quand même.
+      const dup = !d.id && window.ENTREMIS_CRM && window.ENTREMIS_CRM.dupOf(v("name"), v("phone"));
+      if (dup && X.dupOk !== v("name") + v("phone")) { X.dupOk = v("name") + v("phone"); return say(`${dup.name} existe déjà (${dup.kind === "client" ? "client" : "prospect"}). Enregistrez encore pour le créer quand même.`), true; }
+      X.dupOk = null;
+      await PROSPECTS().put(Object.assign({}, d, { stageAt: d.stage === v("stage") ? d.stageAt : today(), id: d.id || "p" + Date.now().toString(36), name: v("name"), trade: v("trade"), city: v("city"), owner: v("owner"), value: Number(v("value")) || 0, stage: v("stage"), source: v("source"), phone: v("phone"), next: v("next") || "Premier appel à caler", createdAt: d.createdAt || now }));
     }
     if (k === "rdv") {
       if (!v("client_id")) return say("Choisissez chez quel client."), true;

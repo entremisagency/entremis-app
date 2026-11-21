@@ -127,10 +127,14 @@
     if (t.status === "done") return "";
     if (isLate(t)) return tone(`En retard – ${shortDate(t.due)}`, "danger");
     if (isToday(t)) return tone("Aujourd'hui", "warn");
-    return t.due ? `<span class="due">${shortDate(t.due)}${t.time ? " – " + t.time : ""}</span>` : "";
+    return t.due ? `<span class="tm-chip due">${EM().icon("cal")}${shortDate(t.due)}${t.time ? " · " + t.time : ""}</span>` : "";
   }
 
   /* Une tâche (la même ligne partout). Glisser vers la droite = terminer, vers la gauche = supprimer. */
+  // Une tâche peut être pour plusieurs personnes : « who » (la première) et « also » (les autres). Une seule coche suffit.
+  const forWho = t => [t.who].concat(t.also || []).filter(Boolean);
+  const isFor = (t, id) => forWho(t).includes(id);
+  const whoNames = t => { const n = forWho(t).map(id => member(id).name); return n.length > 1 ? n.slice(0, -1).join(", ") + " et " + n[n.length - 1] : n[0] || ""; };
   function taskRow(t, opts = {}) {
     const done = t.status === "done";
     return `<li class="task${done ? " is-done" : ""}${isLate(t) ? " is-late" : ""}" data-task="${t.id}">
@@ -139,9 +143,10 @@
         <button class="tick" type="button" data-task-toggle="${t.id}" aria-label="${done ? "Rouvrir" : "Terminer"} : ${EM().esc(t.title)}" aria-pressed="${done}">${EM().icon("check")}</button>
         <div class="task-text" data-task-open="${t.id}" role="button" tabindex="0" aria-label="Ouvrir : ${EM().esc(t.title)}">
           <b>${EM().esc(t.title)}</b>
-          <span>${opts.showWho ? `${member(t.who).name} – ` : ""}${EM().esc(t.client || "")}${t.status === "doing" ? " – en cours" : ""}${done && t.doneAt ? ` – fait ${whenDone(t.doneAt)}` : ""}</span>
+          ${t.desc ? `<small class="task-desc">${EM().esc(t.desc.length > 120 ? t.desc.slice(0, 117) + "…" : t.desc)}</small>` : ""}
+          <span class="task-meta">${dueChip(t)}${t.client ? `<span class="tm-chip">${EM().icon("building")}${EM().esc(t.client)}</span>` : ""}${t.status === "doing" ? `<span class="tm-chip">En cours</span>` : ""}${done && t.doneAt ? `<span class="tm-chip">${EM().icon("check")}Faite${t.doneBy ? " par " + EM().esc(member(t.doneBy).name) : ""} ${whenDone(t.doneAt)}</span>` : ""}${!done && t.by && t.by !== t.who ? `<span class="tm-chip">Créée par ${EM().esc(member(t.by).name)}</span>` : ""}
+            ${opts.showWho || forWho(t).length > 1 ? `<span class="tm-who" title="${EM().esc(whoNames(t))}">${forWho(t).map(id => av(id, "av")).join("")}<span>${EM().esc(whoNames(t))}</span></span>` : ""}</span>
         </div>
-        ${dueChip(t)}
         <div class="task-acts">
           ${!done && t.due ? (() => { const st = window.ENTREMIS_GCAL.addState("task:" + t.id); return `<button class="icon-btn task-cal${st === "done" ? " is-done" : ""}" type="button" data-gcal-task="${t.id}" ${st ? "disabled" : ""} aria-label="${st === "done" ? "Dans votre Google Agenda" : "Ajouter à mon Google Agenda"} : ${EM().esc(t.title)}" title="${st === "done" ? "Dans votre Google Agenda" : "Ajouter à mon Google Agenda"}">${st === "done" ? EM().icon("check") : EM().brand("gcal", "Google Agenda")}</button>`; })() : ""}
           <button class="icon-btn task-del" type="button" data-task-del="${t.id}" aria-label="Supprimer : ${EM().esc(t.title)}">${EM().icon("trash")}</button>
@@ -157,15 +162,16 @@
     if (!S.taskForm) return "";
     const ed = S.taskEdit ? T.list.find(x => x.id === S.taskEdit) : null, esc = EM().esc, icon = EM().icon;
     const ms = TD().members, cl = [...new Set(["Entremis"].concat(TD().clients.map(c => c.name), S.ctxClient ? [S.ctxClient] : [], ed && ed.client ? [ed.client] : []))];
-    const curClient = ed ? ed.client : S.ctxClient, curWho = ed ? ed.who : S.who;
+    const curClient = ed ? ed.client : S.ctxClient, curWho = ed ? forWho(ed) : [S.who];
     const fiche = ed && (TD().clients.find(c => c.name === ed.client) || TD().pipeline.find(p => p.name === ed.client));
     return `<div class="scrim" data-act="close-task"></div>
     <form class="sheet" id="task-form" aria-label="${ed ? "La tâche" : "Nouvelle tâche"}">
       <div class="sheet-grab" aria-hidden="true"></div>
       <div class="sheet-head"><button class="link" type="button" data-act="close-task">${ed ? "Fermer" : "Annuler"}</button><b>${ed ? "La tâche" : "Nouvelle tâche"}</b><button class="link strong" type="submit">${ed ? "Enregistrer" : "Ajouter"}</button></div>
-      ${ed ? `<div class="task-status">${ed.status === "done" ? `<span class="state state-ok">Faite</span><span>par ${member(ed.who).name}${ed.doneAt ? ", " + whenDone(ed.doneAt) : ""}</span>` : isLate(ed) ? `<span class="state state-danger">En retard</span><span>prévue le ${shortDate(ed.due)}</span>` : `<span class="state state-info">À faire</span><span>${ed.due ? "pour le " + shortDate(ed.due) : "sans date"}</span>`}</div>` : ""}
+      ${ed ? `<div class="task-status">${ed.status === "done" ? `<span class="state state-ok">Faite</span><span>par ${member(ed.doneBy || ed.who).name}${ed.doneAt ? ", " + whenDone(ed.doneAt) : ""}${ed.by ? ` · créée par ${member(ed.by).name}` : ""}</span>` : isLate(ed) ? `<span class="state state-danger">En retard</span><span>prévue le ${shortDate(ed.due)}</span>` : `<span class="state state-info">À faire</span><span>${ed.due ? "pour le " + shortDate(ed.due) : "sans date"}</span>`}</div>` : ""}
       <label class="field"><span>Quoi</span><input id="task-title" name="title" required maxlength="120" placeholder="Ex. Rappeler les demandes solaires de Vannes" value="${ed ? esc(ed.title) : ""}"></label>
-      <fieldset class="field"><legend>Pour qui</legend><div class="who-pick">${ms.map(m => `<label><input type="radio" name="who" value="${m.id}" ${m.id === curWho ? "checked" : ""}>${av(m.id, "av")}<span>${m.name}</span></label>`).join("")}</div></fieldset>
+      <label class="field"><span>Description <small class="muted">(facultatif)</small></span><textarea id="task-desc" name="desc" rows="3" maxlength="2000" placeholder="Les détails utiles : à qui parler, quoi préparer, les liens…">${ed ? esc(ed.desc || "") : ""}</textarea></label>
+      <fieldset class="field"><legend>Pour qui <small class="muted">(une ou plusieurs personnes)</small></legend><div class="who-pick">${ms.map(m => `<label><input type="checkbox" name="who" value="${m.id}" ${curWho.includes(m.id) ? "checked" : ""}>${av(m.id, "av")}<span>${m.name}</span></label>`).join("")}</div></fieldset>
       <div class="field-row">
         <label class="field"><span>Client</span><select id="task-client" name="client">${cl.map(c => `<option ${c === curClient ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
         <label class="field"><span>Pour le</span><input id="task-due" name="due" type="date" value="${ed ? (ed.due || "") : todayIso()}"></label>
@@ -183,7 +189,7 @@
   /* ---------- Écran : mon portail ---------- */
   function viewPortal(S) {
     const me = member(S.who), esc = EM().esc, icon = EM().icon;
-    const mine = T.list.filter(t => t.who === me.id && t.status !== "done").sort(byUrgency);
+    const mine = T.list.filter(t => isFor(t, me.id) && t.status !== "done").sort(byUrgency);
     const myClients = TD().clients.filter(c => c.owner === me.id);
     const late = T.list.filter(isLate);
     const reps = TD().replacements.filter(r => r.status === "searching");
@@ -196,7 +202,7 @@
 
     <div class="kpis kpis-4" role="list">
       ${kpi("Mes tâches ouvertes", mine.length, `${mine.filter(isLate).length} en retard`, mine.filter(isLate).length ? "danger" : "")}
-      ${kpi("Faites par l'équipe cette semaine", weekDone.length, TD().members.map(m => `${m.name} ${weekDone.filter(t => t.who === m.id).length}`).join(" – "))}
+      ${kpi("Faites par l'équipe cette semaine", weekDone.length, TD().members.map(m => `${m.name} ${weekDone.filter(t => (t.doneBy || t.who) === m.id).length}`).join(" – "))}
       ${kpi("Remplacements à trouver", reps.length, reps.length ? "à placer sous 5 jours" : "rien en attente", reps.length ? "warn" : "ok")}
       ${kpi("Livrés cette semaine", TD().weekly[TD().weekly.length - 1].value, "RDV, appels et devis")}
     </div>
@@ -250,12 +256,12 @@
     const open = T.list.filter(t => t.status !== "done");
     const done = T.list.filter(t => t.status === "done").sort((a, b) => (b.doneAt || "") < (a.doneAt || "") ? -1 : 1);
     const journalWho = S.journalWho || "all";
-    const journal = done.filter(t => journalWho === "all" || t.who === journalWho).slice(0, 12);
+    const journal = done.filter(t => journalWho === "all" || (t.doneBy || t.who) === journalWho).slice(0, 12);
     const col = m => {
-      const list = open.filter(t => t.who === m.id).sort(byUrgency);
+      const list = open.filter(t => isFor(t, m.id)).sort(byUrgency);
       return `<section class="col" aria-label="Tâches de ${m.name}">
         <header class="col-head">${av(m.id, "av av-lg")}<div><b>${m.name}</b><span>${EM().esc(m.role)}</span></div></header>
-        <dl class="col-stats"><div><dt>À faire</dt><dd>${list.length}</dd></div><div><dt>En retard</dt><dd class="${list.filter(isLate).length ? "t-danger" : ""}">${list.filter(isLate).length}</dd></div><div><dt>Faites</dt><dd>${T.list.filter(t => t.who === m.id && doneThisWeek(t)).length}</dd></div></dl>
+        <dl class="col-stats"><div><dt>À faire</dt><dd>${list.length}</dd></div><div><dt>En retard</dt><dd class="${list.filter(isLate).length ? "t-danger" : ""}">${list.filter(isLate).length}</dd></div><div><dt>Faites</dt><dd>${T.list.filter(t => (t.doneBy || t.who) === m.id && doneThisWeek(t)).length}</dd></div></dl>
         ${list.length ? `<ul class="tasks">${list.map(t => taskRow(t)).join("")}</ul>` : `<p class="col-empty">Rien en cours.</p>`}
       </section>`;
     };
@@ -275,7 +281,7 @@
       <div class="card-head"><h2 class="h2">Qui a fait quoi</h2>
         ${EM().fsel("journal", "Qui", [["all", "Tout le monde"]].concat(ms.map(m => [m.id, m.name])), journalWho)}
       </div>
-      ${journal.length ? `<ol class="journal">${journal.map(t => `<li class="journal-row" data-task-open="${t.id}" role="button" tabindex="0">${av(t.who, "av")}<p><b>${member(t.who).name}</b> a terminé « ${esc(t.title)} »<span>${esc(t.client || "")} – ${whenDone(t.doneAt)}</span></p><button class="link" type="button" data-task-toggle="${t.id}">Rouvrir</button></li>`).join("")}</ol>` : `<p class="body">Rien de terminé pour l'instant.</p>`}
+      ${journal.length ? `<ol class="journal">${journal.map(t => `<li class="journal-row" data-task-open="${t.id}" role="button" tabindex="0">${av(t.doneBy || t.who, "av")}<p><b>${member(t.doneBy || t.who).name}</b> a terminé « ${esc(t.title)} »<span>${esc(t.client || "")} – ${whenDone(t.doneAt)}</span></p><button class="link" type="button" data-task-toggle="${t.id}">Rouvrir</button></li>`).join("")}</ol>` : `<p class="body">Rien de terminé pour l'instant.</p>`}
     </section>
     ${taskSheet(S)}`;
   }
@@ -326,6 +332,13 @@
   const STAGES = [["lead", "À contacter"], ["call", "Appel fait"], ["quote", "Devis envoyé"], ["won", "Signé"]];
   let PIPE = null;
   // En ligne : les vrais prospects (base) ; dans la maquette : une copie des exemples
+  // Changer l'étape d'un prospect (bouton, glisser-déposer, CRM) : la date de l'étape est gardée pour « depuis N jours »
+  function setStage(id, st) {
+    const L = window.ENTREMIS_LIVE, at = window.ENTREMIS_DATA.today.iso;
+    const by = EM().S.who;
+    if (L.on()) { const row = L.PROSPECTS().list.find(x => x.id === id); if (row) L.PROSPECTS().put(Object.assign({}, row, { stage: st, stageAt: at, stageBy: by })); }
+    else { const p = pipe().find(x => x.id === id); if (p) { p.stage = st; p.stageAt = at; p.stageBy = by; } }
+  }
   const pipe = () => window.ENTREMIS_LIVE.on() ? TD().pipeline : (PIPE || (PIPE = TD().pipeline.map(p => Object.assign({}, p))));
   const euros = n => n.toLocaleString("fr-FR") + " €";
   function viewPipeline(S) {
@@ -336,10 +349,11 @@
     const card = p => {
       const i = STAGES.findIndex(s => s[0] === p.stage);
       const tel = (p.phone || "04 00 00 00 0" + (list.indexOf(p) % 10)).replace(/\s/g, "");
-      return `<li class="deal">
+      const since = p.stageAt ? Math.max(0, Math.round((new Date(window.ENTREMIS_DATA.today.iso + "T12:00:00") - new Date(p.stageAt + "T12:00:00")) / 864e5)) : null;
+      return `<li class="deal" draggable="${narrow ? "false" : "true"}" data-deal-id="${p.id}">
         <div class="deal-top"><a class="deal-name" href="#fiche-${p.id}">${esc(p.name)}</a><span class="deal-val tabnum">${euros(p.value)}</span></div>
         <span class="deal-sub">${esc(p.trade)} – ${esc(p.city)}</span>
-        <span class="deal-next">${icon("clock")}${esc(p.next)}</span>
+        <span class="deal-next">${icon("clock")}${(() => { const m = window.ENTREMIS_CRM ? window.ENTREMIS_CRM.nextOf(p.id) : null; return m && m.nextAt ? `<b>${esc(window.ENTREMIS_CRM.short(m.nextAt))}</b>&nbsp;${esc(m.nextText || "Relance")}` : esc(p.next); })()}${since !== null ? `<small class="muted"> · depuis ${since} j${p.stageBy ? ", par " + esc(member(p.stageBy).name) : ""}</small>` : ""}</span>
         <div class="deal-foot"><span class="who-inline">${av(p.owner, "av")}${member(p.owner).name}</span>
           <span class="deal-acts"><a class="icon-btn" href="tel:${tel}" aria-label="Appeler ${esc(p.name)}">${icon("phone")}</a>${p.stage !== "won" ? `<a class="icon-btn" href="#propositions" data-prop-for="${p.id}" aria-label="Faire une proposition à ${esc(p.name)}" title="Proposition">${icon("euro")}</a>` : ""}
           ${i < STAGES.length - 1 ? `<button class="btn btn-ghost btn-xs" type="button" data-deal="${p.id}" aria-label="Passer ${esc(p.name)} à : ${STAGES[i + 1][1]}">${STAGES[i + 1][1]} ${icon("arrow")}</button>` : tone("Client", "ok")}</span></div>
@@ -347,18 +361,18 @@
     };
     const column = ([k, l]) => {
       const items = list.filter(p => p.stage === k);
-      return `<section class="stage" aria-label="${l}"><header><b>${l}</b><span class="tabnum">${items.length} – ${euros(items.reduce((a, p) => a + p.value, 0))}</span></header>
+      return `<section class="stage" data-stage="${k}" aria-label="${l}"><header><b>${l}</b><span class="tabnum">${items.length} – ${euros(items.reduce((a, p) => a + p.value, 0))}</span></header>
         ${items.length ? `<ul class="deals">${items.map(card).join("")}</ul>` : `<p class="col-empty">Personne à cette étape.</p>`}</section>`;
     };
     return `
     <div class="head">
-      <div class="head-text"><h1 class="h1">Prospection</h1><p class="sub">Les installateurs à signer, étape par étape. Notez chaque appel dans <a class="link" href="#appels">Appels</a>.</p></div>
+      <div class="head-text"><h1 class="h1">Prospection</h1><p class="sub">Les installateurs à signer, étape par étape.${narrow ? "" : " Glissez une carte d'une colonne à l'autre."} La liste complète est dans <a class="link" href="#contacts">Contacts</a>.</p></div>
       <div class="head-actions">${EM().sampleTag}<button class="btn btn-primary" type="button" data-live-new="prospect">${icon("plus")}Nouveau prospect</button></div>
     </div>
     <div class="kpis kpis-4" role="list">
       ${kpi("En discussion", open.length, "installateurs")}
       ${kpi("Potentiel par mois", euros(open.reduce((a, p) => a + p.value, 0)), "si tout est signé")}
-      ${kpi("Devis envoyés", list.filter(p => p.stage === "quote").length, "réponse à suivre", "warn")}
+      ${kpi("Prévision pondérée", euros(Math.round(open.reduce((a, p) => a + p.value * ({ lead: 0.1, call: 0.3, quote: 0.6 }[p.stage] || 0), 0))), "par mois : 10 %, 30 %, 60 % selon l'étape")}
       ${kpi("Signés ce mois-ci", list.filter(p => p.stage === "won").length, euros(list.filter(p => p.stage === "won").reduce((a, p) => a + p.value, 0)) + " par mois", "ok")}
     </div>
     ${narrow ? `<div class="seg seg-lg seg-full seg-4" role="group" aria-label="Étape">${STAGES.map(([k, l]) => `<button type="button" data-pipe-stage="${k}" aria-pressed="${stageSel === k}">${l}</button>`).join("")}</div>
@@ -406,7 +420,7 @@
       <section class="card">
         <div class="card-head"><h2 class="h2">Cette semaine, par personne</h2></div>
         <div class="people people-plain">${TD().members.map(m => `<article class="person">${av(m.id, "av av-lg")}<div><b>${m.name}</b><span>${esc(m.role)}</span></div>
-          <dl><div><dt>Tâches faites</dt><dd class="t-ok">${weekDone.filter(t => t.who === m.id).length}</dd></div>${TD().perPerson[m.id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></article>`).join("")}</div>
+          <dl><div><dt>Tâches faites</dt><dd class="t-ok">${weekDone.filter(t => (t.doneBy || t.who) === m.id).length}</dd></div>${TD().perPerson[m.id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></article>`).join("")}</div>
       </section>
       <section class="card">
         <div class="card-head"><h2 class="h2">Demandes par métier</h2><span class="muted">ce mois-ci</span></div>
@@ -511,7 +525,7 @@
     if (t.dataset.taskToggle) {
       const task = T.list.find(x => x.id === t.dataset.taskToggle); if (!task) return true;
       const wasDone = task.status === "done";
-      const next = Object.assign({}, task, wasDone ? { status: "todo", doneAt: undefined } : { status: "done", doneAt: nowIso() });
+      const next = Object.assign({}, task, wasDone ? { status: "todo", doneAt: undefined, doneBy: undefined, reopenedBy: EM().S.who } : { status: "done", doneAt: nowIso(), doneBy: EM().S.who });
       haptic(wasDone ? "tap" : "done");
       const li = t.closest(".task"); if (li && !wasDone) li.classList.add("is-leaving");
       setTimeout(() => { putTask(next); render(); }, li && !wasDone ? 220 : 0);
@@ -521,7 +535,7 @@
     if (t.dataset.deal) {
       const p = pipe().find(x => x.id === t.dataset.deal); if (!p) return true;
       const prev = p.stage, i = STAGES.findIndex(s => s[0] === p.stage), next = STAGES[Math.min(i + 1, STAGES.length - 1)][0];
-      const L = window.ENTREMIS_LIVE, save = st => { if (L.on()) { const row = L.PROSPECTS().list.find(x => x.id === p.id); if (row) L.PROSPECTS().put(Object.assign({}, row, { stage: st })); } else p.stage = st; };
+      const save = st => setStage(p.id, st);
       save(next);
       haptic(next === "won" ? "done" : "tap"); render();
       toast(next === "won" ? `${p.name} est signé.` : `${p.name} : ${STAGES[i + 1][1].toLowerCase()}.`, () => { save(prev); render(); });
@@ -612,15 +626,17 @@
     const title = String(f.get("title") || "").trim();
     if (!title) { EM().toast("Écrivez ce qu'il faut faire."); return true; }
     const ed = S.taskEdit ? T.list.find(x => x.id === S.taskEdit) : null;
+    const whos = f.getAll("who").map(String).filter(Boolean);
+    if (!whos.length) { EM().toast("Choisissez au moins une personne."); return true; }
     if (ed) {
-      putTask(Object.assign({}, ed, { title, who: f.get("who") || ed.who, client: f.get("client") || "", due: f.get("due") || "", time: f.get("time") || "" }));
+      putTask(Object.assign({}, ed, { title, desc: String(f.get("desc") || "").trim(), who: whos[0], also: whos.slice(1), client: f.get("client") || "", due: f.get("due") || "", time: f.get("time") || "" }));
       S.taskForm = false; S.taskEdit = null; haptic("done"); render(); EM().toast("Tâche mise à jour.");
       return true;
     }
-    const task = { id: "t" + Date.now().toString(36), title, who: f.get("who") || S.who, client: f.get("client") || "", status: "todo", due: f.get("due") || "", time: f.get("time") || "", createdAt: nowIso(), by: S.who };
+    const task = { id: "t" + Date.now().toString(36), title, desc: String(f.get("desc") || "").trim(), who: whos[0], also: whos.slice(1), client: f.get("client") || "", status: "todo", due: f.get("due") || "", time: f.get("time") || "", createdAt: nowIso(), by: S.who };
     putTask(task); S.taskForm = false; haptic("done"); render();
     if (f.get("gcal")) window.ENTREMIS_GCAL.addTask(task);
-    EM().toast(`Ajoutée pour ${member(task.who).name}.`);
+    EM().toast(`Ajoutée pour ${whoNames(task)}.`);
     return true;
   }
 
@@ -661,7 +677,7 @@
 
   window.ENTREMIS_TEAM = {
     avatar: av, taskSheet,
-    TEAM_ROUTES, SHARED_ROUTES, T, initTasks, initSwipe, onClick, onChange, onSubmit, member, haptic, photoUrl, photoBusy: () => P.busy,
+    TEAM_ROUTES, SHARED_ROUTES, T, initTasks, pipe: () => pipe(), STAGES, setStage, initSwipe, onClick, onChange, onSubmit, member, haptic, photoUrl, photoBusy: () => P.busy,
     views: { equipe: viewPortal, taches: viewTasks, clients: viewClients, pipeline: viewPipeline, avancement: viewProgress, notifications: viewNotifications, reglages: S => window.ENTREMIS_SETTINGS.view(S) },
     unreadCount: S => notifs(S.space).filter(n => !(S.read || {})[n.id]).length
   };

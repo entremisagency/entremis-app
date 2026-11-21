@@ -78,7 +78,7 @@
         ${window.ENTREMIS_SECTORS.ficheCard(e.id, F.edit)}
         ${e.kind === "client" ? (() => { const ls = window.ENTREMIS_LEADS.list().filter(l => l.to === e.id).sort((a, b) => (b.at || "") < (a.at || "") ? -1 : 1); return `<section class="card">
           <div class="card-head"><h2 class="h2">Derniers leads donnés <span class="muted tabnum">${ls.length}</span></h2><a class="link" href="#leads">Tous les leads ${icon("arrow")}</a></div>
-          ${ls.length ? `<ul class="history">${ls.slice(0, 5).map(l => `<li>${icon("inbox")}<div><b>${esc(l.name)}</b><span>${esc(l.trade)} – ${esc(l.city)}</span></div>${window.ENTREMIS_LEADS.srcTag(l.source)}</li>`).join("")}</ul>${ls.length > 5 ? `<p class="kpi-note">et ${ls.length - 5} autres</p>` : ""}` : `<p class="body">Aucun lead donné pour l'instant.</p>`}
+          ${ls.length ? `<ul class="history">${ls.slice(0, 5).map(l => `<li class="is-lead" data-lead-open="${l.id}" tabindex="0" role="button" aria-label="Ouvrir le lead ${esc(l.name)}">${icon("inbox")}<div><b>${esc(l.name)}</b><span>${esc(l.trade)} – ${esc(l.city)}</span></div>${window.ENTREMIS_LEADS.srcTag(l.source)}</li>`).join("")}</ul>${ls.length > 5 ? `<p class="kpi-note">et ${ls.length - 5} autres</p>` : ""}` : `<p class="body">Aucun lead donné pour l'instant.</p>`}
         </section>`; })() : ""}
         ${F.edit ? `<div class="form-actions sticky-save"><button class="btn btn-primary" type="submit">${icon("check")}Enregistrer</button><button class="btn btn-ghost" type="button" data-fiche-cancel>Annuler</button></div>` : ""}
       </div>
@@ -100,6 +100,7 @@
             ${window.ENTREMIS_LIVE.on() ? `<button class="btn btn-ghost" type="button" data-live-edit="${e.c ? "client" : "prospect"}:${e.id}">${icon("sliders")}${e.c ? "Campagne et suivi" : "Étape et valeur"}</button>` : ""}
           </div>
         </section>
+        ${window.ENTREMIS_CRM.ficheCard(e.id)}
         ${e.kind === "client" ? window.ENTREMIS_MACHINE.billingCard(e.id) : window.ENTREMIS_MACHINE.callCard(e.id)}
         ${e.kind === "client" ? window.ENTREMIS_PILOT.flowCard(e.id) : ""}
         ${e.c ? window.ENTREMIS_LIVE.metaCard(e.id) : ""}

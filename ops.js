@@ -321,7 +321,7 @@
     const groups = [
       ["Mon espace", [["equipe", "home", "Mon portail"], ["taches", "check", "Tâches"], ["discussions", "chat", "Discussions"], ["processus", "grid", "Processus"], ["notifications", "bell", "Notifications"]]],
       ["Production", [["appel", "phone", "Poste d'appel"], ["leads", "inbox", "Leads"], ["rendez-vous", "cal", "Rendez-vous"], ["zones", "pin", "Zones"]]],
-      ["Clients", [["clients", "building", "Clients"], ["sante", "gauge", "Santé et suivi"], ["scripts-equipe", "book", "Scripts"], ["secteurs", "tool", "Secteurs"], ["juridique", "shield", "Documents juridiques"], ["acces", "lock", "Accès clients"]]],
+      ["Clients", [["contacts", "users", "Contacts"], ["clients", "building", "Clients"], ["sante", "gauge", "Santé et suivi"], ["scripts-equipe", "book", "Scripts"], ["secteurs", "tool", "Secteurs"], ["juridique", "shield", "Documents juridiques"], ["acces", "lock", "Accès clients"]]],
       ["Trouver des clients", [["pipeline", "users", "Prospection"], ["propositions", "euro", "Propositions"], ["etudes", "check", "Études de cas"], ["appels", "phone", "Appels"], ["marketing", "signal", "Marketing"]]],
       ["Pilotage", [["chiffres", "gauge", "Chiffres"], ["documents", "book", "Documents de travail"], ["avancement", "chart", "Avancement"], ["finances", "euro", "Finances"], ["marge", "chart", "Marge"], ["conformite", "shield", "Conformité"]]],
       ["Compte", [["reglages", "user", "Réglages et photo"], ["guide", "info", "Guide de l'app"]]]

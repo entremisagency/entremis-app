@@ -27,7 +27,7 @@ const TOOLS = [
   { name: "facturation_du_mois", description: "Les leads facturables d'un client pour un mois, les non facturés et le montant HT (plafond compris).", inputSchema: { type: "object", properties: { client: { type: "string" }, mois: { type: "string", description: "AAAA-MM" } }, required: ["client"] } },
   { name: "lister_rendez_vous", description: "Les rendez-vous placés chez les clients, entre deux dates (AAAA-MM-JJ).", inputSchema: { type: "object", properties: { client: { type: "string" }, du: { type: "string" }, au: { type: "string" } } } },
   { name: "lister_taches", description: "Les tâches de l'équipe (Marc, Richard, Gianni), à faire ou faites.", inputSchema: { type: "object", properties: { pour: { type: "string", description: "marc, richard ou gianni" }, faites: { type: "boolean" } } } },
-  { name: "creer_tache", description: "Crée une tâche dans l'app Entremis (visible par toute l'équipe).", inputSchema: { type: "object", properties: { titre: { type: "string" }, pour: { type: "string", description: "marc, richard ou gianni (par défaut : soi)" }, echeance: { type: "string", description: "AAAA-MM-JJ" }, client: { type: "string" } }, required: ["titre"] } },
+  { name: "creer_tache", description: "Crée une tâche dans l'app Entremis (visible par toute l'équipe).", inputSchema: { type: "object", properties: { titre: { type: "string" }, description: { type: "string", description: "les détails utiles (facultatif)" }, pour: { type: "string", description: "marc, richard ou gianni (par défaut : soi)" }, echeance: { type: "string", description: "AAAA-MM-JJ" }, client: { type: "string" } }, required: ["titre"] } },
   { name: "documents_de_travail", description: "Les documents de l'équipe (argumentaire, brief de tournage, veille…). Sans titre : la liste. Avec titre : le texte.", inputSchema: { type: "object", properties: { titre: { type: "string" } } } },
   { name: "chiffres_du_mois", description: "Les chiffres de la machine à leads pour un mois : leads, facturables, RDV pris, pub dépensée, coût par lead, contestations.", inputSchema: { type: "object", properties: { mois: { type: "string", description: "AAAA-MM" } } } }
 ];
@@ -97,7 +97,7 @@ export async function callTool(store: Store, me: { who: string }, name: string, 
       const who = ["marc", "richard", "gianni"].includes(s(a.pour).toLowerCase()) ? s(a.pour).toLowerCase() : me.who;
       const c = a.client ? findClient(rows, a.client) : null, now = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 16).replace(" ", "T");
       const id = "t" + Date.now().toString(36);
-      await store.insert("tasks", id, { id, title, who, client: c ? c.name : "", status: "todo", due: /^\d{4}-\d{2}-\d{2}$/.test(s(a.echeance)) ? s(a.echeance) : "", time: "", createdAt: now, by: me.who, via: "claude" });
+      await store.insert("tasks", id, { id, title, desc: s(a.description).slice(0, 2000), who, client: c ? c.name : "", status: "todo", due: /^\d{4}-\d{2}-\d{2}$/.test(s(a.echeance)) ? s(a.echeance) : "", time: "", createdAt: now, by: me.who, via: "claude" });
       return { ok: true, id, titre: title, pour: who };
     }
     case "documents_de_travail": {
