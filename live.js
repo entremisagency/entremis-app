@@ -115,6 +115,9 @@
     if (free.length) add("leads-" + free.length, "info", "inbox", `${free.length} lead${free.length > 1 ? "s" : ""} à donner à un client`, "Aujourd'hui", "maintenant", { label: "Voir les leads", href: "#leads" });
     rdvs().filter(r => r.date === t && r.state !== "cancel" && r.state !== "replaced").forEach(r => add("t-" + r.id, "info", "cal", `Rendez-vous aujourd'hui chez ${nameOf(r.client_id)} : ${r.name} à ${r.start}`, "Aujourd'hui", r.start, { label: "Rendez-vous", href: "#rendez-vous" }));
     rdvs().filter(r => r.state === "replaced" && !r.replacedBy).forEach(r => add("a-" + r.id, "warn", "swap", `Absence chez ${nameOf(r.client_id)} : ${r.name}. Un remplaçant à placer.`, "À faire", short(r.absentAt || r.date), { label: "Placer un RDV", href: "#rendez-vous" }));
+    { const me = EM().S.who, M = id => window.ENTREMIS_TEAM.member(id).name, since = addDays(t, -2);
+      TASKS().list.filter(k => k.by && k.by !== me && String(k.createdAt || "").slice(0, 10) >= since).forEach(k => { const pour = [k.who].concat(k.also || []).filter(Boolean);
+        add("nt-" + k.id, "info", "check", `${M(k.by)} a ajouté « ${k.title} »${pour.length ? " pour " + pour.map(M).join(", ") : ""}`, "Nouveau", short(String(k.createdAt).slice(0, 10)), { label: "Voir la tâche", task: k.id }); }); }
     TASKS().list.filter(k => k.status !== "done" && k.due && k.due < t).forEach(k => add("k-" + k.id, "danger", "alert", `Tâche en retard : « ${k.title} »`, "À faire", short(k.due), { label: "Voir la tâche", task: k.id }));
     DOCS().list.filter(d => d.kind === "facture" && d.status !== "paye" && d.due && d.due < t).forEach(d => add("d-" + d.id, "warn", "euro", `Facture ${d.number || ""} de ${d.client || ""} : échéance passée le ${short(d.due)}`, "À faire", short(d.due), { label: "Relancer", doc: d.id }));
     (window.ENTREMIS_CRM ? window.ENTREMIS_CRM.dueList() : []).forEach(r => add("crm-" + r.id + "-" + r.nextAt, r.nextAt < t ? "warn" : "info", "phone", `Relancer ${r.name}${r.nextText ? " : " + r.nextText : ""}`, r.nextAt < t ? "En retard" : "Aujourd'hui", short(r.nextAt), { label: "Voir la fiche", href: "#fiche-" + r.id }));
@@ -308,6 +311,10 @@
     else {
       LEADS().list().forEach(l => out.push(["lead:" + l.id, "Nouveau lead", [l.name, l.trade, l.city].filter(Boolean).join(", "), "#leads"]));
       (window.ENTREMIS_GROWTH && window.ENTREMIS_GROWTH.siteRequests ? window.ENTREMIS_GROWTH.siteRequests() : []).forEach(s => out.push(["site:" + s.id, "Demande du site", `${s.name}${s.who ? ", " + s.who : ""}`, "#pipeline"]));
+      // Une tâche ajoutée par quelqu'un d'autre : toute l'équipe est prévenue (Marc, 21 nov. 2026)
+      const me = EM().S.who, M = id => window.ENTREMIS_TEAM.member(id).name;
+      TASKS().list.filter(t => t.by && t.by !== me).forEach(t => { const pour = [t.who].concat(t.also || []).filter(Boolean);
+        out.push(["task:" + t.id, pour.includes(me) ? "Nouvelle tâche pour vous" : `${M(t.by)} a ajouté une tâche`, `${t.title}${pour.includes(me) ? ` (de ${M(t.by)})` : pour.length ? ` (pour ${pour.map(M).join(", ")})` : ""}`, "#taches"]); });
     }
     return out;
   };

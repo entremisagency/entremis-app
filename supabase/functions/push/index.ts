@@ -25,7 +25,9 @@ async function config(): Promise<Cfg> {
 }
 
 type Ev = { op: string; collection: string; id: string; client_id: string | null; data: Record<string, any>; old: Record<string, any> | null; actor: string | null };
-type Msg = { to: "team" | { client: string } | { who: string }; title: string; body: string; href: string };
+type Msg = { to: "team" | { client: string } | { who: string }; title: string; body: string; href: string; skip?: string[] };
+const NAMES: Record<string, string> = { marc: "Marc", richard: "Richard", gianni: "Gianni" };
+const nm = (w: unknown) => NAMES[s(w)] || s(w);
 const s = (v: unknown) => String(v ?? "").trim();
 const join = (...a: unknown[]) => a.map(s).filter(Boolean).join(", ");
 
@@ -47,18 +49,25 @@ function messages(e: Ev): Msg[] {
     case "rdv": return ins && e.client_id ? [{ to: { client: e.client_id }, title: "Nouveau rendez-vous", body: join(d.name, [s(d.date).split("-").reverse().join("/"), s(d.start)].filter(Boolean).join(" à ")), href: "#rdv-" + e.id }] : [];
     case "results": return ins ? [{ to: "team", title: "Résultat de visite", body: "Un client a noté le résultat d'un rendez-vous.", href: "#rendez-vous" }] : [];
     case "chat": return ins ? [{ to: "team", title: "Discussion", body: s(d.text).slice(0, 140), href: "#discussions" }] : [];
-    case "tasks": return ins ? [d.who].concat(Array.isArray(d.also) ? d.also : []).filter(Boolean).map((w: string) => ({ to: { who: s(w) }, title: "Nouvelle tâche", body: s(d.title).slice(0, 140), href: "#taches" })) : [];
+    case "tasks": {
+      // Une nouvelle tâche : les personnes concernées sont prévenues, et le reste de l'équipe aussi (tout le monde la voit)
+      if (!ins) return [];
+      const pour: string[] = [d.who].concat(Array.isArray(d.also) ? d.also : []).filter(Boolean).map(s);
+      const by = d.by ? ` (de ${nm(d.by)})` : "";
+      return pour.map(w => ({ to: { who: w }, title: "Nouvelle tâche pour vous", body: s(d.title).slice(0, 120) + by, href: "#taches" } as Msg))
+        .concat([{ to: "team", skip: pour, title: d.by ? `${nm(d.by)} a ajouté une tâche` : "Nouvelle tâche", body: `${s(d.title).slice(0, 110)}${pour.length ? " · pour " + pour.map(nm).join(", ") : ""}`, href: "#taches" }]);
+    }
   }
   return [];
 }
 
-async function recipients(to: Msg["to"]): Promise<string[]> {
-  let q = db.from("members").select("user_id");
+async function recipients(to: Msg["to"], skip: string[] = []): Promise<string[]> {
+  let q = db.from("members").select("user_id, who");
   if (to === "team") q = q.eq("role", "team");
   else if ("client" in to) q = q.eq("role", "client").eq("client_id", to.client);
   else q = q.eq("role", "team").eq("who", to.who);
   const { data } = await q;
-  return (data || []).map((r: any) => r.user_id);
+  return (data || []).filter((r: any) => !skip.includes(r.who)).map((r: any) => r.user_id);
 }
 
 Deno.serve(async req => {
@@ -72,7 +81,7 @@ Deno.serve(async req => {
     const vapidDetails = { subject: Deno.env.get("PUSH_CONTACT") ?? "https://entremisagency.github.io", publicKey: cfg.public_key!, privateKey: cfg.private_key! };
     let sent = 0;
     for (const m of messages(e)) {
-      const users = (await recipients(m.to)).filter(u => u !== e.actor);   // pas d'alerte pour ce qu'on vient de faire soi-même
+      const users = (await recipients(m.to, m.skip)).filter(u => u !== e.actor);   // pas d'alerte pour ce qu'on vient de faire soi-même
       if (!users.length) continue;
       const { data: subs } = await db.from("push_subs").select("endpoint, sub").in("user_id", users);
       const payload = JSON.stringify({ title: m.title, body: m.body, href: m.href, tag: e.collection + ":" + e.id });

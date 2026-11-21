@@ -214,21 +214,37 @@
   });
 
   /* ---------- Les collections partagées (même usage que la base de la maquette) ---------- */
+  /* Rattrapage : si le direct a décroché (téléphone en veille, réseau coupé), on relit tout au réveil, au retour du réseau,
+     et toutes les 60 secondes tant que l'app est ouverte. Les suppressions sont aussi rattrapées ainsi. */
+  const SUBS = []; let lastSync = 0;
+  function resync(force) { const now = Date.now(); if (!force && now - lastSync < 10000) return; lastSync = now; SUBS.forEach(f => f().catch(() => {})); }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && SUBS.length) resync(); });
+  window.addEventListener("online", () => { if (SUBS.length) resync(true); });
+  setInterval(() => { if (SUBS.length && document.visibilityState === "visible") resync(); }, 60000);
   function collection(name) {
     return {
       // Lit tout, puis suit les changements en temps réel
       async subscribe(onRows, onError) {
         await ready;
-        let rows = [];
-        const { data, error } = await client.from("docs").select("id, data").eq("collection", name);
-        if (error) { onError && onError(error); return; }
-        rows = (data || []).map(r => Object.assign({ id: r.id }, r.data)); onRows(rows);
-        client.channel("docs-" + name)
+        let rows = [], sig = "";
+        const load = async () => {
+          const { data, error } = await client.from("docs").select("id, data").eq("collection", name);
+          if (error) return error;
+          const next = (data || []).map(r => Object.assign({ id: r.id }, r.data)), s = JSON.stringify(next);
+          if (s !== sig) { sig = s; rows = next; onRows(rows.slice()); }   // on ne réaffiche que si quelque chose a changé
+          return null;
+        };
+        const err = await load();
+        if (err) { onError && onError(err); return; }
+        SUBS.push(load);
+        // Le direct : chaque ajout ou changement fait par Marc, Richard ou Gianni arrive tout de suite
+        let first = true;
+        client.channel("docs-" + name + "-" + Math.random().toString(36).slice(2, 8))
           .on("postgres_changes", { event: "*", schema: "public", table: "docs", filter: "collection=eq." + name }, p => {
             if (p.eventType === "DELETE") rows = rows.filter(r => r.id !== (p.old && p.old.id));
             else { const r = Object.assign({ id: p.new.id }, p.new.data), i = rows.findIndex(x => x.id === r.id); if (i >= 0) rows[i] = r; else rows.push(r); }
-            onRows(rows.slice());
-          }).subscribe();
+            sig = JSON.stringify(rows); onRows(rows.slice());
+          }).subscribe(status => { if (status === "SUBSCRIBED") { if (!first) load(); first = false; } });   // reconnexion : on rattrape ce qui a été manqué
       },
       async set(id, data) {
         const owner = data && data.client_id ? data.client_id : name === "leads" && data && data.to ? data.to : null;
@@ -294,6 +310,6 @@
   }
   async function signOut() { if (client) await client.auth.signOut(); try { sessionStorage.removeItem("entremis-cloud"); } catch (_) {} location.reload(); }
 
-  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start, pushSubscribe, dumpAll, mcpKeys, mcpCreate, mcpDelete };
+  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start, pushSubscribe, dumpAll, mcpKeys, mcpCreate, mcpDelete, resync: () => resync(true) };
   if (on) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start(); }
 })();
