@@ -47,7 +47,7 @@ function messages(e: Ev): Msg[] {
     case "rdv": return ins && e.client_id ? [{ to: { client: e.client_id }, title: "Nouveau rendez-vous", body: join(d.name, [s(d.date).split("-").reverse().join("/"), s(d.start)].filter(Boolean).join(" à ")), href: "#rdv-" + e.id }] : [];
     case "results": return ins ? [{ to: "team", title: "Résultat de visite", body: "Un client a noté le résultat d'un rendez-vous.", href: "#rendez-vous" }] : [];
     case "chat": return ins ? [{ to: "team", title: "Discussion", body: s(d.text).slice(0, 140), href: "#discussions" }] : [];
-    case "tasks": return ins && d.who ? [{ to: { who: s(d.who) }, title: "Nouvelle tâche", body: s(d.title).slice(0, 140), href: "#taches" }] : [];
+    case "tasks": return ins ? [d.who].concat(Array.isArray(d.also) ? d.also : []).filter(Boolean).map((w: string) => ({ to: { who: s(w) }, title: "Nouvelle tâche", body: s(d.title).slice(0, 140), href: "#taches" })) : [];
   }
   return [];
 }
