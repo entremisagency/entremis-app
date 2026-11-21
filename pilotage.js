@@ -143,7 +143,7 @@
     }
     return `<div class="head"><div class="head-text"><h1 class="h1">Documents de travail</h1><p class="sub">L'argumentaire, le brief de tournage, la veille : à jour, pour toute l'équipe.</p></div>
       <div class="head-actions">${drive ? `<a class="btn btn-ghost" href="${esc(drive)}" target="_blank" rel="noopener">${icon("arrow")}Drive commun</a>` : ""}<button class="btn btn-primary" type="button" data-pl-doc-edit="new">${icon("plus")}Nouveau document</button></div></div>
-      ${all.length ? `<section class="card"><ul class="ac-list">${all.map(d => `<li class="ac-row is-link" data-pl-doc="${esc(d.id)}" tabindex="0"><span class="av av-md">${icon("book")}</span><span><b>${esc(d.title)}</b><small>${esc(d.what || "")}${d.updatedAt ? " · mis à jour le " + fr(d.updatedAt) : ""}</small></span>${icon("chev")}</li>`).join("")}</ul></section>`
+      ${all.length ? `<div class="lg-grid">${all.map(d => `<button class="lg-tile" type="button" data-pl-doc="${esc(d.id)}"><span class="lg-ico">${icon("book")}</span><span class="lg-txt"><b>${esc(d.title)}</b><small>${esc(d.what || "")}</small></span><span class="lg-go">${d.updatedAt ? "Mis à jour le " + fr(d.updatedAt) : "Lire"} ${icon("arrow")}</span></button>`).join("")}</div>`
         : `<section class="card"><p class="body">${window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on() ? "Aucun document pour l'instant. Ajoutez-en un, ou lancez le SQL des documents de Gianni." : "Maquette : les documents de Gianni sont dans la base en ligne, pas dans cette maquette."}</p></section>`}
       <p class="set-note">${icon("info")}Visibles par l'équipe seulement. Un changement ici est vu tout de suite par Marc, Richard et Gianni.</p>`;
   }

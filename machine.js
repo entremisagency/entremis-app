@@ -154,41 +154,49 @@
     const perLead = leads ? total / leads : 0, deals = leads * s.sign / 100, ca = deals * s.price, marge = ca * s.margin / 100;
     return { forms, leads, leadCost, total, perLead, deals, ca, marge, profit: marge - total, perDeal: deals ? total / deals : 0, roi: total ? ca / total : 0, every: perLead ? (s.price * s.margin / 100) / perLead : 0 };
   }
+  const scenOf = s => Object.keys(SCEN).find(k => Object.entries(SCEN[k]).every(([f, v]) => Number(s[f]) === v)) || "";
+  function simOut(s, r) {
+    const n = (v, d) => Number(v).toLocaleString("fr-FR", { maximumFractionDigits: d || 0 }), win = r.profit >= 0;
+    const cost = Math.max(1, r.total), gain = Math.max(0, r.marge), top = Math.max(cost, gain);
+    const bar = (label, v, w, vivid) => `<div class="sim-bar"><span>${label}</span><i><b class="${vivid ? "is-vivid" : ""}" style="width:${Math.max(2, Math.round(w / top * 100))}%"></b></i><em>${n(v)} €</em></div>`;
+    return `<p class="sim-kicker">Chaque mois, pour l'installateur</p>
+      <p class="sim-hero${win ? "" : " is-neg"}">${win ? "+" : ""}${n(r.profit)} €</p>
+      <p class="sim-hero-sub">de bénéfice une fois la pub et les leads payés</p>
+      <div class="sim-bars">${bar("Il dépense", r.total, cost)}${bar("Il gagne en marge", r.marge, gain, true)}</div>
+      <div class="sim-stats">
+        <div><b>${n(r.deals, 1)}</b><span>chantiers signés</span></div>
+        <div><b>${n(r.perLead)} €</b><span>coût total d'un lead</span></div>
+        <div><b>${n(r.every, 1)}</b><span>leads pour couvrir un chantier</span></div>
+      </div>
+      <dl class="lp-dl sim-dl">
+        <div><dt>Leads facturés</dt><dd>${n(r.leads)}</dd></div>
+        <div><dt>Coût des leads</dt><dd>${n(r.leadCost)} € HT</dd></div>
+        <div><dt>Pub + leads</dt><dd>${n(r.total)} €</dd></div>
+        <div><dt>Chiffre d'affaires généré</dt><dd>${n(r.ca)} €</dd></div>
+        <div><dt>Coût par chantier signé</dt><dd>${n(r.perDeal)} €</dd></div>
+        <div><dt>Chiffre d'affaires pour 1 € investi</dt><dd>${n(r.roi, 1)} €</dd></div>
+      </dl>`;
+  }
   function simView() {
-    const s = sim(), r = simCalc(s), esc = EM().esc, n = (v, d) => Number(v).toLocaleString("fr-FR", { maximumFractionDigits: d || 0 });
-    const inp = (k, label, unit, step) => `<label class="field"><span>${label}</span><div class="pp-num"><input name="${k}" type="number" inputmode="decimal" min="0" step="${step || 1}" value="${s[k]}">${unit ? `<small>${unit}</small>` : ""}</div></label>`;
-    const out = (label, v, strong) => `<div><dt>${label}</dt><dd>${strong ? `<b>${v}</b>` : v}</dd></div>`;
-    return `<div class="gen">
-      <form class="card gen-form" id="mc-sim" autocomplete="off">
+    const s = sim(), r = simCalc(s), cur = scenOf(s);
+    const inp = (k, label, unit, step) => `<label class="sim-field"><span>${label}</span><span class="sim-in"><input name="${k}" type="number" inputmode="decimal" min="0" step="${step || 1}" value="${s[k]}"><small>${unit}</small></span></label>`;
+    return `<div class="sim">
+      <form class="card sim-form" id="mc-sim" autocomplete="off">
         <div class="card-head"><h2 class="h2">Rentabilité pour l'installateur</h2></div>
-        <div class="seg seg-lg" role="group" aria-label="Scénario">${Object.keys(SCEN).map(k => `<button type="button" data-mc-scen="${k}">${k.charAt(0).toUpperCase() + k.slice(1)}</button>`).join("")}</div>
-        <div class="field-row">${inp("price", "Prix moyen d'un chantier PAC", "€ TTC", 500)}${inp("margin", "Marge de l'installateur", "%")}</div>
-        <div class="field-row">${inp("budget", "Budget pub mensuel", "€", 50)}${inp("cpf", "Pub par formulaire rempli", "€")}</div>
-        <div class="field-row">${inp("verif", "Formulaires vérifiés", "%")}${inp("lead", "Prix par lead", "€ HT")}</div>
-        <div class="field-row">${inp("sign", "Leads signés", "%", 0.5)}<div></div></div>
-        <p class="kpi-note">Estimations à valider avec les vrais chiffres des pilotes. Normal : 25 € par formulaire, 70 % vérifiés, 8 % signés.</p>
+        <div class="seg seg-lg sim-seg" role="group" aria-label="Scénario">${Object.keys(SCEN).map(k => `<button type="button" data-mc-scen="${k}" aria-pressed="${cur === k}">${k.charAt(0).toUpperCase() + k.slice(1)}</button>`).join("")}</div>
+        <fieldset class="sim-group"><legend>Le chantier</legend><div class="sim-row">${inp("price", "Prix moyen d'un chantier PAC", "€ TTC", 500)}${inp("margin", "Marge de l'installateur", "%")}</div></fieldset>
+        <fieldset class="sim-group"><legend>La pub</legend><div class="sim-row">${inp("budget", "Budget pub par mois", "€", 50)}${inp("cpf", "Pub par formulaire rempli", "€")}</div><div class="sim-row">${inp("verif", "Formulaires vérifiés", "%")}</div></fieldset>
+        <fieldset class="sim-group"><legend>Les leads</legend><div class="sim-row">${inp("lead", "Prix par lead", "€ HT")}${inp("sign", "Leads qui signent", "%", 0.5)}</div></fieldset>
+        <p class="kpi-note">Estimations à valider avec les vrais chiffres des pilotes.</p>
       </form>
-      <section class="card"><div class="card-head"><h2 class="h2">Chaque mois</h2></div>
-        <dl class="lp-dl">
-          ${out("Leads facturés", n(r.leads))}
-          ${out("Coût des leads", n(r.leadCost) + " € HT")}
-          ${out("Coût total (pub + leads)", n(r.total) + " €")}
-          ${out("Coût total d'un lead", n(r.perLead) + " €", true)}
-          ${out("Chantiers signés", n(r.deals, 1))}
-          ${out("Chiffre d'affaires généré", n(r.ca) + " €")}
-          ${out("Marge générée", n(r.marge) + " €")}
-          ${out("Bénéfice après acquisition", n(r.profit) + " €", true)}
-          ${out("Coût par chantier signé", n(r.perDeal) + " €")}
-          ${out("Chiffre d'affaires pour 1 € investi", n(r.roi, 1) + " €")}
-          ${out("Rentable dès 1 chantier tous les", n(r.every, 1) + " leads", true)}
-        </dl></section>
+      <section class="card sim-out" data-sim-out aria-live="polite">${simOut(s, r)}</section>
     </div>`;
   }
   document.addEventListener("input", e => {
     const f = e.target.closest && e.target.closest("#mc-sim"); if (!f) return;
     const s = sim(); s[e.target.name] = Number(e.target.value) || 0;
-    const box = f.parentElement.querySelector(".lp-dl"); if (!box) return;
-    const tmp = document.createElement("div"); tmp.innerHTML = simView(); box.innerHTML = tmp.querySelector(".lp-dl").innerHTML;
+    const out = document.querySelector("[data-sim-out]"); if (out) out.innerHTML = simOut(s, simCalc(s));
+    const cur = scenOf(s); f.querySelectorAll("[data-mc-scen]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mcScen === cur)));
   });
 
   /* ---------- Les chiffres suivis chaque semaine (Chiffres) ---------- */

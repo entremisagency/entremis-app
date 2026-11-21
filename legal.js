@@ -167,6 +167,7 @@
         ["h", "9. Droit applicable"], ["p", "Droit français ; tribunal de commerce du siège de {{ent_nom}}."]] }
   ];
   const GROUPS = ["Clients", "Tournage", "Paiement", "Partenaires"];
+  const ICONS = { prestation: "book", retractation: "swap", meta: "signal", rgpd: "shield", avenant: "sliders", exclusivite: "pin", resiliation: "logout", cgv: "info", image: "eye", acteur: "user", cession: "share", sepa: "euro", relance: "alert", nda: "lock", apporteur: "users" };
 
   /* ---------- La marque sur les documents : le E d'Entremis (même dessin que l'app), en image pour le PDF ---------- */
   const INK = [6, 18, 28], MUTE = [96, 112, 128], LINE = [222, 229, 236], BLUE = [47, 91, 234], SOFT = [244, 247, 250];
@@ -208,7 +209,7 @@
     if (!t) return `<div class="head"><div class="head-text"><h1 class="h1">Documents juridiques</h1><p class="sub">Choisissez un modèle : il se remplit avec ce que l'app sait du client.</p></div>
         <div class="head-actions"><button class="btn btn-ghost" type="button" data-legal-me>${icon("sliders")}Coordonnées d'Entremis</button></div></div>
       ${X.me ? meCard() : ""}
-      ${GROUPS.map(g => `<section class="card"><div class="card-head"><h2 class="h2">${g}</h2></div><ul class="ac-list">${T.filter(x => x.group === g).map(x => `<li class="ac-row is-link" data-legal-tpl="${x.id}" tabindex="0"><span class="av av-md">${icon("book")}</span><span><b>${esc(x.name)}</b><small>${esc(x.what)}</small></span>${icon("chev")}</li>`).join("")}</ul></section>`).join("")}
+      ${GROUPS.map(g => `<section class="lg-group"><h2 class="h2">${g} <span class="muted tabnum">${T.filter(x => x.group === g).length}</span></h2><div class="lg-grid">${T.filter(x => x.group === g).map(x => `<button class="lg-tile" type="button" data-legal-tpl="${x.id}"><span class="lg-ico">${icon(ICONS[x.id] || "book")}</span><span class="lg-txt"><b>${esc(x.name)}</b><small>${esc(x.what)}</small></span><span class="lg-go">Remplir ${icon("arrow")}</span></button>`).join("")}</div></section>`).join("")}
       ${recent()}
       <p class="set-note">${icon("info")}Modèles de travail, pas un conseil juridique : à faire relire par un avocat ou un juriste avant le premier usage. Les coordonnées bancaires ne sont jamais saisies dans l'app.</p>`;
     const v = vals(), c = cl(X.cid);
