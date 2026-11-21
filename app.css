@@ -2716,3 +2716,6 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .doc-mail textarea{width:100%;box-sizing:border-box;padding:var(--space-3) var(--space-4);border:0;border-radius:var(--radius-md);background:var(--color-white);color:var(--color-ink);font:inherit;font-size:var(--text-body);resize:vertical}
 .doc-mail input{background:var(--color-white)}
 .doc-mail textarea:focus{outline:2px solid var(--color-action);outline-offset:0}
+
+/* Pub Meta d'un client : le bouton copier reste à côté de l'identifiant */
+.meta-card .lp-dl dd{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-1);min-width:0}

@@ -11,7 +11,7 @@
   const on = () => !!(window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on());
   const st = {};
   const store = name => st[name] || (st[name] = OPS().makeStore(name, () => []));
-  const CLIENTS = () => store("clients"), PROSPECTS = () => store("prospects"), RDV = () => store("rdv"), COSTS = () => store("costs"), MKT = () => store("marketing");
+  const CLIENTS = () => store("clients"), PROSPECTS = () => store("prospects"), RDV = () => store("rdv"), COSTS = () => store("costs"), MKT = () => store("marketing"), META = () => store("meta");
   const LEADS = () => window.ENTREMIS_LEADS, DOCS = () => window.ENTREMIS_OPS.stores.DOCS, CALLS = () => window.ENTREMIS_OPS.stores.CALLS, TASKS = () => window.ENTREMIS_TEAM.T;
 
   const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
@@ -121,6 +121,32 @@
     return out;
   }
 
+  /* ---------- La pub Meta d'un client (Marc, 21 nov. 2026) ----------
+     Entremis gère les campagnes dans le compte publicitaire du client (accès partenaire dans son Business Manager) ;
+     le client garde son compte et paie Meta. Ici : le compte, l'état de l'accès, le budget, les dépenses du mois,
+     et les leads venus de Meta qu'on lui a donnés, d'où le coût par lead. Réservé à l'équipe (pas de client_id). */
+  const META_ST = { "": ["Pas encore relié", "neutral"], demande: ["Accès demandé", "warn"], accepte: ["Accès accepté", "ok"], refuse: ["Accès refusé", "danger"] };
+  const actOf = r => String((r && r.account) || "").replace(/^act_/i, "").replace(/\D/g, "");
+  function metaCard(id) {
+    const esc = EM().esc, icon = EM().icon, r = META().list.find(x => x.id === id) || {}, m = today().slice(0, 7);
+    const spent = Number((r.spend || {})[m]) || 0, budget = Number(r.budget) || 0, act = actOf(r);
+    const leads = LEADS().list().filter(l => l.to === id && /facebook|instagram|meta/i.test(l.source || "") && String(l.at || "").slice(0, 7) === m).length;
+    const [sl, sk] = META_ST[r.access || ""] || META_ST[""], eur = n => Math.round(n).toLocaleString("fr-FR") + " €";
+    const row = (a, b) => `<div><dt>${a}</dt><dd>${b}</dd></div>`;
+    return `<section class="card meta-card">
+      <div class="card-head"><h2 class="h2 h2-brand">${EM().brand("meta", "Meta")}Pub Meta</h2><span class="state state-${sk}">${sl}</span></div>
+      ${act ? `<dl class="lp-dl">
+        ${row("Compte publicitaire", `${esc(act)} <button class="icon-btn" type="button" data-copy="${esc(act)}" aria-label="Copier l'identifiant">${icon("copy")}</button>`)}
+        ${row(`Budget de ${MONTHS_L[Number(m.slice(5, 7)) - 1]}`, budget ? eur(budget) : "à définir")}
+        ${row("Dépensé ce mois", spent ? eur(spent) + (budget ? ` sur ${eur(budget)}` : "") : "pas encore saisi")}
+        ${row("Leads Meta donnés ce mois", String(leads))}
+        ${row("Coût par lead", leads && spent ? eur(spent / leads) : "—")}
+      </dl>${r.note ? `<p class="kpi-note">${esc(r.note)}</p>` : ""}`
+      : `<p class="body">Reliez le compte publicitaire Facebook du client : vous gérez ses campagnes depuis le Business Manager d'Entremis, il garde son compte et paie Meta.</p>`}
+      <div class="form-actions"><button class="btn btn-ghost" type="button" data-live-meta="${esc(id)}">${icon("sliders")}${act ? "Modifier" : "Relier son compte pub"}</button>${act ? `<a class="btn btn-ghost" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${esc(act)}" target="_blank" rel="noopener">${icon("arrow")}Ouvrir l'Ads Manager</a>` : ""}</div>
+    </section>`;
+  }
+
   /* ---------- Les formulaires : client, prospect, rendez-vous, dépense ---------- */
   const X = { sheet: null, data: {} };
   const field = (name, label, value, attrs) => `<label class="field"><span>${label}</span><input name="${name}" value="${EM().esc(value == null ? "" : value)}" ${attrs || ""}></label>`;
@@ -130,7 +156,7 @@
   function sheet(S) {
     if (!X.sheet) return "";
     const d = X.data || {}, esc = EM().esc, k = X.sheet;
-    const titles = { marketing: "Les chiffres du mois", sources: "Faire arriver les leads", client: d.id ? "Modifier le client" : "Nouveau client", prospect: d.id ? "Modifier le prospect" : "Nouveau prospect", rdv: d.id ? "Modifier le rendez-vous" : "Placer un rendez-vous", cost: "Nouvelle dépense" };
+    const titles = { meta: "Pub Meta du client", marketing: "Les chiffres du mois", sources: "Faire arriver les leads", client: d.id ? "Modifier le client" : "Nouveau client", prospect: d.id ? "Modifier le prospect" : "Nouveau prospect", rdv: d.id ? "Modifier le rendez-vous" : "Placer un rendez-vous", cost: "Nouvelle dépense" };
     let body = "";
     if (k === "client") body = `${field("name", "Nom de l'entreprise", d.name, 'required maxlength="80"')}
       <div class="field-row">${select("trade", "Métier", trades(), d.trade)}${field("zone", "Zone (ville, département)", d.zone, 'maxlength="80" placeholder="Ex. : Rhône"')}</div>
@@ -148,6 +174,12 @@
       <div class="field-row">${field("address", "Adresse", d.address, 'maxlength="120"')}${field("city", "Ville", d.city, 'maxlength="60"')}</div>
       <div class="field-row">${field("date", "Date", d.date || addDays(today(), 1), 'type="date" required')}${field("start", "Heure", d.start || "10:00", 'type="time" required')}</div>
       ${field("note", "Ce qu'il faut savoir", d.note, 'maxlength="300" placeholder="Ex. : maison de 1985, chaudière fioul, disponible le matin"')}`;
+    if (k === "meta") { const m = today().slice(0, 7);
+      body = `${field("account", "Identifiant du compte publicitaire", d.account, 'maxlength="40" inputmode="numeric" placeholder="Ex. : act_1234567890 ou 1234567890"')}
+      ${select("access", "Accès d'Entremis", [["", "Pas encore demandé"], ["demande", "Demandé, en attente du client"], ["accepte", "Accepté"], ["refuse", "Refusé"]], d.access || "")}
+      <div class="field-row">${field("budget", "Budget par mois (€)", d.budget || "", 'type="number" min="0" step="10"')}${field("spent", `Dépensé en ${MONTHS_L[Number(m.slice(5, 7)) - 1]} (€)`, (d.spend || {})[m] || "", 'type="number" min="0" step="1"')}</div>
+      ${field("note", "Note", d.note, 'maxlength="160" placeholder="Ex. : campagne PAC Rhône, formulaire « Étude gratuite »"')}
+      <p class="field-help">Demander l'accès : dans le Business Manager d'Entremis, Paramètres de l'entreprise › Comptes › Comptes publicitaires › Ajouter › Demander l'accès à un compte publicitaire, puis collez l'identifiant. Le client accepte dans ses Paramètres de l'entreprise › Demandes.</p>`; }
     if (k === "marketing") { const r = MKT().list.find(x => x.id === (d.id || today().slice(0, 7))) || {}, sp = r.spend || {};
       body = `${field("month", "Mois", d.id || today().slice(0, 7), 'type="month" required')}
       ${field("traffic", "Visites du site venues de Google (Search Console)", r.traffic || "", 'type="number" min="0"')}
@@ -175,7 +207,8 @@
   const open = (kind, data) => { X.sheet = kind; X.data = Object.assign({}, data || {}); EM().render(); setTimeout(() => { const i = document.querySelector("#live-form input, #live-form select"); if (i) i.focus(); }, 60); };
 
   function onClick(e, S, render) {
-    const t = e.target.closest("[data-live-new],[data-live-edit],[data-live-close],[data-live-del],[data-live-rdv],[data-live-replace],[data-rdv-state]"); if (!t) return false;
+    const t = e.target.closest("[data-live-new],[data-live-edit],[data-live-close],[data-live-del],[data-live-rdv],[data-live-replace],[data-live-meta],[data-rdv-state]"); if (!t) return false;
+    if (t.dataset.liveMeta) { const cid = t.dataset.liveMeta; open("meta", Object.assign({}, META().list.find(x => x.id === cid) || {}, { cid })); return true; }
     const d = t.dataset;
     if (d.liveNew) { open(d.liveNew, d.liveClient ? { client_id: d.liveClient } : {}); return true; }
     if (d.liveReplace) { const r = RDV().list.find(x => x.id === d.liveReplace) || {}; open("rdv", { replaces: r.id, client_id: r.client_id, role: r.role, city: r.city }); return true; }
@@ -237,6 +270,13 @@
       if (d.replaces) { const old = RDV().list.find(x => x.id === d.replaces); if (old) RDV().put(Object.assign({}, old, { replacedBy: row.id })); }
       if (d.lead) { const l = LEADS().list().find(x => x.id === d.lead); if (l) LEADS().put(Object.assign({}, l, { status: "rdv", to: row.client_id, givenAt: l.givenAt || now, givenBy: l.givenBy || S.who })); }
     }
+    if (k === "meta") {
+      const cid = d.cid; if (!cid) return say("Client introuvable."), true;
+      const act = v("account").replace(/^act_/i, "").replace(/\D/g, ""), m = today().slice(0, 7);
+      if (v("account") && act.length < 5) return say("L'identifiant du compte n'a que des chiffres (parfois précédés de « act_»)."), true;
+      const cur = META().list.find(x => x.id === cid) || {};
+      await META().put(Object.assign({}, cur, { id: cid, account: act, access: v("access"), budget: Number(v("budget")) || 0, note: v("note"), spend: Object.assign({}, cur.spend || {}, { [m]: Number(v("spent")) || 0 }), updatedAt: new Date().toISOString().slice(0, 16) }));
+    }
     if (k === "marketing") {
       const id = v("month"); if (!/^\d{4}-\d{2}$/.test(id)) return say("Choisissez le mois."), true;
       await MKT().put({ id, traffic: Number(v("traffic")) || 0, spend: { meta: Number(v("meta")) || 0, google: Number(v("google")) || 0, autre: Number(v("autre")) || 0 } });
@@ -246,7 +286,7 @@
       if (!v("label") || !(Number(v("value")) >= 0)) return say("Écrivez la dépense et son montant."), true;
       await COSTS().put({ id: "k" + Date.now().toString(36), label: v("label"), value: Number(v("value")) || 0 });
     }
-    const msg = { marketing: "Chiffres du mois enregistrés.", client: "Client enregistré.", prospect: "Prospect enregistré.", rdv: "Rendez-vous placé : le client le voit dans son agenda.", cost: "Dépense ajoutée." }[k];
+    const msg = { meta: "Pub Meta du client enregistrée.", marketing: "Chiffres du mois enregistrés.", client: "Client enregistré.", prospect: "Prospect enregistré.", rdv: "Rendez-vous placé : le client le voit dans son agenda.", cost: "Dépense ajoutée." }[k];
     X.sheet = null; window.ENTREMIS_TEAM.haptic("done"); render(); EM().toast(msg);
     return true;
   }
@@ -285,13 +325,13 @@
   }
 
   window.ENTREMIS_LIVE = {
-    watch, askAlerts, MKT,
+    watch, askAlerts, MKT, META, metaCard,
     on, CLIENTS, PROSPECTS, RDV, COSTS, rdvs, rdvFor, asAppt, notifs, sheet, onClick, onSubmit, open,
     sheetOpen: () => !!X.sheet,
     reset: () => { X.sheet = null; },
     init: render => {
       const go = () => { rebuild(); render(); };
-      [CLIENTS, PROSPECTS, RDV, COSTS, MKT].forEach(s => s().init(go));
+      [CLIENTS, PROSPECTS, RDV, COSTS, MKT, META].forEach(s => s().init(go));
       if (on()) startWatch();
       if (on()) { const tick = () => { rebuild(); }; setInterval(() => { tick(); }, 60000); }
     },
