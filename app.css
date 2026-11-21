@@ -3008,3 +3008,7 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .lp-hist-dot svg{width:var(--space-4);height:var(--space-4)}
 .task-text .tm-who .av{margin-right:calc(-1 * var(--space-1))}
 .task-text .tm-who>span{margin-left:var(--space-2)}
+
+/* Favoris : l'étoile à côté du titre */
+.fav-star.is-on{color:var(--color-ink)}
+.fav-star.is-on svg{fill:currentColor}

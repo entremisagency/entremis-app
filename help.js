@@ -52,11 +52,29 @@
     reglages: "Votre profil, votre mot de passe et les notifications de cet appareil.",
     menu: "Toutes vos pages."
   };
+  /* ---------- Les favoris : des raccourcis en haut du menu, propres à chacun (suivent le compte en ligne) ---------- */
+  const NO_FAV = ["fiche", "rdv", "script"];
+  const CL = () => window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on() ? window.ENTREMIS_CLOUD : null;
+  function favs(space) {
+    const k = space === "client" ? "fav-client" : "fav-team", c = CL();
+    if (c) { const v = c.privGet("prefs", k); return v && Array.isArray(v.list) ? v.list : []; }
+    try { return JSON.parse(localStorage.getItem("entremis-app-" + k) || "[]"); } catch (_) { return []; }
+  }
+  function setFavs(space, list) {
+    const k = space === "client" ? "fav-client" : "fav-team", c = CL();
+    if (c) c.privSet("prefs", k, { list }); else try { localStorage.setItem("entremis-app-" + k, JSON.stringify(list)); } catch (_) {}
+  }
   const text = (name, space) => (space === "client" ? CLIENT[name] || TEAM[name] : TEAM[name] || CLIENT[name]) || "";
   let open = false;
   // Pose le bouton à côté du premier titre de la page (appelé après chaque affichage)
   function decorate(root, name, space) {
     const t = text(name, space), h = root && root.querySelector(".head h1.h1"); if (!t || !h || h.querySelector(".info-i")) return;
+    if (!NO_FAV.includes(name)) {   // l'étoile : ajouter ou retirer la page des favoris
+      const on = favs(space).includes(name), f = document.createElement("button");
+      f.type = "button"; f.className = "info-i fav-star" + (on ? " is-on" : ""); f.dataset.pageFav = name + "|" + space;
+      f.setAttribute("aria-pressed", String(on)); f.setAttribute("aria-label", on ? "Retirer des favoris" : "Ajouter aux favoris"); f.title = on ? "Retirer des favoris" : "Ajouter aux favoris";
+      f.innerHTML = window.EM.icon("star"); h.appendChild(f);
+    }
     const b = document.createElement("button");
     b.type = "button"; b.className = "info-i"; b.setAttribute("aria-label", "À quoi sert cette page"); b.setAttribute("aria-expanded", String(open)); b.dataset.pageInfo = "";
     b.innerHTML = window.EM.icon("info");
@@ -65,9 +83,13 @@
     h.insertAdjacentElement("afterend", p);
   }
   document.addEventListener("click", e => {
+    const f = e.target.closest && e.target.closest("[data-page-fav]");
+    if (f) { e.preventDefault(); const [name, space] = f.dataset.pageFav.split("|"), list = favs(space), on = list.includes(name);
+      setFavs(space, on ? list.filter(x => x !== name) : list.concat(name)); if (window.ENTREMIS_TEAM) window.ENTREMIS_TEAM.haptic("tap");
+      window.EM.render(); window.EM.toast(on ? "Retirée des favoris." : "Ajoutée aux favoris, en haut du menu."); return; }
     const b = e.target.closest && e.target.closest("[data-page-info]"); if (!b) return;
     e.preventDefault(); open = !open; b.setAttribute("aria-expanded", String(open));
     const p = b.closest("h1").nextElementSibling; if (p && p.classList.contains("info-pop")) p.hidden = !open;
   });
-  window.ENTREMIS_HELP = { decorate, text, reset: () => { open = false; } };
+  window.ENTREMIS_HELP = { favs, decorate, text, reset: () => { open = false; } };
 })();

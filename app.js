@@ -214,6 +214,9 @@
     // Groupes du menu, repliables (on se souvient de ce qui est replié). Celui de la page ouverte reste ouvert.
     const link = ([r, i, l, n]) => `<a href="#${r}" ${section === r ? 'aria-current="page"' : ""}>${icon(i)}<span>${esc(l)}</span>${n ? `<span class="count">${n}</span>` : ""}</a>`;
     const groups = []; items.forEach(it => typeof it === "string" ? groups.push({ t: it, l: [] }) : (groups.length ? groups[groups.length - 1] : (groups.push({ t: team ? "" : c.name, l: [] }), groups[0])).l.push(it));
+    // Les favoris (étoile à côté du titre d'une page) : un groupe en haut du menu
+    const favList = window.ENTREMIS_HELP.favs(team ? "team" : "client").map(r => items.find(it => Array.isArray(it) && it[0] === r)).filter(Boolean);
+    if (favList.length) groups.unshift({ t: "Favoris", l: favList });
     const folded = (() => { try { return JSON.parse(store.get("fold", "[]")); } catch (_) { return []; } })();
     $("#menu").innerHTML = groups.map(g => { const shut = folded.includes(g.t) && !g.l.some(x => x[0] === section);
       return `<div class="menu-group${shut ? " is-shut" : ""}">${g.t ? `<button class="menu-title" type="button" data-menu-fold="${esc(g.t)}" aria-expanded="${!shut}"><span>${esc(g.t)}</span>${icon("chev")}</button>` : ""}<div class="menu-items">${g.l.map(link).join("")}</div></div>`; }).join("");
@@ -665,9 +668,11 @@
   // « Plus » côté client (téléphone) : toutes les pages qui ne sont pas dans les onglets
   function viewClientMenu() {
     const c = C(), replies = c.messages.filter(m => m.status === "replied").length, unread = TM().unreadCount(S);
-    const groups = [["Votre campagne", [["facturation", "euro", "Leads et facture"], ["messages", "chat", "Messages", replies], ["scripts", "book", "Scripts"]]],
+    const ALL = { accueil: ["home", "Accueil"], agenda: ["cal", "Agenda"], resultats: ["chart", "Résultats"], facturation: ["euro", "Leads et facture"], comptes: ["inbox", c.words.accounts], messages: ["chat", "Messages"], scripts: ["book", "Scripts"], dispos: ["clock", "Disponibilités"], parrainage: ["users", "Parrainer un installateur"], notifications: ["bell", "Notifications"], reglages: ["user", "Réglages"], aide: ["info", "Comment ça marche"] };
+    const favG = window.ENTREMIS_HELP.favs("client").filter(r => ALL[r]).map(r => [r, ALL[r][0], ALL[r][1]]);
+    const groups = (favG.length ? [["Favoris", favG]] : []).concat([["Votre campagne", [["facturation", "euro", "Leads et facture"], ["messages", "chat", "Messages", replies], ["scripts", "book", "Scripts"]]],
       ["Votre organisation", [["dispos", "clock", "Disponibilités"], ["parrainage", "users", "Parrainer un installateur"]]],
-      ["Compte", [["notifications", "bell", "Notifications", unread], ["reglages", "user", "Réglages"], ["aide", "info", "Comment ça marche"]]]];
+      ["Compte", [["notifications", "bell", "Notifications", unread], ["reglages", "user", "Réglages"], ["aide", "info", "Comment ça marche"]]]]);
     return `<div class="head"><div class="head-text"><h1 class="h1">Plus</h1><p class="sub">Toutes vos pages.</p></div></div>
       ${groups.map(([t, items]) => `<section class="ios-group"><p class="ios-title">${t}</p><div class="card ios-list">${items.map(([r, i, l, n]) => `<a href="#${r}"><span class="ios-ico">${icon(i)}</span><span>${l}</span>${n ? `<span class="count">${n}</span>` : ""}${icon("chev")}</a>`).join("")}</div></section>`).join("")}${window.ENTREMIS_CLOUD.on() ? `<section class="ios-group ios-out-group"><div class="card ios-list"><button class="ios-out" type="button" data-cloud-out><span class="ios-ico">${icon("logout")}</span><span>Se déconnecter</span></button></div></section>` : ""}`;
   }

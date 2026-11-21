@@ -318,7 +318,7 @@
   /* ---------- Plus : toutes les sections (téléphone) ---------- */
   function viewMore(S) {
     const icon = EM().icon;
-    const groups = [
+    const base = [
       ["Mon espace", [["equipe", "home", "Mon portail"], ["taches", "check", "Tâches"], ["discussions", "chat", "Discussions"], ["processus", "grid", "Processus"], ["notifications", "bell", "Notifications"]]],
       ["Production", [["appel", "phone", "Poste d'appel"], ["leads", "inbox", "Leads"], ["rendez-vous", "cal", "Rendez-vous"], ["zones", "pin", "Zones"]]],
       ["Clients", [["contacts", "users", "Contacts"], ["clients", "building", "Clients"], ["sante", "gauge", "Santé et suivi"], ["scripts-equipe", "book", "Scripts"], ["secteurs", "tool", "Secteurs"], ["juridique", "shield", "Documents juridiques"], ["acces", "lock", "Accès clients"]]],
@@ -326,6 +326,9 @@
       ["Pilotage", [["chiffres", "gauge", "Chiffres"], ["documents", "book", "Documents de travail"], ["avancement", "chart", "Avancement"], ["finances", "euro", "Finances"], ["marge", "chart", "Marge"], ["conformite", "shield", "Conformité"]]],
       ["Compte", [["reglages", "user", "Réglages et photo"], ["guide", "info", "Guide de l'app"]]]
     ];
+    // Les favoris en premier (étoile à côté du titre d'une page)
+    const flat = base.flatMap(g => g[1]), favG = window.ENTREMIS_HELP.favs("team").map(r => flat.find(x => x[0] === r)).filter(Boolean);
+    const groups = (favG.length ? [["Favoris", favG]] : []).concat(base);
     return `<div class="head"><div class="head-text"><h1 class="h1">Plus</h1><p class="sub">Toutes les pages.</p></div></div>
       ${quickCreate()}
       ${groups.map(([t, items]) => `<section class="ios-group"><p class="ios-title">${t}</p><div class="card ios-list">${items.map(([r, i, l]) => `<a href="#${r}"><span class="ios-ico">${icon(i)}</span><span>${l}</span>${icon("chev")}</a>`).join("")}</div></section>`).join("")}${window.ENTREMIS_CLOUD.on() ? `<section class="ios-group ios-out-group"><div class="card ios-list"><button class="ios-out" type="button" data-cloud-out><span class="ios-ico">${icon("logout")}</span><span>Se déconnecter</span></button></div></section>` : ""}`;
