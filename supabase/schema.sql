@@ -62,7 +62,10 @@ create policy "docs : un client lit ce qui le concerne" on public.docs
 drop policy if exists "docs : un client ajoute les siens" on public.docs;
 create policy "docs : un client ajoute les siens" on public.docs
   for insert to authenticated
-  with check (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals', 'prep'));
+  with check (client_id = public.my_client() and (
+    collection in ('results', 'avis', 'dispos', 'referrals', 'prep')
+    -- une contestation de lead : le client l'envoie « ouverte », seule l'équipe la tranche (pas de modification côté client)
+    or (collection = 'contests' and data->>'state' = 'ouvert')));
 
 drop policy if exists "docs : un client modifie les siens" on public.docs;
 create policy "docs : un client modifie les siens" on public.docs

@@ -100,6 +100,7 @@
             ${window.ENTREMIS_LIVE.on() ? `<button class="btn btn-ghost" type="button" data-live-edit="${e.c ? "client" : "prospect"}:${e.id}">${icon("sliders")}${e.c ? "Campagne et suivi" : "Étape et valeur"}</button>` : ""}
           </div>
         </section>
+        ${e.kind === "client" ? window.ENTREMIS_MACHINE.billingCard(e.id) : window.ENTREMIS_MACHINE.callCard(e.id)}
         ${e.c ? window.ENTREMIS_LIVE.metaCard(e.id) : ""}
         <section class="card">
           <div class="card-head"><h2 class="h2">Historique</h2></div>

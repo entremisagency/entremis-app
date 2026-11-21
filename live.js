@@ -162,7 +162,9 @@
       <div class="field-row">${select("trade", "Métier", trades(), d.trade)}${field("zone", "Zone (ville, département)", d.zone, 'maxlength="80" placeholder="Ex. : Rhône"')}</div>
       <div class="field-row">${field("contact", "Personne à contacter", d.contact, 'maxlength="80"')}${field("phone", "Téléphone", d.phone, 'type="tel" maxlength="20"')}</div>
       <div class="field-row">${select("owner", "Suivi par", members(), d.owner || S.who)}${field("target", "Objectif (rendez-vous)", d.target || 10, 'type="number" min="0" max="500"')}</div>
-      <div class="field-row">${field("start", "Début de la campagne", d.start || today(), 'type="date"')}${field("days", "Durée (jours)", d.days || 30, 'type="number" min="1" max="365"')}</div>`;
+      <div class="field-row">${field("start", "Début de la campagne", d.start || today(), 'type="date"')}${field("days", "Durée (jours)", d.days || 30, 'type="number" min="1" max="365"')}</div>
+      <div class="field-row">${field("prixLead", "Prix par lead (€ HT)", d.prixLead || 50, 'type="number" min="0" step="1"')}${field("plafond", "Plafond par mois (€ HT)", d.plafond || "", 'type="number" min="0" step="50" placeholder="Ex. : 1500"')}</div>
+      <div class="field-row">${field("engagement", "Engagement (mois)", d.engagement || 3, 'type="number" min="0" max="24"')}${field("zoneCP", "Zone exclusive (codes postaux)", d.zoneCP, 'maxlength="200" placeholder="Ex. : 69001, 69002, 69003"')}</div>`;
     if (k === "prospect") body = `${field("name", "Nom de l'entreprise", d.name, 'required maxlength="80"')}
       <div class="field-row">${select("trade", "Métier", trades(), d.trade)}${field("city", "Ville", d.city, 'maxlength="60"')}</div>
       <div class="field-row">${select("owner", "Suivi par", members(), d.owner || S.who)}${field("value", "Valeur par mois (€)", d.value || "", 'type="number" min="0" step="50"')}</div>
@@ -251,7 +253,7 @@
       const id = d.id || slug(v("name"));
       if (!id) return say("Ce nom ne convient pas : ajoutez des lettres."), true;
       if (!d.id && (CLIENTS().list.some(c => c.id === id) || TD().clients.some(c => c.id === id))) return say("Ce client existe déjà."), true;
-      await CLIENTS().put(Object.assign({}, d, { id, client_id: id, name: v("name"), trade: v("trade"), zone: v("zone"), contact: v("contact"), phone: v("phone"), owner: v("owner"), target: Number(v("target")) || 0, start: v("start") || today(), days: Number(v("days")) || 30, createdAt: d.createdAt || now }));
+      await CLIENTS().put(Object.assign({}, d, { id, client_id: id, name: v("name"), trade: v("trade"), zone: v("zone"), contact: v("contact"), phone: v("phone"), owner: v("owner"), target: Number(v("target")) || 0, start: v("start") || today(), days: Number(v("days")) || 30, prixLead: Number(v("prixLead")) || 50, plafond: Number(v("plafond")) || 0, engagement: Number(v("engagement")) || 0, zoneCP: v("zoneCP"), createdAt: d.createdAt || now }));
     }
     if (k === "prospect") {
       if (!v("name")) return say("Écrivez le nom de l'entreprise."), true;

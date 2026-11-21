@@ -2719,3 +2719,16 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 
 /* Pub Meta d'un client : le bouton copier reste à côté de l'identifiant */
 .meta-card .lp-dl dd{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-1);min-width:0}
+
+/* La machine à leads (machine.js) : facturation d'un lead, d'un mois, contestation */
+.mc-month{display:flex;gap:var(--space-1)}
+.mc-box .seg{width:100%}
+.mc-box .seg button{flex:1}
+.mc-contest{display:grid;gap:var(--space-2);padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-surface-2);font-size:var(--text-small)}
+.mc-contest p{margin:0}
+.mc-list{margin-top:var(--space-3)}
+#mc-call-form .check-line{padding:var(--space-1) 0}
+#mc-sim .pp-num input{background:var(--color-surface-2)}
+#mc-call-form{max-height:min(88vh,var(--sheet-max-h,88vh));overflow-y:auto;overscroll-behavior:contain;background:var(--color-panel)}
+#mc-call-form .sheet-head{position:sticky;top:calc(-1 * var(--space-5));z-index:1;margin:calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) 0;padding:var(--space-4) var(--space-5);background:var(--color-panel)}
+@media (max-width:640px){#mc-call-form .sheet-head{top:calc(-1 * var(--space-2));margin:calc(-1 * var(--space-2)) calc(-1 * var(--gutter)) 0;padding:var(--space-3) var(--gutter)}}

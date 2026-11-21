@@ -183,6 +183,7 @@
       <div class="head-actions">${EM().sampleTag}<div class="seg seg-lg" role="group" aria-label="Période">${Object.entries(PERIODS).map(([k, [l]]) => `<button type="button" data-metric-period="${k}" aria-pressed="${P.period === k}">${l}</button>`).join("")}</div></div>
     </div>
     <p class="steps-help">${icon("info")}<span><b>En direct</b> : calculé depuis l'app. Le reste : exemples.</span></p>
+    ${window.ENTREMIS_MACHINE.weekPanel()}
     ${custom()}
     ${groups.map(([title, ms]) => `<section class="metrics-group"><div class="group-head"><h2 class="h2">${EM().esc(title)}</h2></div><div class="metrics metrics-fit" style="--n:${ms.length <= 5 ? ms.length : Math.ceil(ms.length / 2)}">${ms.map(tile).join("")}</div></section>`).join("")}
     ${perClient()}

@@ -261,7 +261,7 @@
     const esc = EM().esc, icon = EM().icon, seo = TD().seo, ads = TD().ads;
     const tabs = `<div class="seg seg-lg" role="group" aria-label="Marketing">${[["seo", "SEO"], ["ads", "Pubs"], ["aides", "Aides"], ["calcul", "Calcul"]].map(([k, l]) => `<button type="button" data-mk-tab="${k}" aria-pressed="${O.mkTab === k}">${l}</button>`).join("")}</div>`;
     let body;
-    if (O.mkTab === "calcul") body = window.ENTREMIS_CALC.view();
+    if (O.mkTab === "calcul") body = window.ENTREMIS_MACHINE.simView();
     else if (O.mkTab === "aides") body = window.ENTREMIS_GROWTH.simulator();
     else if (O.mkTab === "seo") {
       const t = seo.traffic, cur = t[t.length - 1].value, prev = t[t.length - 2].value;
