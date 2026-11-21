@@ -810,7 +810,8 @@
   /* ---------- Interactions ---------- */
   document.addEventListener("click", e => {
     if (e.target.closest("[data-cloud-out]")) { window.ENTREMIS_CLOUD.signOut(); return; }
-    if (e.target.closest("#tabbar a, #menu a, .ios-list a, .m-back, #crumbs a, .m-avatar-link")) TM().haptic("tap");   // changement de page
+    // Une petite vibration à chaque geste : changer de page, ouvrir, cocher, choisir un onglet (Marc, 22 nov. 2026)
+    if (e.target.closest('a[href], button:not([disabled]), [role="button"], [role="tab"], summary, label:has(input), .lg-tile, [data-lead-open], [data-task-open]')) TM().haptic("tap");
     if (e.target.closest('[data-act="toast-undo"]')) { const u = toastUndo; toastUndo = null; $("#toast").classList.remove("on"); if (u) u(); return; }
     const cp = e.target.closest("[data-copy]");
     if (cp) { copyText(cp.dataset.copy, cp); return; }
@@ -910,7 +911,7 @@
     TM().haptic("done");
     toast("Absence signalée. Un remplacement est demandé.");
   });
-  addEventListener("hashchange", render);
+  addEventListener("hashchange", () => { TM().haptic("tap"); render(); });   // retour en arrière (geste ou bouton) : vibration aussi, une seule fois
   // Le rendu mobile suit la largeur de #root (fenêtre étroite ou aperçu téléphone)
   const root = $("#root");
   // En dessous de 640 px : mode téléphone (barre d'onglets en bas). Au-dessus : menu à gauche.

@@ -109,8 +109,12 @@
     ["click", "change", "input"].forEach(ev => label.addEventListener(ev, e => e.stopPropagation()));   // ne réveille aucun autre bouton de l'app
     document.head.appendChild(label); label.click(); label.remove();
   }
+  let lastHaptic = 0, lastKind = "";
   function haptic(kind) {
     if (!hapticsOn()) return;
+    const now = Date.now();
+    if (now - lastHaptic < 150 && !(lastKind === "tap" && kind !== "tap")) return;   // un seul retour par geste ; « fait » ou « attention » passent devant un simple tap
+    lastHaptic = now; lastKind = kind || "tap";
     const p = { tap: 10, done: [12, 40, 18], warn: [30, 60, 30] }[kind] || 10;
     try { if (navigator.vibrate) { navigator.vibrate(p); return; } } catch (e) {}
     if (coarse()) { try { iosTick(); } catch (e) {} }
