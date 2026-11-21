@@ -262,7 +262,8 @@
     </a>`;
   }
   const ticks = arr => { const m = Math.max(...arr, 1); return `<span class="ticks" aria-hidden="true">${arr.map(v => `<i style="--h:${Math.round(v / m * 100)}%"></i>`).join("")}</span>`; };
-  const sampleTag = `<span class="sample" title="Données d'exemple pour la maquette">${icon("info")}Exemple</span>`;
+  // L'étiquette « Exemple » n'existe que dans la maquette : en ligne, tout vient de la vraie base
+  const sampleTag = window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on() ? "" : `<span class="sample" title="Données d'exemple pour la maquette">${icon("info")}Exemple</span>`;
 
   /* ---------- Écran 1 : vue d'ensemble ---------- */
   function viewHome() {
@@ -352,12 +353,9 @@
       </section>
       <section class="card contact">
         <div class="card-head"><h2 class="h2">Votre contact Entremis</h2></div>
-        <div class="next-who">${window.ENTREMIS_TEAM.avatar("richard", "av av-lg")}<div><b>Richard</b><span>Il place vos rendez-vous et répond à vos questions.</span></div></div>
-        <div class="clines">
-          ${cline("phone", "06 00 00 00 00", "Téléphone")}
-          ${cline("email", "richard@entremis.fr", "E-mail")}
-          <p class="kpi-note">Coordonnées d'exemple.</p>
-        </div>
+        ${(() => { const live = window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on(), own = live ? ((allClients().find(x => x.id === viewId()) || {}).owner || "richard") : "richard", m = window.ENTREMIS_TEAM.member(own);
+          return `<div class="next-who">${window.ENTREMIS_TEAM.avatar(own, "av av-lg")}<div><b>${esc(m.name)}</b><span>Suit votre campagne et répond à vos questions.</span></div></div>
+          ${live ? `<div class="form-actions"><a class="btn btn-ghost" href="#messages">${icon("chat")}Écrire un message</a></div>` : `<div class="clines">${cline("phone", "06 00 00 00 00", "Téléphone")}${cline("email", "richard@entremis.fr", "E-mail")}<p class="kpi-note">Coordonnées d'exemple.</p></div>`}`; })()}
         <div class="contact-help">
           <p><b>Un rendez-vous s'est mal passé ?</b><span>On en place un autre, sans frais.</span></p>
           <button class="btn btn-warn" type="button" data-act="absence">${icon("swap")}Signaler une absence</button>
@@ -768,6 +766,7 @@
   }
   let lastKey = "";
   function render() {
+    if (window.ENTREMIS_CRM) window.ENTREMIS_CRM.fresh();   // un seul calcul des contacts par affichage
     if (window.ENTREMIS_LIVE) { window.ENTREMIS_LIVE.rebuild(); window.ENTREMIS_LIVE.watch(); }
     const r = parse();
     const key = r.name + "/" + (r.id || "");
@@ -938,13 +937,20 @@
   }
   // Chiffres façon AgentOps : le nombre entier toujours en noir (milliers et décimales compris), seuls l'unité et le dénominateur en gris
   // (« 14 700 € » → « 14 700 » noir + « € » gris ; « 8 / 10 » → « 8 » noir + « / 10 » gris). Jamais un nombre coupé en deux couleurs (Marc, 20 nov.).
-  const SOFT_SEL = ".kpi-value,.col-stats dd,.person dd,.flow-hub b,.funnel b,.calc-num,.calc-hero,.script-pct,.kw-pos,.camp-num";
+  const SOFT_SEL = ".metric-value,.kpi-value,.col-stats dd,.person dd,.flow-hub b,.funnel b,.calc-num,.calc-hero,.script-pct,.kw-pos,.camp-num";
   function softNums(root) {
     if (!root) return;
     root.querySelectorAll(SOFT_SEL).forEach(el => {
       if (el.children.length || el.dataset.soft) return;
-      const m = el.textContent.match(/^(\D*?)(\d+(?:[ \u00a0\u202f]\d{3})*(?:[,.]\d+)?)([\s\S]*)$/);
-      if (!m || !m[3].trim()) return;
+      let m = el.textContent.match(/^(\D*?)(\d+(?:[ \u00a0\u202f]\d{3})*(?:[,.]\d+)?)([\s\S]*)$/);
+      if (!m) return;
+      // Au-delà de 10 000 : écriture courte, 10,1 K ou 1,2 M (Marc, 21 nov. 2026)
+      const n = Number(m[2].replace(/[ \u00a0\u202f]/g, "").replace(",", "."));
+      if (n >= 10000) {
+        const c = n >= 1e6 ? [n / 1e6, " M"] : [n / 1e3, " K"], short = (Math.round(c[0] * 10) / 10).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + c[1];
+        el.title = el.textContent.trim(); m = [null, m[1], short, m[3]];
+      }
+      if (!m[3].trim()) { if (m[2] !== el.textContent.slice(m[1].length)) el.textContent = m[1] + m[2]; return; }
       el.innerHTML = esc(m[1] + m[2]) + `<span class="num-soft">${esc(m[3])}</span>`;
       el.dataset.soft = "1";
     });

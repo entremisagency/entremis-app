@@ -13,7 +13,7 @@
   const CERTS = { "Pompes à chaleur": "RGE QualiPAC", "Panneaux solaires": "RGE QualiPV", "Photovoltaïque": "RGE QualiPV", "Isolation": "RGE Qualibat", "Climatisation": "Attestation fluides frigorigènes", "Plomberie": "Qualibat", "Serrurerie": "A2P (serrures certifiées)", "Poêles": "RGE QualiBois" };
   function entity(id) {
     const c = TD().clients.find(x => x.id === id);
-    if (c) return { id, kind: "client", name: c.name, trade: c.trade, city: { solaria: "Lyon", thermo: "Saint-Priest", ecotoit: "Vannes", isolea: "Villeurbanne", delmas: "Grenoble", blindex: "Lyon" }[c.id] || "", owner: c.owner, value: 2400, c };
+    if (c) return { id, kind: "client", name: c.name, trade: c.trade, city: { solaria: "Lyon", thermo: "Saint-Priest", ecotoit: "Vannes", isolea: "Villeurbanne", delmas: "Grenoble", blindex: "Lyon" }[c.id] || "", owner: c.owner, value: 0, c };
     const p = TD().pipeline.find(x => x.id === id);
     if (p) return { id, kind: "prospect", name: p.name, trade: p.trade, city: p.city, owner: p.owner, value: p.value, p };
     return null;
@@ -66,7 +66,9 @@
         ${F.edit ? "" : `<button class="btn btn-ghost" type="button" data-fiche-edit>${icon("sliders")}Modifier la fiche</button>`}</div>
     </div>
     <div class="kpis kpis-4" role="list">
-      <article class="kpi" role="listitem"><p class="kpi-label">${e.kind === "client" ? "Abonnement" : "Potentiel"}</p><div><p class="kpi-value">${(e.c ? 2400 : e.value).toLocaleString("fr-FR")} €</p><p class="kpi-note">par mois, hors taxes</p></div></article>
+      ${(() => { if (e.kind !== "client") return `<article class="kpi" role="listitem"><p class="kpi-label">Potentiel</p><div><p class="kpi-value">${(Number(e.value) || 0).toLocaleString("fr-FR")} €</p><p class="kpi-note">par mois, hors taxes</p></div></article>`;
+        const b = window.ENTREMIS_MACHINE.billing(e.id, window.ENTREMIS_DATA.today.iso.slice(0, 7));
+        return `<article class="kpi" role="listitem"><p class="kpi-label">Facturé ce mois</p><div><p class="kpi-value">${Math.round(b.amount).toLocaleString("fr-FR")} €</p><p class="kpi-note">${b.ok.length} lead${b.ok.length > 1 ? "s" : ""} à ${b.price} € HT</p></div></article>`; })()}
       ${e.c ? `<article class="kpi" role="listitem"><p class="kpi-label">Campagne</p><div><p class="kpi-value">${e.c.done} / ${e.c.target}</p><p class="kpi-note">rendez-vous livrés, jour ${e.c.day} sur ${e.c.days}</p></div></article>`
         : `<article class="kpi" role="listitem"><p class="kpi-label">Prochaine étape</p><div><p class="kpi-value kpi-text">${esc(e.p.next)}</p><p class="kpi-note">${esc(stage)}</p></div></article>`}
       <article class="kpi" role="listitem"><p class="kpi-label">Appels</p><div><p class="kpi-value">${calls.length}</p><p class="kpi-note">${calls[0] ? "dernier le " + calls[0].at.slice(8, 10) + "/" + calls[0].at.slice(5, 7) : "aucun noté"}</p></div></article>

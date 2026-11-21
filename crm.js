@@ -19,10 +19,14 @@
   const STAGE_L = { lead: "À contacter", call: "Appel fait", quote: "Devis envoyé", won: "Signé" };
   const PROB = { lead: 0.1, call: 0.3, quote: 0.6, won: 1 };
   const crmOf = id => CRM().list.find(x => x.id === id) || { id, tags: [] };
-  const putCrm = (id, patch, S) => CRM().put(Object.assign({}, crmOf(id), patch, { id, by: S ? S.who : undefined, updatedAt: new Date().toISOString().slice(0, 16) }));
+  const putCrm = (id, patch, S) => (fresh(), CRM().put(Object.assign({}, crmOf(id), patch, { id, by: S ? S.who : undefined, updatedAt: new Date().toISOString().slice(0, 16) })));
 
   /* ---------- Les entreprises : clients + prospects, avec leur dernière activité ---------- */
-  function rows() {
+  // Gardé 300 ms : le menu, les notifications et la page demandent la même liste pendant un même affichage
+  let MEMO = { at: 0, v: null };
+  function rows() { const now = Date.now(); if (MEMO.v && now - MEMO.at < 300) return MEMO.v; MEMO = { at: now, v: build() }; return MEMO.v; }
+  const fresh = () => { MEMO.v = null; };
+  function build() {
     const calls = OPS().stores.CALLS.list, docs = OPS().stores.DOCS.list, tasks = (TM().T && TM().T.list) || [], leads = window.ENTREMIS_LEADS ? window.ENTREMIS_LEADS.list() : [];
     const last = (id, name) => { const n = norm(name); let best = "";
       const see = at => { if (at && at > best) best = String(at).slice(0, 10); };
@@ -188,6 +192,7 @@
 
   /* ---------- Clics, saisies, envois ---------- */
   function onClick(e, S, render) {
+    fresh();
     const t = e.target.closest("[data-crm-view],[data-crm-sort],[data-crm-clear],[data-crm-plan],[data-crm-close],[data-crm-preset],[data-crm-addtag],[data-crm-done],[data-crm-unsel],[data-crm-export],[data-crm-export-all],[data-crm-bulk-tag],[data-crm-bulk-plan],[data-crm-owner],[data-crm-stage],[data-crm-trade],[data-crm-tag],[data-crm-assign]"); if (!t) return false;
     const d = t.dataset;
     if (d.crmView) { X.view = d.crmView; TM().haptic("tap"); render(); return true; }
@@ -235,5 +240,5 @@
     if (e.target.matches("[data-crm-import]")) { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) importCsv(f, EM().S, () => EM().render()).catch(() => EM().toast("Le fichier n'a pas pu être lu.")); }
   });
 
-  window.ENTREMIS_CRM = { nextOf: id => crmOf(id), short, view, sheet, ficheCard, dupOf, dueList, onClick, onSubmit, init: render => CRM().init(render), reset: () => { X.sheet = null; } };
+  window.ENTREMIS_CRM = { fresh, nextOf: id => crmOf(id), short, view, sheet, ficheCard, dupOf, dueList, onClick, onSubmit, init: render => CRM().init(render), reset: () => { X.sheet = null; } };
 })();

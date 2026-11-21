@@ -12,8 +12,8 @@
   const plus = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   const fresh = (to, kind) => {
     const c = to && FI().info(to);
-    return { kind: kind || "devis", to: to || "solaria", date: today(), due: plus(today(), 30), tva: "20", note: "",
-      lines: [{ d: "Rendez-vous qualifiés chez des particuliers, exclusifs", q: 10, pu: c && c.kind === "prospect" ? Math.round((c.value || 2400) / 10) : 240 }, { d: "Mise en place de la campagne (publicités, qualification)", q: 1, pu: 0 }] };
+    return { kind: kind || "devis", to: to || (window.ENTREMIS_LIVE && window.ENTREMIS_LIVE.on() ? ((EM().allClients()[0] || {}).id || "") : "solaria"), date: today(), due: plus(today(), 30), tva: "20", note: "",
+      lines: [{ d: "Leads exclusifs vérifiés par code SMS (prix par lead)", q: 30, pu: (() => { const k = to && EM().allClients().find(x => x.id === to); return k && Number(k.prixLead) || 50; })() }, { d: "Tournage des vidéos et mise en place de la campagne", q: 1, pu: 0 }] };
   };
   let G = null;
   const g = () => G || (G = fresh());

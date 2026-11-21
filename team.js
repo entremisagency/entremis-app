@@ -377,7 +377,7 @@
     </div>
     ${narrow ? `<div class="seg seg-lg seg-full seg-4" role="group" aria-label="Étape">${STAGES.map(([k, l]) => `<button type="button" data-pipe-stage="${k}" aria-pressed="${stageSel === k}">${l}</button>`).join("")}</div>
       ${column(STAGES.find(s => s[0] === stageSel))}` : `<div class="pipeline">${STAGES.map(column).join("")}</div>`}
-    <p class="kpi-note">Montants d'exemple.</p>
+    ${window.ENTREMIS_LIVE.on() ? "" : `<p class="kpi-note">Montants d'exemple.</p>`}
     ${window.ENTREMIS_GROWTH.prospectExtras()}`;
   }
 

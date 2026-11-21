@@ -168,12 +168,12 @@
     <div class="home-main">${window.ENTREMIS_GROWTH.contracts()}${window.ENTREMIS_GROWTH.cashflow()}</div>
     <div class="home-main">
       <section class="card">
-        <div class="card-head"><h2 class="h2">Chiffre d'affaires par mois</h2><span class="muted">encaissé, hors taxes – exemple</span></div>
+        <div class="card-head"><h2 class="h2">Chiffre d'affaires par mois</h2><span class="muted">encaissé, hors taxes${window.ENTREMIS_LIVE.on() ? "" : " – exemple"}</span></div>
         ${arches(rev, "encaissés", v => (v / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + " k")}
         <p class="kpi-note">Le mois en cours, en noir, n'est pas terminé.</p>
       </section>
       <section class="card">
-        <div class="card-head"><h2 class="h2">Ce mois-ci</h2><span class="muted">exemple</span></div>
+        <div class="card-head"><h2 class="h2">Ce mois-ci</h2>${window.ENTREMIS_LIVE.on() ? "" : `<span class="muted">exemple</span>`}</div>
         <dl class="money">
           <div><dt>Encaissé</dt><dd class="tabnum">${euros(cur)}</dd></div>
           ${costs.map(c => `<div class="minus"><dt>${esc(c.label)}</dt><dd class="tabnum">− ${euros(c.value)}</dd></div>`).join("")}
@@ -273,8 +273,8 @@
         ${kpi("En recul", seo.keywords.filter(k => k.pos > k.prev).length, "à surveiller", seo.keywords.some(k => k.pos > k.prev) ? "danger" : "")}
       </div>
       <div class="home-main">
-        <section class="card"><div class="card-head"><h2 class="h2 h2-brand">${EM().brand("google", "Google")}Visites depuis Google</h2><span class="muted">par mois – exemple</span></div>${arches(t, "visites")}</section>
-        <section class="card"><div class="card-head"><h2 class="h2 h2-brand">${EM().brand("google", "Google")}Positions sur Google</h2><span class="muted">exemple</span></div>
+        <section class="card"><div class="card-head"><h2 class="h2 h2-brand">${EM().brand("google", "Google")}Visites depuis Google</h2><span class="muted">par mois${window.ENTREMIS_LIVE.on() ? "" : " – exemple"}</span></div>${arches(t, "visites")}</section>
+        <section class="card"><div class="card-head"><h2 class="h2 h2-brand">${EM().brand("google", "Google")}Positions sur Google</h2>${window.ENTREMIS_LIVE.on() ? "" : `<span class="muted">exemple</span>`}</div>
           <ul class="kw">${seo.keywords.map(k => { const d = k.prev - k.pos; return `<li><div><b>${esc(k.q)}</b><span class="tabnum">${k.volume} recherches par mois</span></div>
             <span class="kw-pos tabnum">${k.pos}<small>e</small></span>
             <span class="kw-move ${d > 0 ? "t-ok" : d < 0 ? "t-danger" : "muted"}">${d > 0 ? icon("arrow-up") + "+" + d : d < 0 ? icon("arrow-down") + d : "="}</span></li>`; }).join("")}</ul>
@@ -291,7 +291,7 @@
         ${kpi("Coût par demande", euros(spent / Math.max(leads, 1)), "moyenne", "ok")}
         ${kpi("Campagnes actives", on.length, `sur ${ads.length}`)}
       </div>
-      <section class="card"><div class="card-head"><h2 class="h2 h2-brand"><span class="brand-stack">${EM().brand("meta", "Meta")}${EM().brand("googleads", "Google Ads")}${EM().brand("linkedin", "LinkedIn")}</span>Campagnes</h2><span class="muted">exemple</span></div>
+      <section class="card"><div class="card-head"><h2 class="h2 h2-brand"><span class="brand-stack">${EM().brand("meta", "Meta")}${EM().brand("googleads", "Google Ads")}${EM().brand("linkedin", "LinkedIn")}</span>Campagnes</h2>${window.ENTREMIS_LIVE.on() ? "" : `<span class="muted">exemple</span>`}</div>
         <table class="table table-ads"><thead><tr><th>Campagne</th><th>Budget dépensé</th><th class="num">Demandes</th><th class="num">Coût / demande</th><th>Active</th></tr></thead>
         <tbody>${ads.map(a => { const active = a.status === "on" && !O.adsOff[a.id]; return `<tr class="${active ? "" : "is-off"}">
           <td class="org"><b>${esc(a.name)}</b><span class="chan-line">${EM().brand({ Meta: "meta", Google: "googleads", LinkedIn: "linkedin" }[a.channel] || "meta", a.channel)}${esc(a.channel === "Google" ? "Google Ads" : a.channel)} – ${esc(a.client)}</span></td>

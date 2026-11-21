@@ -20,7 +20,7 @@
       { icon: "check", title: "Cocher ses tâches", text: "Une tâche faite part dans « Qui a fait quoi ». Tout le monde la voit." }
     ], "Votre journée en quatre gestes"))}
     ${section("Clients et leads : la différence", "", `<ul class="gd-tips">
-      <li><b>Un client</b><span>Un installateur qui nous achète des rendez-vous (Solaria Habitat, Thermo Rhône…). Il a une campagne, un objectif et un espace client.</span></li>
+      <li><b>Un client</b><span>Un installateur qui nous achète des leads exclusifs, 50 € HT le lead vérifié. Il a une zone, un contrat, une campagne et un espace client.</span></li>
       <li><b>Un lead</b><span>Un particulier qui demande une étude (une pompe à chaleur, des panneaux…). On le rappelle, on vérifie 4 critères, puis on le donne à un seul client.</span></li>
     </ul>`)}
     ${section("Les pages", "dans l'ordre du menu", `<ul class="gd-tiles">${[
@@ -53,8 +53,8 @@
       ["Fiche d'un client", "Cliquez son nom partout dans l'app : coordonnées à copier, notes, leads donnés, historique, « Faire un devis »."],
       ["Supprimer", "L'app demande toujours de confirmer. Après une action, « Annuler » reste quelques secondes en bas de l'écran."],
       ["Sur téléphone", "Glissez une tâche vers la droite pour la finir, vers la gauche pour la supprimer."],
-      ["Espace client", "Le bouton « Client » en haut du menu montre l'app comme la voit Solaria Habitat."],
-      ["« Exemple »", "Cette étiquette signale des chiffres d'exemple. Les tâches, appels, leads, devis et scripts sont partagés entre vous trois dans la version en ligne."]
+      ["Espace client", "Le bouton « Client » en haut du menu montre l'app comme la voit le client choisi."],
+      ["« Exemple »", "Dans la maquette seulement, elle signale des chiffres d'exemple. En ligne, tout vient de la vraie base, partagée entre vous trois."]
     ]))}`;
   }
 

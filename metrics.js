@@ -79,7 +79,9 @@
         { name: "À encaisser", v: sum(open), p: null, kind: "money", up: true, live: true, help: `${open.length} facture${open.length > 1 ? "s" : ""} envoyée${open.length > 1 ? "s" : ""}` },
         { name: "Impayés en retard", v: sum(late), p: null, kind: "money", up: false, live: true, help: late.length ? late.map(d => d.client).join(", ") : "aucun" },
         { name: "Devis signés", v: rate(dev.filter(d => d.status === "signe").length, dev.filter(d => d.status !== "brouillon").length), p: null, kind: "rate", up: true, live: true, help: "Sur les devis envoyés" },
-        { name: "Marge du mois", v: 7600, p: 6100, kind: "money", up: true, help: "Encaissé moins les charges – exemple" }
+        (() => { const m0 = today.slice(0, 7), paidM = sum(paid.filter(d => String(d.date || "").slice(0, 7) === m0)), costs = (TD().costs || []).reduce((a, c) => a + (Number(c.value) || 0), 0);
+          return window.ENTREMIS_LIVE.on() ? { name: "Marge du mois", v: paidM - costs, p: null, kind: "money", up: true, live: true, help: "Factures payées ce mois moins les dépenses saisies" }
+            : { name: "Marge du mois", v: 7600, p: 6100, kind: "money", up: true, help: "Encaissé moins les charges – exemple" }; })()
       ]]
     ];
   }
@@ -156,7 +158,17 @@
 
   /* ---------- Par client ---------- */
   // Les chiffres d'exemple par client : demandes, qualifiées, présence, coût par demande, abonnement
-  const clientRows = () => TD().clients.map((c, i) => {
+  // En ligne : les vrais chiffres du mois (leads reçus, facturables, présence aux visites, pub par lead, montant facturé)
+  function liveRows() {
+    const m = window.ENTREMIS_DATA.today.iso.slice(0, 7), L = window.ENTREMIS_LIVE, MC = window.ENTREMIS_MACHINE;
+    return TD().clients.map(c => {
+      const b = MC.billing(c.id, m), req = b.all.length, q = b.ok.length;
+      const vis = L.rdvFor(c.id).filter(r => String(r.date).slice(0, 7) === m && (r.state === "ok" || r.state === "replaced")), ok = vis.filter(r => r.state === "ok").length;
+      const spend = Number((((L.META().list.find(x => x.id === c.id) || {}).spend) || {})[m]) || 0;
+      return { c, req, q, rate: req ? Math.round(q / req * 100) : 0, pres: vis.length ? Math.round(ok / vis.length * 100) : null, cpl: spend && q ? spend / q : null, mrr: b.amount };
+    });
+  }
+  const clientRows = () => (window.ENTREMIS_LIVE && window.ENTREMIS_LIVE.on()) ? liveRows() : TD().clients.map((c, i) => {
     const req = [312, 186, 240, 205, 64, 83][i] || 50, q = Math.round(req * ([0.21, 0.24, 0.12, 0.2, 0.18, 0.22][i] || 0.2));
     return { c, req, q, rate: Math.round(q / req * 100), pres: [91, 94, 78, 92, 100, 88][i] || 90, cpl: [6.7, 10.8, 16.8, 8.2, 12.5, 5.5][i] || 9, mrr: [2400, 2400, 2000, 1800, 2400, 2000][i] || 2000 };
   });
@@ -164,25 +176,25 @@
     const esc = EM().esc;
     const rows = clientRows();
     return `<section class="card">
-      <div class="card-head"><h2 class="h2">Par client</h2><span class="muted">exemple</span></div>
-      <div class="table-scroll"><table class="table table-kpi"><thead><tr><th>Installateur</th><th class="num">Demandes</th><th class="num">Qualifiées</th><th class="num">Taux</th><th class="num">RDV livrés</th><th class="num">Présence</th><th class="num">Coût/demande</th><th class="num">Revenu/mois</th></tr></thead>
+      <div class="card-head"><h2 class="h2">Par client</h2><span class="muted">${window.ENTREMIS_LIVE.on() ? "ce mois-ci" : "exemple"}</span></div>
+      <div class="table-scroll"><table class="table table-kpi"><thead><tr><th>Installateur</th><th class="num">Leads</th><th class="num">Facturables</th><th class="num">Taux</th><th class="num">RDV livrés</th><th class="num">Présence</th><th class="num">Pub par lead</th><th class="num">Facturé ce mois</th></tr></thead>
       <tbody>${rows.map(r => `<tr><td class="org"><b>${esc(r.c.name)}</b><span>${esc(r.c.trade)}</span></td>
         <td class="num tabnum" data-l="Demandes">${r.req}</td><td class="num tabnum" data-l="Qualifiées">${r.q}</td><td class="num tabnum" data-l="Taux">${r.rate} %</td>
         <td class="num tabnum" data-l="RDV livrés"><span><b>${r.c.done}</b>/${r.c.target}</span></td>
-        <td class="num tabnum ${r.pres < 85 ? "t-danger" : ""}" data-l="Présence">${r.pres} %</td>
-        <td class="num tabnum" data-l="Coût/demande">${nf(r.cpl, 1)} €</td><td class="num tabnum" data-l="Revenu/mois">${nf(r.mrr)} €</td></tr>`).join("")}</tbody></table></div>
+        <td class="num tabnum ${r.pres !== null && r.pres < 85 ? "t-danger" : ""}" data-l="Présence">${r.pres === null ? "—" : r.pres + " %"}</td>
+        <td class="num tabnum" data-l="Pub par lead">${r.cpl === null ? "—" : nf(r.cpl, 1) + " €"}</td><td class="num tabnum" data-l="Revenu/mois">${nf(r.mrr)} €</td></tr>`).join("")}</tbody></table></div>
     </section>`;
   }
 
   function view() {
     const icon = EM().icon;
-    const groups = live().concat(EXAMPLES);
+    const groups = live().concat(window.ENTREMIS_LIVE.on() ? [] : EXAMPLES);
     return `
     <div class="head">
       <div class="head-text"><h1 class="h1">Chiffres</h1><p class="sub">Comparé ${PERIODS[P.period][4]}.</p></div>
       <div class="head-actions">${EM().sampleTag}<div class="seg seg-lg" role="group" aria-label="Période">${Object.entries(PERIODS).map(([k, [l]]) => `<button type="button" data-metric-period="${k}" aria-pressed="${P.period === k}">${l}</button>`).join("")}</div></div>
     </div>
-    <p class="steps-help">${icon("info")}<span><b>En direct</b> : calculé depuis l'app. Le reste : exemples.</span></p>
+    ${window.ENTREMIS_LIVE.on() ? "" : `<p class="steps-help">${icon("info")}<span><b>En direct</b> : calculé depuis l'app. Le reste : exemples.</span></p>`}
     ${window.ENTREMIS_MACHINE.weekPanel()}
     ${window.ENTREMIS_PILOT.riskPanel()}
     ${custom()}

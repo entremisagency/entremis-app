@@ -220,7 +220,7 @@
   function propFor(id) {
     const p = TD().pipeline.find(x => x.id === id), c = client(id), who = p || c || TD().pipeline[0];
     const r = c ? rows().find(x => x.c.id === c.id) : null;
-    return { to: who.id, rdv: c ? c.target : 10, days: 21, price: c ? (r ? r.mrr : 2400) : (p ? p.value : 2400), rate: 25, ticket: ticketOf(who.id), renew: !!c };
+    return { to: who.id, rdv: c ? c.target : 10, days: 21, price: c ? (r ? r.mrr : 0) : (p ? p.value : 0), rate: 25, ticket: ticketOf(who.id), renew: !!c };
   }
   function propCalc(p) {
     const who = TD().pipeline.find(x => x.id === p.to) || client(p.to) || { name: "", trade: "", city: "" };
@@ -317,10 +317,10 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
   function caseOf(c) {
     const rs = c.id === "solaria" ? EM().baseC().appointments.map(a => CP().result(a.id)).filter(Boolean) : OTHER_RDV.filter(a => a.client === c.id).map(resultOf).filter(Boolean);
     const signed = rs.filter(r => r.outcome === "signe"), amount = signed.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const mrr = (rows().find(x => x.c.id === c.id) || {}).mrr || 2400, sec = SEC().sectorOf(c.trade), f = window.ENTREMIS_FICHE.info(c.id) || {};
+    const mrr = (rows().find(x => x.c.id === c.id) || {}).mrr || 0, sec = SEC().sectorOf(c.trade), f = window.ENTREMIS_FICHE.info(c.id) || {};
     const av = CP().avis().find(a => a.id === c.id && a.publish);
     const city = String(f.zone || "").split(" et ")[0];
-    const text = `${c.name} (${sec.name.toLowerCase()}${city ? ", " + city : ""}) : en ${c.day} jours, Entremis a livré ${c.done} ${(SEC().forClient(c.id).parcours.many)}. ${signed.length} chantier${signed.length > 1 ? "s" : ""} signé${signed.length > 1 ? "s" : ""} pour ${euros(amount)} HT, soit ${(amount / mrr).toFixed(1).replace(".", ",")} € de chantiers pour 1 € d'abonnement.${av && av.text ? ` « ${av.text} »` : ""}`;
+    const text = `${c.name} (${sec.name.toLowerCase()}${city ? ", " + city : ""}) : en ${c.day} jours, Entremis a livré ${c.done} ${(SEC().forClient(c.id).parcours.many)}. ${signed.length} chantier${signed.length > 1 ? "s" : ""} signé${signed.length > 1 ? "s" : ""} pour ${euros(amount)} HT, ${mrr ? `soit ${(amount / mrr).toFixed(1).replace(".", ",")} € de chantiers pour 1 € de leads.` : ""}${av && av.text ? ` « ${av.text} »` : ""}`;
     return { rs, signed, amount, mrr, text, av };
   }
   function viewEtudes(S) {
@@ -357,17 +357,17 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
   function viewMarge(S) {
     if (!margins().length) return `${head("Marge", "Ce que rapporte chaque client, une fois payés la publicité et le temps passé.")}<section class="card"><p class="body">La marge se calcule dès qu'un client est enregistré.</p><div class="form-actions"><button class="btn btn-primary" type="button" data-live-new="client">${EM().icon("plus")}Nouveau client</button></div></section>`;
     const ms = margins(), h = hyp(), total = ms.reduce((s, x) => s + x.m, 0), best = ms.slice().sort((a, b) => b.pct - a.pct)[0], worst = ms.slice().sort((a, b) => a.pct - b.pct)[0];
-    return `${head("Marge par campagne", "Ce que paie le client, moins la pub, le temps d'appel et les remplacements.")}
+    return `${head("Marge par campagne", "Ce que paient les leads du client, moins notre pub, le temps d'appel et les remplacements. La pub Meta du client, payée par lui, n'est pas comptée.")}
     <div class="kpis kpis-4" role="list">
       ${kpi("Marge du mois", euros(total), "estimation, tous clients")}
-      ${kpi("Marge moyenne", Math.round(ms.reduce((s, x) => s + x.pct, 0) / ms.length) + " %", "de l'abonnement")}
+      ${kpi("Marge moyenne", Math.round(ms.reduce((s, x) => s + x.pct, 0) / ms.length) + " %", "du montant facturé")}
       ${kpi("La meilleure", Math.round(best.pct) + " %", esc(best.c.name))}
       ${kpi("La plus faible", Math.round(worst.pct) + " %", esc(worst.c.name), worst.pct < 0 ? "danger" : "")}
     </div>
-    <section class="card"><div class="card-head"><h2 class="h2">Par client</h2><span class="muted">estimation – exemple</span></div>
+    <section class="card"><div class="card-head"><h2 class="h2">Par client</h2><span class="muted">estimation${window.ENTREMIS_LIVE.on() ? "" : " – exemple"}</span></div>
       <ul class="mg-list">${ms.map(x => `<li class="mg-row">
         <a class="mg-name" href="#fiche-${x.c.id}">${esc(x.c.name)}</a>
-        <dl class="mg-dl"><div><dt>Abonnement</dt><dd class="tabnum">${euros(x.mrr)}</dd></div><div><dt>Pub</dt><dd class="tabnum">− ${euros(x.pub)}</dd></div><div><dt>Appels</dt><dd class="tabnum">− ${euros(x.calls)}</dd></div><div><dt>Remplacements</dt><dd class="tabnum">− ${euros(x.repl)}</dd></div><div><dt>Frais fixes</dt><dd class="tabnum">− ${euros(x.fixed)}</dd></div></dl>
+        <dl class="mg-dl"><div><dt>Leads facturés</dt><dd class="tabnum">${euros(x.mrr)}</dd></div><div><dt>Pub</dt><dd class="tabnum">− ${euros(x.pub)}</dd></div><div><dt>Appels</dt><dd class="tabnum">− ${euros(x.calls)}</dd></div><div><dt>Remplacements</dt><dd class="tabnum">− ${euros(x.repl)}</dd></div><div><dt>Frais fixes</dt><dd class="tabnum">− ${euros(x.fixed)}</dd></div></dl>
         <div class="mg-res"><b class="tabnum${x.m < 0 ? " t-danger" : ""}">${euros(x.m)}</b><span class="tabnum">${Math.round(x.pct)} %</span><div class="camp-bar"><i style="--p:${Math.max(0, Math.min(100, Math.round(x.pct)))}%"></i></div></div>
       </li>`).join("")}</ul></section>
     <section class="card"><div class="card-head"><h2 class="h2">Les hypothèses</h2><span class="muted">à vérifier</span></div>
@@ -464,24 +464,24 @@ Prochaine étape : on signe, et la campagne démarre sous 2 jours.`;
   // Finances : abonnements et contrats, trésorerie prévue
   const CONTRACT = { solaria: ["signe", "actif", "2026-09-01"], thermo: ["signe", "actif", "2026-09-15"], ecotoit: ["signe", "afaire", "2026-10-03"], isolea: ["signe", "actif", "2026-10-20"], delmas: ["asigner", "afaire", ""], blindex: ["signe", "actif", "2026-10-28"] };
   const CTS = () => store("contracts");
-  const ctOf = id => { const o = CTS().list.find(x => x.id === id), d = CONTRACT[id] || ["asigner", "afaire", ""]; return o ? [o.sign, o.mandat, o.since] : d; };
+  const ctOf = id => { const o = CTS().list.find(x => x.id === id), d = (window.ENTREMIS_LIVE.on() ? null : CONTRACT[id]) || ["asigner", "afaire", ""]; return o ? [o.sign, o.mandat, o.since] : d; };
   function contracts() {
     const rs = rows();
-    return `<section class="card"><div class="card-head"><h2 class="h2">Abonnements et contrats</h2><span class="muted">prélèvement le 1er du mois – exemple</span></div>
+    return `<section class="card"><div class="card-head"><h2 class="h2">Contrats et prélèvements</h2><span class="muted">facture le 1er du mois${window.ENTREMIS_LIVE.on() ? "" : " – exemple"}</span></div>
       <ul class="ct-list">${rs.map(r => { const [sign, mandat, since] = ctOf(r.c.id); return `<li class="ct-row">
-        <a class="ct-name" href="#fiche-${r.c.id}">${esc(r.c.name)}</a><b class="tabnum">${euros(r.mrr)}<small> HT/mois</small></b>
+        <a class="ct-name" href="#fiche-${r.c.id}">${esc(r.c.name)}</a><b class="tabnum">${euros(r.mrr)}<small> HT ce mois</small></b>
         <span class="state state-${sign === "signe" ? "ok" : "warn"}">${sign === "signe" ? "Contrat signé" + (since ? " le " + short(since) : "") : "Contrat à signer"}</span>
         <span class="state state-${mandat === "actif" ? "ok" : "neutral"}">${mandat === "actif" ? "Prélèvement actif" : "Prélèvement à mettre en place"}</span>
         ${sign !== "signe" ? `<button class="btn btn-ghost btn-xs" type="button" data-ct="${r.c.id}:sign">Envoyer à signer</button>` : mandat !== "actif" ? `<button class="btn btn-ghost btn-xs" type="button" data-ct="${r.c.id}:mandat">Demander le mandat</button>` : ""}
       </li>`; }).join("")}</ul>
-      <p class="kpi-note">Maquette : signature en ligne et prélèvement automatique à brancher (par exemple Yousign et GoCardless).</p></section>`;
+      ${rs.length ? "" : `<p class="body">Aucun client pour l'instant.</p>`}<p class="kpi-note">Contrat et mandat SEPA : à préparer dans Documents juridiques. Signature en ligne et prélèvement automatique à brancher plus tard (par exemple Yousign et GoCardless).</p></section>`;
   }
   function cashflow() {
     const rs = rows(), inc = rs.filter(r => ctOf(r.c.id)[0] === "signe").reduce((s, r) => s + r.mrr, 0), out = (TD().costs || []).reduce((s, c) => s + c.value, 0);
     const months = ["déc.", "janv.", "févr."], max = Math.max(inc, out, 1);
     return `<section class="card"><div class="card-head"><h2 class="h2">Trésorerie prévue</h2><span class="muted">3 prochains mois – estimation</span></div>
       <ul class="cash-list">${months.map((m, i) => `<li><span class="cash-m">${m}</span><div class="cash-bars"><i class="cash-in" style="--p:${Math.round(inc / max * 100)}%"></i><i class="cash-out" style="--p:${Math.round(out / max * 100)}%"></i></div><span class="cash-v tabnum"><b>+ ${euros(inc - out)}</b><small>${euros(inc)} entrent – ${euros(out)} sortent</small></span></li>`).join("")}</ul>
-      <p class="kpi-note">Entrées : abonnements des contrats signés. Sorties : publicités, outils, boîtes d'envoi, comptable. Sans les nouveaux clients.</p></section>`;
+      <p class="kpi-note">Entrées : les leads facturés ce mois-ci aux clients sous contrat. Sorties : publicités, outils, boîtes d'envoi, comptable. Sans les nouveaux clients.</p></section>`;
   }
   // Avancement : les objectifs de la semaine, par personne
   const GOALS = () => store("goals");

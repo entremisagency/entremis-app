@@ -136,7 +136,7 @@
       <div class="card-head"><h2 class="h2">Préparation des clients</h2></div>
       <div class="table-scroll"><table class="table table-prep"><thead><tr><th>Client</th>${list.map(s => `<th>${esc(s.title)}</th>`).join("")}</tr></thead>
       <tbody>${clients.map(cl => `<tr><td class="org"><a class="org-link" href="#fiche-${cl.id}"><b>${esc(cl.name)}</b></a><span>${esc(cl.trade)}</span></td>${list.map(s => { const p = pct(cl.name, s); return `<td><div class="prep-cell"><div class="bar"><i style="--p:${p}%"></i></div><span class="tabnum ${p === 100 ? "t-ok" : p ? "" : "muted"}">${p === 100 ? "Prêt" : p ? p + " %" : "—"}</span></div></td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
-      <p class="kpi-note">Exemple : seule Solaria Habitat a un espace client.</p>
+      ${window.ENTREMIS_LIVE.on() ? "" : `<p class="kpi-note">Exemple : seule Solaria Habitat a un espace client.</p>`}
     </section>
     ${sheet(S)}`;
   }
