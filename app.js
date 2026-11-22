@@ -68,12 +68,13 @@
     const c = Object.assign({}, b, {
       name: c0.trade || b.name,
       goal: Object.assign({}, b.goal, { done: c0.done, target: c0.target, day: c0.day, days: c0.days }),
-      kpis: [
-        { label: "Demandes reçues", value: String(accounts.length), note: "depuis le début", ticks: [] },
-        { label: "Qualifiées", value: String(accounts.filter(a => a.step === "replied" || a.step === "meeting").length), note: "prêtes pour une visite", ticks: [] },
-        { label: "Délai de rappel", value: "—", note: "mesuré au premier appel", ticks: [] },
-        { label: "Présence aux rendez-vous", value: `${ok} / ${past.length}`, note: abs ? `${abs} absence${abs > 1 ? "s" : ""}, remplacée${abs > 1 ? "s" : ""}` : "aucune absence", ticks: [] }
-      ],
+      kpis: (() => { const B = window.ENTREMIS_MACHINE ? window.ENTREMIS_MACHINE.billing(id, D.today.iso.slice(0, 7)) : { all: [], ok: [], out: [], levels: { rdv: 0 }, amount: 0, price: 50 };
+        return [
+        { label: "Leads reçus", value: String(B.all.length), note: "ce mois-ci", ticks: [] },
+        { label: "Facturables", value: String(B.ok.length), note: `${B.out.length} non facturé${B.out.length > 1 ? "s" : ""}`, ticks: [] },
+        { label: "Rendez-vous pris", value: String(B.levels.rdv), note: B.ok.length ? `${Math.round(B.levels.rdv / B.ok.length * 100)} % des leads` : "par l'assistant", ticks: [] },
+        { label: "Montant du mois", value: `${Math.round(B.amount).toLocaleString("fr-FR")} €`, note: `HT, ${B.price} € par lead`, ticks: [] }
+      ]; })(),
       appointments, accounts, messages: [], absences: appointments.filter(a => a.state === "replaced").length
     });
     CAMP[id] = { key, c };
@@ -232,7 +233,7 @@
     const so = $("#side-out"); if (so) so.innerHTML = window.ENTREMIS_CLOUD.on() ? `<button class="side-out" type="button" data-cloud-out>${icon("logout")}<span>Se déconnecter</span></button>` : "";
     $("#m-avatar").outerHTML = team ? `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages">${TM().avatar(me.id, "av")}</a>` : `<a class="m-avatar-link" id="m-avatar" href="#reglages" aria-label="Réglages"><span class="av">${esc(U.initials)}</span></a>`;
     document.querySelectorAll(".bell .dot").forEach(d => { d.hidden = !unread; });
-    const pt = document.getElementById("promise-text"); if (pt && !team) pt.textContent = clientParcours().guarantee;
+    const pt = document.getElementById("promise-text"); if (pt && !team) pt.textContent = "Vérifiés par code SMS, réservés à vous seul. 7 jours pour contester un lead.";
 
     const names = { accueil: "Accueil", agenda: "Agenda", comptes: c.words.accounts, messages: "Messages", equipe: "Mon portail", taches: "Tâches", clients: "Clients", pipeline: "Prospection", avancement: "Avancement", finances: "Finances", appels: "Appels", marketing: "Marketing", plus: "Plus", chiffres: "Chiffres", leads: "Leads", generer: "Nouveau document", guide: "Guide", processus: "Processus", discussions: "Discussions", secteurs: "Secteurs", documents: "Documents de travail", contacts: "Contacts", juridique: "Documents juridiques", acces: "Accès clients", appel: "Poste d'appel", "rendez-vous": "Rendez-vous", zones: "Zones", sante: "Santé et suivi", propositions: "Propositions", etudes: "Études de cas", marge: "Marge", conformite: "Conformité", aide: "Comment ça marche", resultats: "Résultats", facturation: "Leads et facture", dispos: "Disponibilités", parrainage: "Parrainage", menu: "Plus", scripts: "Scripts", "scripts-equipe": "Scripts", notifications: "Notifications", reglages: "Réglages" };
     const fe = route.name === "fiche" ? (TD_().clients.find(x => x.id === route.id) || TD_().pipeline.find(x => x.id === route.id)) : null;
@@ -285,17 +286,19 @@
     const guideOff = store.get("guide-off", "") === "1";
     const kv = re => (c.kpis.find(k => re.test(k.label)) || {}).value || "—";
     const P = clientParcours();   // rendez-vous, transfert direct ou devis, selon le métier du client
+    // La machine à leads (documents de Gianni) : vidéos et pub, numéro vérifié, rappel en 2 minutes, facturé au lead
+    const B = window.ENTREMIS_MACHINE.billing(viewId(), D.today.iso.slice(0, 7)), money = n => Math.round(n).toLocaleString("fr-FR") + " €";
     const guideHtml = guideOff ? "" : `<section class="card guide-flow" aria-label="Comment ça marche">
       <div class="card-head"><h2 class="h2">Comment ça marche</h2><span class="gd-links"><a class="link" href="#aide">Le guide</a><button class="link" type="button" data-act="guide-off">J'ai compris</button></span></div>
       ${nodeFlow([
-        Object.assign({}, P.steps[0], { rows: [["Rappel", kv(/rappel/)], ["Reçues", kv(/reçues/)]] }),
-        Object.assign({}, P.steps[1], { rows: [["Critères", "4"], ["Qualifiées", kv(/Qualifi/)]] }),
-        Object.assign({}, P.steps[2], { rows: [[P.doneLabel, `${c.goal.done}/${c.goal.target}`], [P.nextLabel, next ? (next.date === window.ENTREMIS_DATA.today.iso ? "auj. " : next.date.slice(8, 10) + "/" + next.date.slice(5, 7) + " ") + next.start : "–"]] }),
-        Object.assign({}, P.steps[3], { rows: [[P.ok, kv(/Présence/).split(" ")[0].split("/")[0], "ok"], [P.bad, String(c.absences != null ? c.absences : 1), "bad"]] })
+        { icon: "signal", title: "Vos vidéos en pub", text: "Tournées chez vous, diffusées sur votre compte Meta.", rows: [["Leads ce mois", String(B.all.length)]] },
+        { icon: "shield", title: "Numéro vérifié", text: "Chaque demande confirme son numéro par code SMS.", rows: [["Facturables", String(B.ok.length)]] },
+        { icon: "chat", title: "Rappel en 2 minutes", text: "L'assistant WhatsApp qualifie et prend le rendez-vous.", rows: [["RDV pris", String(B.levels.rdv)], ["Prochain", next ? (next.date === D.today.iso ? "auj. " : next.date.slice(8, 10) + "/" + next.date.slice(5, 7) + " ") + next.start : "–"]] },
+        { icon: "euro", title: "Facturé au lead", text: `${B.price} € HT le lead exclusif. 7 jours pour contester.`, rows: [["Ce mois", money(B.amount)], ["Non facturés", String(B.out.length), "ok"]] }
       ], "Comment ça marche")}
     </section>`;
     const gst = next ? window.ENTREMIS_GCAL.addState("rdv:" + next.id) : null;
-    const kLabels = { "Demandes reçues": "Particuliers qui ont demandé une étude", "Qualifiées": "Ont passé les 4 critères", "Délai de rappel": "Temps pour rappeler un particulier", "Présence aux rendez-vous": P.presenceHelp };
+    const kLabels = { "Leads reçus": "Particuliers de votre zone qui ont demandé une étude", "Facturables": "Numéro vérifié, propriétaire, dans votre zone", "Rendez-vous pris": "Pris par l'assistant WhatsApp", "Montant du mois": "Facturé le 1er du mois avec le relevé" };
     return `
     <div class="head">
       <div class="head-text">
@@ -320,29 +323,36 @@
         </div>
       </section>` : `<section class="card next"><h2 class="h2">Pas de rendez-vous prévu</h2><p class="body">Vous serez prévenu dès qu'il arrive.</p></section>`}
 
-      <section class="goal scope-dark scope-blue" aria-label="Objectif de la campagne">
+      ${(() => { const capN = B.cap ? Math.max(1, Math.floor(B.cap / B.price)) : 0, p2 = capN ? Math.min(100, Math.round(B.ok.length / capN * 100)) : 0, rdvPct = B.ok.length ? Math.round(B.levels.rdv / B.ok.length * 100) : 0;
+        const mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"][Number(D.today.iso.slice(5, 7)) - 1];
+        return `<section class="goal scope-dark scope-blue" aria-label="Vos leads du mois">
         <div class="goal-top">
-          <p class="goal-title">Objectif <span class="soft">de la campagne</span></p>
-          <span class="sample">Jour ${g.day} sur ${g.days}</span>
+          <p class="goal-title">Vos leads <span class="soft">de ${mois}</span></p>
+          <span class="sample">${money(B.amount)} HT</span>
         </div>
         <div class="goal-mid">
-          <div><p class="goal-num"><span>${g.done}</span><small>/ ${g.target}</small></p><p class="goal-unit">${esc(P.delivered)}</p></div>
-          ${tickRing(pct, pct + " %")}
+          <div><p class="goal-num"><span>${B.ok.length}</span>${capN ? `<small>/ ${capN}</small>` : ""}</p><p class="goal-unit">lead${B.ok.length > 1 ? "s" : ""} facturable${B.ok.length > 1 ? "s" : ""}${capN ? " (plafond du mois)" : ""}</p></div>
+          ${tickRing(capN ? p2 : rdvPct, capN ? p2 + " %" : rdvPct + " % RDV")}
         </div>
         <div class="track">
-          <div class="bar" role="progressbar" aria-valuenow="${g.done}" aria-valuemin="0" aria-valuemax="${g.target}"><i style="--p:${pct}%"></i></div>
-          <div class="track-legend"><span>Encore ${g.target - g.done} à livrer</span><span>${g.days - g.day} jours restants</span></div>
+          <div class="bar" role="progressbar" aria-valuenow="${B.levels.rdv}" aria-valuemin="0" aria-valuemax="${Math.max(1, B.ok.length)}"><i style="--p:${rdvPct}%"></i></div>
+          <div class="track-legend"><span>${B.levels.rdv} avec rendez-vous pris</span><span>${B.out.length} non facturé${B.out.length > 1 ? "s" : ""}</span></div>
         </div>
         <div class="goal-foot">
-          <span>${icon("shield")}Garantis ou remplacés</span>
-          <a class="link" href="#agenda">Voir l'agenda ${icon("arrow")}</a>
+          <span>${icon("shield")}Exclusifs, vérifiés par SMS</span>
+          <a class="link" href="#facturation">Leads et facture ${icon("arrow")}</a>
         </div>
-      </section>
+      </section>`; })()}
     </div>
 
     ${isNarrow() ? guideHtml : ""}
     <div class="kpis kpis-4" role="list">
-      ${c.kpis.map(k => `<article class="kpi" role="listitem">
+      ${[
+        { label: "Leads reçus", value: String(B.all.length), note: "ce mois-ci", ticks: [] },
+        { label: "Facturables", value: String(B.ok.length), note: `${B.out.length} non facturé${B.out.length > 1 ? "s" : ""}`, ticks: [] },
+        { label: "Rendez-vous pris", value: String(B.levels.rdv), note: B.ok.length ? `${Math.round(B.levels.rdv / B.ok.length * 100)} % des leads` : "par l'assistant", ticks: [] },
+        { label: "Montant du mois", value: money(B.amount), note: `HT, ${B.price} € par lead`, ticks: [] }
+      ].map(k => `<article class="kpi" role="listitem">
         <p class="kpi-label">${esc(/^Présence/.test(k.label) ? P.presence : k.label)}</p>
         <div class="kpi-row"><div><p class="kpi-value">${esc(k.value)}</p><p class="kpi-note">${esc(k.note)}</p></div>${ticks(k.ticks)}</div>
         ${kLabels[k.label] ? `<p class="kpi-help">${esc(kLabels[k.label])}</p>` : ""}

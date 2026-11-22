@@ -63,13 +63,14 @@
     return `
     <div class="head"><div class="head-text"><h1 class="h1">Comment ça marche</h1><p class="sub">Votre espace Entremis, expliqué simplement.</p></div></div>
     ${section("Ce qu'Entremis fait pour vous", "", EM().nodeFlow([
-      { icon: "phone", title: "On rappelle", text: "Chaque particulier qui demande une étude est rappelé tout de suite." },
-      { icon: "check", title: "On vérifie", text: "Le projet, le budget et les aides, s'il est propriétaire, le délai." },
-      { icon: "cal", title: "Vous recevez", text: "Le rendez-vous arrive dans votre agenda, avec sa fiche." },
-      { icon: "shield", title: "Garanti", text: "Personne au rendez-vous ? On en place un autre, sans frais." }
+      { icon: "signal", title: "Vos vidéos en pub", text: "Tournées chez vous, diffusées sur votre compte Meta : vous voyez chaque euro." },
+      { icon: "shield", title: "Numéro vérifié", text: "Chaque particulier confirme son numéro par code SMS. Le lead est à vous seul." },
+      { icon: "chat", title: "Rappel en 2 minutes", text: "L'assistant WhatsApp (automatique, il le dit) qualifie et prend le rendez-vous." },
+      { icon: "euro", title: "Facturé au lead", text: "50 € HT le lead vérifié. Locataire, hors zone, doublon ou faux numéro : pas facturé." }
     ], "Ce qu'Entremis fait pour vous"))}
     ${section("Les pages de votre espace", "", `<ul class="gd-tiles">${[
-      ["accueil", "home", "Accueil", "Votre prochain rendez-vous, l'objectif de la campagne et vos chiffres."],
+      ["accueil", "home", "Accueil", "Votre prochain rendez-vous, vos leads du mois et vos chiffres."],
+      ["facturation", "euro", "Leads et facture", "Vos leads du mois, leur niveau, ce qui sera facturé. Contestez un lead sous 7 jours."],
       ["agenda", "cal", "Agenda", "Tous vos rendez-vous, par jour, semaine ou mois. Touchez-en un pour sa fiche."],
       ["comptes", "inbox", c.words.accounts, "Les particuliers qui ont demandé une étude, et où en est chacun. Ils vous sont réservés."],
       ["messages", "chat", "Messages", "Tout ce qu'on a écrit en votre nom, mot pour mot, et leurs réponses."],
@@ -79,10 +80,10 @@
       ["parrainage", "users", "Parrainer", "Présentez-nous un autre installateur. On l'appelle de votre part."],
       ["notifications", "bell", "Notifications", "Ce qui vous prévient, et comment."]
     ].map(tile).join("")}</ul>`)}
-    ${section("Un rendez-vous s'est mal passé ?", "", tips([
-      ["1. Ouvrez sa fiche", "Depuis l'Agenda ou l'Accueil."],
-      ["2. « Signaler une absence »", "Personne n'était là, ou ce n'était pas la bonne personne : dites-le en un clic."],
-      ["3. On le remplace", "Un autre rendez-vous est placé dans votre agenda, sans frais. Vous le voyez arriver."]
+    ${section("Un lead ne correspond pas ?", "", tips([
+      ["1. Ouvrez « Leads et facture »", "Tous vos leads du mois y sont, avec leur niveau."],
+      ["2. « Contester »", "Locataire, hors de votre zone, doublon, faux numéro : dites-le dans les 7 jours."],
+      ["3. Il sort de la facture", "Si la contestation est acceptée, le lead n'est pas facturé. Vous voyez la réponse d'Entremis."]
     ]))}
     ${section("Questions fréquentes", "", faq([
       ["Les demandes sont-elles partagées avec d'autres artisans ?", "Non. Chaque demande est réservée à vous seul : elle n'est jamais revendue ni partagée."],
