@@ -1385,7 +1385,7 @@ a.flow-item:hover{background:var(--color-btn-soft)}
 .paper-sum{align-self:flex-end}
 
 /* ---------- Diagramme de flux des leads ---------- */
-.sk-wrap{padding:var(--space-5) var(--space-4);border-radius:var(--radius-md);background-color:var(--color-white);background-image:radial-gradient(var(--color-hairline-strong) 1px,transparent 1.2px);background-size:var(--dot-grid) var(--dot-grid)}
+.sk-wrap{padding:var(--space-5) var(--space-4);border-radius:var(--radius-md);background-color:var(--color-white)}
 .sankey{display:block;width:100%;height:auto;overflow:visible;font-family:var(--font)}
 .sk-link{fill:var(--color-ink);opacity:.07;transition:opacity var(--dur-fast) var(--ease)}
 .sk-link.hi{fill:var(--color-action);opacity:.32}
@@ -1405,7 +1405,7 @@ a.flow-item:hover{background:var(--color-btn-soft)}
 
 /* ---------- Étapes en blocs reliés ---------- */
 .guide-flow{background-color:var(--color-card)}
-.nf{display:flex;align-items:flex-start;padding:var(--space-4) var(--space-3) var(--space-5);border-radius:var(--radius-md);background-color:var(--color-white);background-image:radial-gradient(var(--color-hairline-strong) 1px,transparent 1.2px);background-size:var(--dot-grid) var(--dot-grid);overflow:hidden}
+.nf{display:flex;align-items:flex-start;padding:var(--space-4) var(--space-3) var(--space-5);border-radius:var(--radius-md);background:transparent;overflow:hidden}   /* plus de grille de points derrière les étapes (Marc, 23 nov. : « pas beau ») */
 .nf-node{position:relative;flex:1 1 0;min-width:0;display:grid;gap:var(--space-2);padding:var(--space-3);border-radius:var(--radius-lg);background:var(--color-white);box-shadow:0 0 0 1px var(--color-hairline-strong),var(--shadow-ui);margin-top:var(--space-5)}
 .nf-node.low{margin-top:calc(var(--space-5) + var(--nf-drop))}
 .nf-start{position:absolute;top:calc(-1 * var(--space-5));left:0;padding:0 var(--space-2);border-radius:var(--radius-sm);background:var(--color-white);font-size:var(--text-caption);font-weight:var(--weight-strong);color:var(--color-ink)}
