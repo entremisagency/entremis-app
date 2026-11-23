@@ -9,7 +9,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 type Row = { collection: string; id: string; data: Record<string, any>; client_id: string | null };
-export type Store = { rows(collections: string[]): Promise<Row[]>; insert(collection: string, id: string, data: Record<string, any>): Promise<void>; who(keyHash: string): Promise<{ who: string; role: string } | null> };
+export type Store = { rows(collections: string[]): Promise<Row[]>; insert(collection: string, id: string, data: Record<string, any>): Promise<void>; upsert(collection: string, id: string, data: Record<string, any>): Promise<void>; who(keyHash: string): Promise<{ who: string; role: string } | null> };
 
 const PROTOCOL = "2025-06-18";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, authorization, mcp-session-id, mcp-protocol-version", "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Access-Control-Expose-Headers": "mcp-session-id" };
@@ -33,6 +33,9 @@ const TOOLS = [
   { name: "ajouter_veille", description: "Ajoute une pub repérée à la veille de l'équipe (Studio contenu).", inputSchema: { type: "object", properties: { annonceur: { type: "string" }, lien: { type: "string", description: "lien https de la pub dans la bibliothèque Meta" }, depuis: { type: "string", description: "AAAA-MM-JJ, date de début de diffusion" }, famille: { type: "string", enum: ["local", "plateforme", "confiance", "autre"] }, format: { type: "string" }, accroche: { type: "string" }, pourquoi: { type: "string", description: "pourquoi elle marche, ce qu'on en reprend" } }, required: ["annonceur"] } },
   { name: "lister_scripts_video", description: "Les scripts vidéo du Studio contenu (titre, client, format, statut, texte).", inputSchema: { type: "object", properties: { client: { type: "string" } } } },
   { name: "ecrire_script_video", description: "Enregistre un script vidéo en brouillon dans le Studio contenu, pour un client. Suivre le brief de tournage de Gianni (outil documents_de_travail) : accroche 0-3 s, un argument (court 15-45 s) ou le déroulé long (1-2 min), appel à l'action, écran de fin avec la mention France Rénov'. Interdits : « 1 € », « MaPrimeRénov' », montants d'aide, crédit ou financement, fausse urgence.", inputSchema: { type: "object", properties: { client: { type: "string", description: "identifiant ou nom" }, titre: { type: "string" }, format: { type: "string", enum: ["court", "long"] }, accroche: { type: "string" }, texte: { type: "string", description: "le script complet" } }, required: ["client", "texte"] } },
+  { name: "ce_qui_marche", description: "Le coût par lead des pubs en cours, regroupé par accroche, par corps de message et par appel à l'action (noms de la matrice CLIENT_A02_C01_CTA1_V1). Les moins chères d'abord.", inputSchema: { type: "object", properties: { client: { type: "string", description: "identifiant ou nom (facultatif)" } } } },
+  { name: "lister_tournages", description: "Les tournages : client, date, heure, lieu, équipe, ce que le client a préparé, et les scripts envoyés au client (validés ou non).", inputSchema: { type: "object", properties: { a_venir: { type: "boolean", description: "seulement ceux à venir (par défaut oui)" } } } },
+  { name: "noter_conversation_setter", description: "Ajoute des messages de la conversation WhatsApp de l'assistant (setter) sur la fiche d'un lead, et peut noter le résultat. Le lead se trouve par son identifiant ou son numéro de téléphone.", inputSchema: { type: "object", properties: { lead: { type: "string", description: "identifiant du lead ou numéro de téléphone" }, messages: { type: "array", items: { type: "object", properties: { de: { type: "string", enum: ["setter", "lead"] }, texte: { type: "string" }, quand: { type: "string", description: "AAAA-MM-JJTHH:MM (facultatif)" } }, required: ["de", "texte"] } }, resultat: { type: "string", enum: ["qualifie", "pas-qualifie", "sans-reponse"] } }, required: ["lead"] } },
   { name: "chiffres_du_mois", description: "Les chiffres de la machine à leads pour un mois : leads, facturables, RDV pris, pub dépensée, coût par lead, contestations.", inputSchema: { type: "object", properties: { mois: { type: "string", description: "AAAA-MM" } } } }
 ];
 
@@ -50,7 +53,7 @@ function billing(rows: Row[], c: any, m: string) {
 const NEED: Record<string, string[]> = {
   resume_du_jour: ["leads", "rdv", "tasks", "documents", "clients"], lister_leads: ["leads", "clients"], lire_lead: ["leads", "contests", "clients"], lister_clients: ["clients"],
   fiche_client: ["clients", "leads", "contests", "flow", "meta", "ads"], facturation_du_mois: ["clients", "leads", "contests"], lister_rendez_vous: ["rdv", "clients"], lister_taches: ["tasks"],
-  creer_tache: ["clients"], documents_de_travail: ["refs"], lister_veille: ["veille"], ajouter_veille: [], lister_scripts_video: ["scripts-video", "clients"], ecrire_script_video: ["clients"], chiffres_du_mois: ["clients", "leads", "contests", "meta", "results"]
+  creer_tache: ["clients"], documents_de_travail: ["refs"], lister_veille: ["veille"], ce_qui_marche: ["ads", "clients"], lister_tournages: ["flow", "clients", "validations"], noter_conversation_setter: ["leads", "setter"], ajouter_veille: [], lister_scripts_video: ["scripts-video", "clients"], ecrire_script_video: ["clients"], chiffres_du_mois: ["clients", "leads", "contests", "meta", "results"]
 };
 
 export async function callTool(store: Store, me: { who: string }, name: string, a: Record<string, any>) {
@@ -133,6 +136,31 @@ export async function callTool(store: Store, me: { who: string }, name: string, 
       await store.insert("scripts-video", id, { id, client: c.id, title, format: s(a.format) === "long" ? "long" : "court", hook, bodies: [], cta: "", text, status: "brouillon", by: me.who, via: "claude", updatedAt: now });
       return { ok: true, id, titre: title, client: c.name, a_verifier: "Ouvrir le Studio contenu : les mots interdits y sont signalés avant l'envoi au montage." };
     }
+    case "ce_qui_marche": {
+      const c = a.client ? findClient(rows, a.client) : null; if (a.client && !c) throw new Error("Client introuvable.");
+      const g: Record<string, Record<string, { pubs: number; depense: number; leads: number }>> = { accroche: {}, corps: {}, appel: {} };
+      const add = (k: string, key: string, x: any) => { const r = g[k][key] || (g[k][key] = { pubs: 0, depense: 0, leads: 0 }); r.pubs++; r.depense += Number(x.spent) || 0; r.leads += Number(x.leads) || 0; };
+      asData(rows, "ads").filter((x: any) => !c || x.client_id === c.id).forEach((x: any) => { const m = s(x.name).match(/_A(\d{2})_C(\d{2})_CTA(\d)/i);
+        if (m) { add("accroche", "A" + m[1], x); add("corps", "C" + m[2], x); add("appel", "CTA" + m[3], x); } else add("accroche", s(x.angle || x.name || "sans nom"), x); });
+      const out = (k: string) => Object.entries(g[k]).map(([cle, r]) => ({ cle, ...r, cout_par_lead: r.leads ? Math.round(r.depense / r.leads * 100) / 100 : null })).sort((x, y) => (x.cout_par_lead == null ? 1 : 0) - (y.cout_par_lead == null ? 1 : 0) || (x.cout_par_lead || 0) - (y.cout_par_lead || 0));
+      return { client: c ? c.name : "tous", par_accroche: out("accroche"), par_corps: out("corps"), par_appel_a_l_action: out("appel"), note: "A01, A02… : numéros des accroches de la banque du Studio contenu, dans l'ordre." };
+    }
+    case "lister_tournages": {
+      const t = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 10), names = Object.fromEntries(asData(rows, "clients").map((x: any) => [x.id, x.name])), vals = asData(rows, "validations");
+      return asData(rows, "flow").map((f: any) => ({ cid: f.client_id || f.id, s: f.shoot || {} })).filter((x: any) => x.s.date && (a.a_venir === false || x.s.date >= t)).sort((x: any, y: any) => s(x.s.date).localeCompare(s(y.s.date)))
+        .map((x: any) => { const v = vals.filter((y: any) => y.client_id === x.cid); return { client: names[x.cid] || x.cid, date: x.s.date, heure: x.s.time || null, lieu: x.s.place || null, equipe: x.s.crew || [], prepare: x.s.prep || {}, note: x.s.note || null,
+          scripts_envoyes: v.length, scripts_valides: v.filter((y: any) => y.status === "valide").length, corrections_demandees: v.filter((y: any) => y.status === "correction").map((y: any) => ({ script: y.title, remarque: y.comment })) }; });
+    }
+    case "noter_conversation_setter": {
+      const k = s(a.lead), digits = k.replace(/\D/g, "").slice(-9), leads = asData(rows, "leads");
+      const l = leads.find((x: any) => x.id === k) || (digits.length >= 9 ? leads.find((x: any) => s(x.phone).replace(/\D/g, "").slice(-9) === digits) : null); if (!l) throw new Error("Lead introuvable (identifiant ou téléphone).");
+      const now = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 16).replace(" ", "T"), cur: any = asData(rows, "setter").find((x: any) => x.id === l.id) || { id: l.id, messages: [] };
+      const add = (Array.isArray(a.messages) ? a.messages : []).slice(0, 200).map((m: any) => ({ at: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s(m.quand)) ? s(m.quand) : now, from: s(m.de) === "lead" ? "lead" : "setter", text: s(m.texte).slice(0, 2000) })).filter((m: any) => m.text);
+      const res = ["qualifie", "pas-qualifie", "sans-reponse"].includes(s(a.resultat)) ? s(a.resultat) : "";
+      const next = { ...cur, messages: (cur.messages || []).concat(add).slice(-400), updatedAt: now, via: "claude", ...(res ? { outcome: res, outcomeAt: now, outcomeBy: me.who } : {}) };
+      await store.upsert("setter", l.id, next);
+      return { ok: true, lead: l.name, messages_ajoutes: add.length, resultat: res || cur.outcome || null };
+    }
     case "chiffres_du_mois": {
       const clients = asData(rows, "clients").filter((c: any) => !c.archived), per = clients.map((c: any) => ({ client: c.name, ...billing(rows, c, m), detail: undefined }));
       const fact = per.reduce((x, p) => x + p.facturables, 0), spend = asData(rows, "meta").reduce((x: number, r: any) => x + (Number((r.spend || {})[m]) || 0), 0);
@@ -181,6 +209,7 @@ function supaStore(): Store {
   return {
     async rows(cols) { if (!cols.length) return []; const out: Row[] = []; for (let f = 0; ; f += 1000) { const { data, error } = await db.from("docs").select("collection, id, data, client_id").in("collection", cols).range(f, f + 999); if (error) throw error; out.push(...(data as Row[])); if (!data || data.length < 1000) break; } return out; },
     async insert(collection, id, data) { const { error } = await db.from("docs").insert({ collection, id, data, client_id: null }); if (error) throw error; },
+    async upsert(collection, id, data) { const { error } = await db.from("docs").upsert({ collection, id, data, client_id: null }, { onConflict: "collection,id" }); if (error) throw error; },
     async who(hash) {
       const { data: k } = await db.from("mcp_keys").select("user_id").eq("hash", hash).maybeSingle(); if (!k) return null;
       await db.from("mcp_keys").update({ last_used: new Date().toISOString() }).eq("hash", hash);

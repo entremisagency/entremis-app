@@ -19,6 +19,7 @@
     sante: "Les clients à surveiller : retard sur l'objectif, absences, fin d'engagement. Pour agir avant qu'un client parte.",
     "scripts-equipe": "Les scripts d'appel et de visite, à jour pour toute l'équipe et pour les clients.",
     secteurs: "Les métiers (pompes à chaleur, solaire…) et la façon de livrer chacun : rendez-vous, transfert d'appel ou devis.",
+    tournages: "Le planning des tournages : la date, l'heure, le lieu, qui y va, ce que le client a préparé et si ses scripts sont validés. Enregistrer crée une tâche pour l'équipe du jour ; le client voit tout dans « Votre tournage ».",
     studio: "Le Studio contenu : voir dans la bibliothèque publicitaire Meta les pubs qui tournent depuis longtemps, écrire les scripts selon le brief de Gianni (les mots interdits sont signalés), puis préparer toutes les versions à monter. « Envoyer au montage » crée la fiche dans Vidéos.",
     juridique: "Les documents juridiques prêts à remplir : contrat, droit à l'image, prélèvement SEPA, RGPD… Ils se remplissent avec la fiche du client. À faire relire avant usage.",
     acces: "Créer l'accès d'un client à son espace, lui redonner un mot de passe provisoire, ou retirer son accès.",
@@ -39,6 +40,7 @@
     plus: "Toutes les pages de l'espace agence."
   };
   const CLIENT = {
+    tournage: "La date de votre tournage, qui vient de l'équipe Entremis, ce qu'il faut préparer, et les scripts des vidéos : vous vérifiez les chiffres, puis vous validez ou demandez une correction.",
     accueil: "Votre espace Entremis : vos prochains rendez-vous et l'essentiel de votre campagne.",
     agenda: "Vos rendez-vous, jour par jour. Touchez-en un pour tout savoir sur le particulier.",
     rdv: "Tout sur ce rendez-vous : le projet du particulier, ses réponses, le mot d'Entremis. Notez le résultat après la visite.",

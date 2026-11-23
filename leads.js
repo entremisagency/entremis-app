@@ -205,6 +205,7 @@
         ${l.trade ? row("Projet", esc(l.trade)) : ""}${l.city ? row("Ville", esc(l.city)) : ""}${l.zip ? row("Code postal", esc(l.zip)) : ""}${l.zone ? row("Zone", esc(l.zone)) : ""}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.source ? row("Venu de", esc(l.source)) : ""}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
       </dl>
       ${l.note ? `<section class="lp-box"><p class="lp-label">Son message</p><p class="body">${esc(l.note)}</p></section>` : ""}
+      ${window.ENTREMIS_SETTER ? window.ENTREMIS_SETTER.box(l) : ""}
       ${window.ENTREMIS_MACHINE.leadBox(l)}
       ${(() => { const f = window.ENTREMIS_SECTORS.forLead(l), okN = { rappele: 2, qualifie: 4, attribue: 4, rdv: 4 }[l.status] || 0;
         return `<section class="lp-box"><p class="lp-label">${esc(f.sector.name)} – ${f.parcours.name}</p><ul class="lp-checks">${f.criteria.map((q, i) => `<li class="${i < okN ? "is-ok" : ""}">${i < okN ? icon("check") : "<i></i>"}<span>${esc(q)}</span></li>`).join("")}</ul></section>`; })()}

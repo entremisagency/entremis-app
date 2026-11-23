@@ -239,7 +239,7 @@
     e.preventDefault();
     const fd = new FormData(e.target), v = n => String(fd.get(n) || "").trim(), num = n => Number(fd.get(n)) || 0, now = new Date().toISOString().slice(0, 16);
     if (id === "pl-shoot-form") {
-      putFlow(X.id, { rachat: num("rachat") || 2000, shoot: { date: v("date"), place: v("place"), host: v("host"), tech: v("tech"), witness: v("witness"), consents: num("consents"), videos: num("videos"), hooks: num("hooks"), franceRenov: !!fd.get("franceRenov"), rge: !!fd.get("rge"), noAmount: !!fd.get("noAmount") } });
+      putFlow(X.id, { rachat: num("rachat") || 2000, shoot: { ...(flowOf(X.id).shoot || {}), date: v("date"), place: v("place"), host: v("host"), tech: v("tech"), witness: v("witness"), consents: num("consents"), videos: num("videos"), hooks: num("hooks"), franceRenov: !!fd.get("franceRenov"), rge: !!fd.get("rge"), noAmount: !!fd.get("noAmount") } });
       EM().toast("Tournage enregistré.");
     }
     if (id === "pl-ad-form") {
@@ -259,6 +259,6 @@
   document.addEventListener("input", e => { if (!e.target.matches || !e.target.matches("[data-pl-doc-q]")) return; X.q = e.target.value; const pos = e.target.selectionStart; EM().render(); const i = document.querySelector("[data-pl-doc-q]"); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (_) {} } });
   function sheet(S) { return X.sheet === "shoot" ? shootSheet() : X.sheet === "ad" ? adSheet() : X.sheet === "doc" ? docSheet(S) : ""; }
 
-  window.ENTREMIS_PILOT = { addAd: a => ADS().put(a), flowCard, adsCard, riskPanel, viewDocs, backupRows, backupDue, sheet, onClick, onSubmit, rule, flowOf, engagement,
+  window.ENTREMIS_PILOT = { addAd: a => ADS().put(a), ads: () => ADS().list, flows: () => FLOW().list, putFlow, flowCard, adsCard, riskPanel, viewDocs, backupRows, backupDue, sheet, onClick, onSubmit, rule, flowOf, engagement,
     init: render => [FLOW, ADS, REFS, BACK].forEach(s => s().init(render)), reset: () => { X.sheet = null; X.id = null; X.doc = null; X.q = ""; } };
 })();
