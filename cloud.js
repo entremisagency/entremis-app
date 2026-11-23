@@ -303,6 +303,8 @@
   }
   async function mcpDelete(hash) { await ready; const { error } = await client.from("mcp_keys").delete().eq("hash", hash); if (error) throw error; }
   async function listMembers() { await ready; if (!client) return []; const { data, error } = await client.from("members").select("user_id, who, role, client_id, created_at"); return error ? [] : (data || []); }
+  // Appeler une fonction du serveur (meta-sync…) avec la session de la personne connectée
+  async function invoke(fn, body) { if (!client) return { error: { message: "Pas connecté." } }; return client.functions.invoke(fn, { body: body || {} }); }
   async function rpc(fn, args) { if (!client) return { error: { message: "Pas connecté." } }; return client.rpc(fn, args); }
 
   // Notifications sur le téléphone, même app fermée : on abonne cet appareil (clé publique donnée par la fonction « push »)
@@ -324,6 +326,6 @@
   }
   async function signOut() { if (client) await client.auth.signOut(); try { sessionStorage.removeItem("entremis-cloud"); } catch (_) {} location.reload(); }
 
-  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start, pushSubscribe, dumpAll, mcpKeys, mcpCreate, mcpDelete, resync: () => resync(true) };
+  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start, pushSubscribe, dumpAll, mcpKeys, mcpCreate, mcpDelete, invoke, resync: () => resync(true) };
   if (on) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start(); }
 })();

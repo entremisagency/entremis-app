@@ -53,7 +53,7 @@ function billing(rows: Row[], c: any, m: string) {
 const NEED: Record<string, string[]> = {
   resume_du_jour: ["leads", "rdv", "tasks", "documents", "clients"], lister_leads: ["leads", "clients"], lire_lead: ["leads", "contests", "clients"], lister_clients: ["clients"],
   fiche_client: ["clients", "leads", "contests", "flow", "meta", "ads"], facturation_du_mois: ["clients", "leads", "contests"], lister_rendez_vous: ["rdv", "clients"], lister_taches: ["tasks"],
-  creer_tache: ["clients"], documents_de_travail: ["refs"], lister_veille: ["veille"], ce_qui_marche: ["ads", "clients"], lister_tournages: ["flow", "clients", "validations"], noter_conversation_setter: ["leads", "setter"], ajouter_veille: [], lister_scripts_video: ["scripts-video", "clients"], ecrire_script_video: ["clients"], chiffres_du_mois: ["clients", "leads", "contests", "meta", "results"]
+  creer_tache: ["clients"], documents_de_travail: ["refs"], lister_veille: ["veille"], ce_qui_marche: ["ads", "clients", "leads"], lister_tournages: ["flow", "clients", "validations"], noter_conversation_setter: ["leads", "setter"], ajouter_veille: [], lister_scripts_video: ["scripts-video", "clients"], ecrire_script_video: ["clients"], chiffres_du_mois: ["clients", "leads", "contests", "meta", "results"]
 };
 
 export async function callTool(store: Store, me: { who: string }, name: string, a: Record<string, any>) {
@@ -139,10 +139,12 @@ export async function callTool(store: Store, me: { who: string }, name: string, 
     case "ce_qui_marche": {
       const c = a.client ? findClient(rows, a.client) : null; if (a.client && !c) throw new Error("Client introuvable.");
       const g: Record<string, Record<string, { pubs: number; depense: number; leads: number }>> = { accroche: {}, corps: {}, appel: {} };
-      const add = (k: string, key: string, x: any) => { const r = g[k][key] || (g[k][key] = { pubs: 0, depense: 0, leads: 0 }); r.pubs++; r.depense += Number(x.spent) || 0; r.leads += Number(x.leads) || 0; };
+      const byAd: Record<string, number> = {}; asData(rows, "leads").forEach((l: any) => { if (l.ad && !l.erased) { const k = s(l.ad).toUpperCase(); byAd[k] = (byAd[k] || 0) + 1; } });
+      const leadsOf = (x: any) => byAd[s(x.name).toUpperCase()] || Number(x.leads) || Number(x.metaLeads) || 0;
+      const add = (k: string, key: string, x: any) => { const r = g[k][key] || (g[k][key] = { pubs: 0, depense: 0, leads: 0 }); r.pubs++; r.depense += Number(x.spent) || 0; r.leads += leadsOf(x); };
       asData(rows, "ads").filter((x: any) => !c || x.client_id === c.id).forEach((x: any) => { const m = s(x.name).match(/_A(\d{2})_C(\d{2})_CTA(\d)/i);
         if (m) { add("accroche", "A" + m[1], x); add("corps", "C" + m[2], x); add("appel", "CTA" + m[3], x); } else add("accroche", s(x.angle || x.name || "sans nom"), x); });
-      const out = (k: string) => Object.entries(g[k]).map(([cle, r]) => ({ cle, ...r, cout_par_lead: r.leads ? Math.round(r.depense / r.leads * 100) / 100 : null })).sort((x, y) => (x.cout_par_lead == null ? 1 : 0) - (y.cout_par_lead == null ? 1 : 0) || (x.cout_par_lead || 0) - (y.cout_par_lead || 0));
+      const out = (k: string) => Object.entries(g[k]).map(([cle, r]) => ({ cle, ...r, cout_par_lead: r.leads && r.depense ? Math.round(r.depense / r.leads * 100) / 100 : null })).sort((x, y) => (x.cout_par_lead == null ? 1 : 0) - (y.cout_par_lead == null ? 1 : 0) || (x.cout_par_lead || 0) - (y.cout_par_lead || 0));
       return { client: c ? c.name : "tous", par_accroche: out("accroche"), par_corps: out("corps"), par_appel_a_l_action: out("appel"), note: "A01, A02… : numéros des accroches de la banque du Studio contenu, dans l'ordre." };
     }
     case "lister_tournages": {

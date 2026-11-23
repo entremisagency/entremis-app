@@ -130,7 +130,7 @@
         <span class="ac-acts">${pill(l)}${l.verified === true ? `<span class="state state-neutral">${EM().icon("check")}Vérifié par SMS</span>` : ""}${billable(l) ? `<span class="state state-ok">Facturé</span>` : `<span class="state state-neutral">${esc(EXCL[exclOf(l)] || "Non facturé")}</span>`}
           ${ct ? `<span class="state state-${ct.state === "accepte" ? "ok" : ct.state === "refuse" ? "neutral" : "warn"}">${ct.state === "ouvert" ? "Contestation envoyée" : ct.state === "accepte" ? "Contestation acceptée" : "Contestation refusée"}</span>` : can ? `<button class="link" type="button" data-mc-dispute="${l.id}">Contester</button>` : ""}</span></li>`;
     }).join("");
-    return `<div class="head"><div class="head-text"><h1 class="h1">Leads et facture</h1><p class="sub">Vos leads du mois, leur niveau, et ce qui sera facturé. 7 jours pour contester un lead.</p></div></div>
+    return `<div class="head"><div class="head-text"><h1 class="h1">Leads et facture</h1><p class="sub">Vos leads du mois, leur niveau, et ce qui sera facturé. 7 jours pour contester un lead.</p></div>${window.ENTREMIS_MONTH ? `<div class="head-actions">${window.ENTREMIS_MONTH.clientButton(cid, m)}</div>` : ""}</div>
     <div class="kpis kpis-4" role="list">
       <article class="kpi" role="listitem"><p class="kpi-label">Leads facturables</p><div><p class="kpi-value">${b.ok.length}</p><p class="kpi-note">${monthLabel(m)}</p></div></article>
       <article class="kpi" role="listitem"><p class="kpi-label">Rendez-vous pris</p><div><p class="kpi-value">${b.levels.rdv}</p><p class="kpi-note">par l'assistant</p></div></article>

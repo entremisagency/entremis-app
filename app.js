@@ -831,6 +831,7 @@
     if (window.ENTREMIS_GCAL.onClick(e)) return;
     if (window.ENTREMIS_MACHINE.onClick(e, S, render)) return;
     if (window.ENTREMIS_BILAN.onClick(e, S, render)) return;
+    if (window.ENTREMIS_MONTH.onClick(e, S, render)) return;
     if (window.ENTREMIS_SIGN.onClick(e, S, render)) return;
     if (window.ENTREMIS_VIDEOS.onClick(e, S, render)) return;
     if (window.ENTREMIS_STUDIO.onClick(e, S, render)) return;
@@ -1042,6 +1043,7 @@
   window.ENTREMIS_PILOT.init(() => render());
   window.ENTREMIS_CRM.init(() => render());
   window.ENTREMIS_BILAN.init(() => render());
+  window.ENTREMIS_MONTH.init(() => render());
   window.ENTREMIS_SIGN.init(() => render());
   window.ENTREMIS_VIDEOS.init(() => render());
   window.ENTREMIS_STUDIO.init(() => render());

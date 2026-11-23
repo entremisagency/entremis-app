@@ -51,7 +51,7 @@ Deno.serve(async req => {
       if ((perDay || 0) >= 300) return json({ error: "Trop de demandes aujourd'hui. Réessayez demain." }, 429);
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0"), id = crypto.randomUUID();
       const lead = { p_nom: s(l.p_nom, 80), p_telephone: s(l.p_telephone, 20), p_ville: s(l.p_ville, 60), p_projet: s(l.p_projet, 60), p_source: s(l.p_source, 30) || "Site",
-        p_email: s(l.p_email, 120), p_message: s(l.p_message, 500), p_code_postal: s(l.p_code_postal, 10), p_consentement: true, p_pays: s(l.p_pays, 2) || "FR" };
+        p_email: s(l.p_email, 120), p_message: s(l.p_message, 500), p_code_postal: s(l.p_code_postal, 10), p_consentement: true, p_pays: s(l.p_pays, 2) || "FR", p_client: s(l.p_client, 40), p_pub: s(l.p_pub, 80) };
       await db.from("sms_codes").insert({ id, phone: to, code_hash: await sha(id + code), payload: lead, expires_at: new Date(Date.now() + 600e3).toISOString(), attempts: 0, sends: 1 });
       await sendSms(to, `Entremis : votre code est ${code}. Il confirme votre demande d'étude et reste valable 10 minutes.`);
       return json({ ok: true, id });

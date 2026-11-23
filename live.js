@@ -141,6 +141,7 @@
      le client garde son compte et paie Meta. Ici : le compte, l'état de l'accès, le budget, les dépenses du mois,
      et les leads venus de Meta qu'on lui a donnés, d'où le coût par lead. Réservé à l'équipe (pas de client_id). */
   const META_ST = { "": ["Pas encore relié", "neutral"], demande: ["Accès demandé", "warn"], accepte: ["Accès accepté", "ok"], refuse: ["Accès refusé", "danger"] };
+  let SYNCING = "";
   const actOf = r => String((r && r.account) || "").replace(/^act_/i, "").replace(/\D/g, "");
   function metaCard(id) {
     const esc = EM().esc, icon = EM().icon, r = META().list.find(x => x.id === id) || {}, m = today().slice(0, 7);
@@ -158,13 +159,19 @@
         ${row("Coût par lead", leads && spent ? eur(spent / leads) : "—")}
       </dl>${r.note ? `<p class="kpi-note">${esc(r.note)}</p>` : ""}`
       : `<p class="body">Reliez le compte publicitaire Facebook du client : vous gérez ses campagnes depuis le Business Manager d'Entremis, il garde son compte et paie Meta.</p>`}
-      <div class="form-actions"><button class="btn btn-ghost" type="button" data-live-meta="${esc(id)}">${icon("sliders")}${act ? "Modifier" : "Relier son compte pub"}</button>${act ? `<a class="btn btn-ghost" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${esc(act)}" target="_blank" rel="noopener">${icon("arrow")}Ouvrir l'Ads Manager</a>` : ""}</div>
-      ${(() => { const c = EM().allClients().find(x => x.id === id) || {}, body = JSON.stringify({ p_nom: "{{Nom complet}}", p_telephone: "{{Téléphone}}", p_ville: "{{Ville}}", p_code_postal: "{{Code postal}}", p_projet: c.trade || "Pompe à chaleur", p_source: "Meta – " + (c.name || id), p_client: id, p_consentement: true, p_pays: c.pays || "FR" }, null, 1);
+      <div class="form-actions"><button class="btn btn-ghost" type="button" data-live-meta="${esc(id)}">${icon("sliders")}${act ? "Modifier" : "Relier son compte pub"}</button>${act ? `<a class="btn btn-ghost" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${esc(act)}" target="_blank" rel="noopener">${EM().brand("meta", "Meta")}Ouvrir l'Ads Manager</a><button class="btn btn-ghost" type="button" data-live-metasync="${esc(id)}"${SYNCING === id ? " disabled" : ""}>${icon("swap")}${SYNCING === id ? "Mise à jour…" : "Mettre à jour depuis Meta"}</button>` : ""}</div>
+      ${act ? `<p class="kpi-note">${r.syncError ? `Dernière mise à jour ratée${r.syncedAt ? " le " + esc(String(r.syncedAt).slice(8, 10) + "/" + String(r.syncedAt).slice(5, 7) + " à " + String(r.syncedAt).slice(11, 16)) : ""} : ${esc(r.syncError)}` : r.syncedAt ? `Dépenses et pubs reprises de Meta le ${esc(String(r.syncedAt).slice(8, 10) + "/" + String(r.syncedAt).slice(5, 7) + " à " + String(r.syncedAt).slice(11, 16))}. Mise à jour chaque nuit.` : "Les dépenses et les pubs se mettent à jour chaque nuit depuis Meta, une fois le jeton Meta posé."}</p>` : ""}
+      ${(() => { const c = EM().allClients().find(x => x.id === id) || {}, urlParams = `source=Facebook&client=${id}&pub={{ad.name}}`, formUrl = new URL("demande.html", location.href).href.split("?")[0] + "?" + urlParams, body = JSON.stringify({ p_nom: "{{Nom complet}}", p_telephone: "{{Téléphone}}", p_ville: "{{Ville}}", p_code_postal: "{{Code postal}}", p_projet: c.trade || "Pompe à chaleur", p_source: "Meta – " + (c.name || id), p_client: id, p_pub: "{{Nom de la publicité}}", p_consentement: true, p_pays: c.pays || "FR" }, null, 1);
         return `<details class="meta-make"><summary>Faire arriver ses leads Meta dans l'app (Make ou Zapier)</summary>
         <ol class="mcp-steps"><li>Make : module <b>Facebook Lead Ads › Watch New Leads</b> sur la page et le formulaire de ce client.</li>
         <li>Puis <b>HTTP › Make a request</b> : méthode POST, l'adresse ci-dessous, en-têtes <code>apikey</code> (la clé) et <code>Content-Type: application/json</code>, et ce contenu (remplacez les {{…}} par les champs du formulaire).</li>
-        <li>Chaque lead arrive dans Leads, proposé à ${esc(c.name || "ce client")}. Numéro pas encore vérifié : à marquer après l'échange WhatsApp.</li></ol>
-        <div class="ac-share"><button class="btn btn-ghost" type="button" data-copy="https://cnhxrhyugghigkozfpde.supabase.co/rest/v1/rpc/nouveau_lead">${icon("copy")}Adresse</button><button class="btn btn-ghost" type="button" data-copy="${esc(window.ENTREMIS_CLOUD.key ? window.ENTREMIS_CLOUD.key() : "")}">${icon("copy")}Clé (apikey)</button><button class="btn btn-ghost" type="button" data-copy="${esc(body)}">${icon("copy")}Contenu pour ce client</button></div></details>`; })()}
+        <li>Chaque lead arrive dans Leads, proposé à ${esc(c.name || "ce client")}, avec le nom de la pub d'où il vient. Numéro pas encore vérifié : à marquer après l'échange WhatsApp.</li></ol>
+        <div class="ac-share"><button class="btn btn-ghost" type="button" data-copy="https://cnhxrhyugghigkozfpde.supabase.co/rest/v1/rpc/nouveau_lead">${icon("copy")}Adresse</button><button class="btn btn-ghost" type="button" data-copy="${esc(window.ENTREMIS_CLOUD.key ? window.ENTREMIS_CLOUD.key() : "")}">${icon("copy")}Clé (apikey)</button><button class="btn btn-ghost" type="button" data-copy="${esc(body)}">${icon("copy")}Contenu pour ce client</button></div></details>
+        <details class="meta-make"><summary>Savoir quelle pub a amené chaque lead</summary>
+        <ol class="mcp-steps"><li>Dans le Gestionnaire de publicités, sur chaque pub : <b>Paramètres d'URL</b> (en bas, partie « Suivi »).</li>
+        <li>Collez ce texte : <code>${esc(urlParams)}</code>. Meta remplace {{ad.name}} par le nom de la pub (CLIENT_A02_C01_CTA1_V1).</li>
+        <li>Chaque lead garde alors le nom de sa pub : le Studio calcule seul le coût par accroche, sans saisie.</li></ol>
+        <div class="ac-share"><button class="btn btn-ghost" type="button" data-copy="${esc(urlParams)}">${icon("copy")}Paramètres d'URL</button><button class="btn btn-ghost" type="button" data-copy="${esc(formUrl)}">${icon("copy")}Lien du formulaire</button></div></details>`; })()}
     </section>`;
   }
 
@@ -231,7 +238,19 @@
   const open = (kind, data) => { X.sheet = kind; X.data = Object.assign({}, data || {}); EM().render(); setTimeout(() => { const i = document.querySelector("#live-form input, #live-form select"); if (i) i.focus(); }, 60); };
 
   function onClick(e, S, render) {
-    const t = e.target.closest("[data-live-new],[data-live-edit],[data-live-close],[data-live-del],[data-live-rdv],[data-live-replace],[data-live-meta],[data-rdv-state]"); if (!t) return false;
+    const t = e.target.closest("[data-live-new],[data-live-edit],[data-live-close],[data-live-del],[data-live-rdv],[data-live-replace],[data-live-meta],[data-live-metasync],[data-rdv-state]"); if (!t) return false;
+    if (t.dataset.liveMetasync) {
+      const cid = t.dataset.liveMetasync, C = window.ENTREMIS_CLOUD;
+      if (!C || !C.on()) { EM().toast("La mise à jour depuis Meta marche sur l'app en ligne."); return true; }
+      SYNCING = cid; render();
+      C.invoke("meta-sync", { client: cid }).then(({ data, error }) => {
+        SYNCING = ""; render();
+        if (error) EM().toast("Meta n'a pas répondu. Réessayez plus tard.");
+        else if (data && data.disabled) EM().toast("Le jeton Meta n'est pas encore posé dans Supabase (META_TOKEN).");
+        else { const r = ((data && data.clients) || [])[0]; EM().toast(r && r.erreur ? "Meta refuse : " + r.erreur : `Mis à jour : ${r ? r.pubs : 0} pub${r && r.pubs > 1 ? "s" : ""} reprises de Meta.`); C.resync && C.resync(); }
+      }).catch(() => { SYNCING = ""; render(); EM().toast("Meta n'a pas répondu. Réessayez plus tard."); });
+      return true;
+    }
     if (t.dataset.liveMeta) { const cid = t.dataset.liveMeta; open("meta", Object.assign({}, META().list.find(x => x.id === cid) || {}, { cid })); return true; }
     const d = t.dataset;
     if (d.liveNew) { open(d.liveNew, d.liveClient ? { client_id: d.liveClient } : {}); return true; }

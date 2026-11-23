@@ -224,9 +224,11 @@ alter table public.entrees enable row level security;   -- aucune règle : perso
 -- p_client (23/11/2026) : le client des formulaires Meta d'où vient le lead (Make ou Zapier). Simple proposition : l'équipe donne le lead.
 drop function if exists public.nouveau_lead(text, text, text, text, text, text, text, text, boolean);
 drop function if exists public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text);
+-- p_pub (23/11/2026, soir) : le nom de la pub d'où vient le lead (lien de la pub : ?pub={{ad.name}}). Le Studio en tire le coût par accroche.
+drop function if exists public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text, text);
 create or replace function public.nouveau_lead(p_nom text, p_telephone text, p_ville text default '', p_projet text default '',
   p_source text default 'Site', p_email text default '', p_message text default '', p_code_postal text default '', p_consentement boolean default false,
-  p_pays text default 'FR', p_client text default '')
+  p_pays text default 'FR', p_client text default '', p_pub text default '')
   returns text language plpgsql security definer set search_path = public as $$
 declare
   v_tel text := regexp_replace(coalesce(p_telephone, ''), '[^0-9+]', '', 'g');
@@ -246,7 +248,7 @@ begin
     'city', left(trim(coalesce(p_ville, '')), 60), 'zip', left(v_cp, 10), 'country', v_pays,
     'zone', case when v_pays in ('FR', 'MC') then left(v_cp, 2) when v_pays = 'CA' then 'CA-' || left(v_cp, 3) else v_pays || '-' || left(regexp_replace(v_cp, '[^0-9]', '', 'g'), 2) end,
     'trade', left(trim(coalesce(p_projet, '')), 60), 'source', left(coalesce(nullif(trim(p_source), ''), 'Site'), 30), 'note', left(trim(coalesce(p_message, '')), 500),
-    'status', 'nouveau', 'consent', true, 'forClient', left(trim(coalesce(p_client, '')), 40),
+    'status', 'nouveau', 'consent', true, 'forClient', left(trim(coalesce(p_client, '')), 40), 'ad', left(trim(coalesce(p_pub, '')), 80),
     'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
   return v_id;
 end $$;
@@ -270,9 +272,9 @@ begin
     'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
   return v_id;
 end $$;
-revoke all on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text, text) from public;
+revoke all on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text, text, text) from public;
 revoke all on function public.demande_site(text, text, text, text, text, text, text, text, text) from public;
-grant execute on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text, text) to anon, authenticated, service_role;
+grant execute on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text, text, text) to anon, authenticated, service_role;
 grant execute on function public.demande_site(text, text, text, text, text, text, text, text, text) to anon, authenticated;
 
 -- 7. Les comptes de l'équipe ------------------------------------------------------------
@@ -460,3 +462,12 @@ do $$ begin
 exception when others then raise notice 'Sauvegarde de nuit pas programmée : %', sqlerrm;
 end $$;
 
+-- ===== 14. La dépense Meta, chaque nuit (fonction « meta-sync », jeton dans le secret META_TOKEN) =====
+-- 3 h 30 UTC = 4 h 30 à Paris l'hiver. Appel signé avec le code secret de push_config, comme les notifications.
+select cron.unschedule('entremis-meta') where exists (select 1 from cron.job where jobname = 'entremis-meta');
+select cron.schedule('entremis-meta', '30 3 * * *', $job$
+  select net.http_post(
+    url := 'https://cnhxrhyugghigkozfpde.supabase.co/functions/v1/meta-sync',
+    body := '{}'::jsonb,
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-entremis-hook', (select hook_secret from public.push_config where id = 1)));
+$job$);

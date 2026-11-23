@@ -103,7 +103,7 @@
           </div>
         </section>
         ${window.ENTREMIS_CRM.ficheCard(e.id)}
-        ${e.kind === "client" ? window.ENTREMIS_MACHINE.billingCard(e.id) + window.ENTREMIS_BILAN.card(e.id) + window.ENTREMIS_SIGN.teamCard(e.id) : window.ENTREMIS_MACHINE.callCard(e.id)}
+        ${e.kind === "client" ? window.ENTREMIS_MACHINE.billingCard(e.id) + window.ENTREMIS_BILAN.card(e.id) + window.ENTREMIS_MONTH.card(e.id) + window.ENTREMIS_SIGN.teamCard(e.id) : window.ENTREMIS_MACHINE.callCard(e.id)}
         ${e.kind === "client" ? window.ENTREMIS_PILOT.flowCard(e.id) : ""}
         ${e.c ? window.ENTREMIS_LIVE.metaCard(e.id) : ""}
         ${e.c ? window.ENTREMIS_PILOT.adsCard(e.id) : ""}

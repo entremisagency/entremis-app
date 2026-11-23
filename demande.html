@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Outfit:wght@500&display=swap">
-<link rel="stylesheet" href="tokens.css?v=20261123-2142">
+<link rel="stylesheet" href="tokens.css?v=20261123-2149">
 <style>
   /* Page publique de demande (particuliers). Elle reprend les jetons de l'app ; une seule couleur vive : le bouton. */
   html,body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
@@ -101,6 +101,8 @@
   // La demande va droit dans la page Leads de l'équipe (fonction nouveau_lead de la base). Seule la clé publique est ici.
   var API = "https://cnhxrhyugghigkozfpde.supabase.co/rest/v1/rpc/nouveau_lead", KEY = "sb_publishable_85-eC1adPGzOvLtAhLPonw_2HJwrdYX";
   var q = new URLSearchParams(location.search), source = (q.get("source") || "Site").slice(0, 30);
+  // La pub d'où vient la personne (lien de la pub Meta : ?pub={{ad.name}}) et le client de cette pub (?client=solaria)
+  var pub = (q.get("pub") || q.get("utm_content") || "").replace(/[^A-Za-z0-9_ .-]/g, "").slice(0, 80), forClient = (q.get("client") || "").replace(/[^a-z0-9-]/gi, "").slice(0, 40);
   var f = document.getElementById("f"), msg = f.querySelector(".msg"), btn = f.querySelector("button");
   // France et pays francophones : le pays se choisit (ou arrive par le lien de la pub : ?pays=BE), le code postal suit le format du pays
   var CP = { FR: [/^\d{5}$/, "5 chiffres"], MC: [/^980\d{2}$/, "5 chiffres (980..)"], BE: [/^\d{4}$/, "4 chiffres"], CH: [/^\d{4}$/, "4 chiffres"], LU: [/^(L-?)?\d{4}$/i, "4 chiffres"], CA: [/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/, "du type H2X 1Y4"], XX: [/^[A-Za-z0-9 -]{2,10}$/, "valide"] };
@@ -119,7 +121,7 @@
     btn.disabled = true; btn.textContent = "Envoi…";
     var body = { p_nom: v("nom"), p_telephone: v("tel"), p_ville: v("ville"), p_code_postal: v("cp"), p_projet: v("projet"),
       p_source: source, p_email: v("email"), p_message: v("message"), p_consentement: true };
-    body.p_pays = v("pays");
+    body.p_pays = v("pays"); if (pub) body.p_pub = pub; if (forClient) body.p_client = forClient;
     // 1. Un code par SMS (le numéro vérifié de Gianni). Si l'envoi de SMS n'est pas encore branché, la demande part directement.
     post(SMS, { action: "send", lead: body }).then(function (x) {
       if (x.ok && x.j && x.j.id) { pending = x.j.id; showCode(v("tel")); return; }

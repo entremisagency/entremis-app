@@ -155,14 +155,17 @@
   const CODE = /_A(\d{2})_C(\d{2})_CTA(\d)/i;
   function perfRows(cid) {
     const ads = (window.ENTREMIS_PILOT && window.ENTREMIS_PILOT.ads ? window.ENTREMIS_PILOT.ads() : []).filter(a => !cid || a.client_id === cid), H = hooks();
+    // Les leads qui portent le nom de leur pub (lien de la pub : ?pub={{ad.name}}) : comptés tout seuls, sinon les leads saisis ou ceux de Meta
+    const byAd = {}; (window.ENTREMIS_LEADS ? window.ENTREMIS_LEADS.list() : []).forEach(l => { if (l.ad && !l.erased) { const k = String(l.ad).toUpperCase(); byAd[k] = (byAd[k] || 0) + 1; } });
+    const leadsOf = a => byAd[String(a.name || "").toUpperCase()] || Number(a.leads) || Number(a.metaLeads) || 0;
     const groups = { h: {}, b: {}, c: {} };
-    const add = (k, key, label, a) => { const g = groups[k][key] || (groups[k][key] = { label, ads: 0, spent: 0, leads: 0, on: 0 }); g.ads++; g.spent += Number(a.spent) || 0; g.leads += Number(a.leads) || 0; if (a.state !== "off") g.on++; };
+    const add = (k, key, label, a) => { const g = groups[k][key] || (groups[k][key] = { label, ads: 0, spent: 0, leads: 0, on: 0 }); g.ads++; g.spent += Number(a.spent) || 0; g.leads += leadsOf(a); if (a.state !== "off") g.on++; };
     ads.forEach(a => { const m = String(a.name || "").match(CODE);
       if (m) { const hi = Number(m[1]) - 1, bi = Number(m[2]) - 1, ci = Number(m[3]) - 1;
         add("h", "A" + m[1], (H[hi] || {}).text || "Accroche " + m[1], a); add("b", "C" + m[2], (BODIES[bi] || [, "Corps " + m[2]])[1], a); add("c", "CTA" + m[3], CTAS[ci] || "Appel " + m[3], a); }
       else add("h", "x:" + String(a.angle || a.name || "Sans nom").toLowerCase(), a.angle || a.name || "Sans nom", a); });
-    const out = k => Object.entries(groups[k]).map(([key, g]) => Object.assign({ key, cpl: g.leads ? g.spent / g.leads : null }, g)).sort((x, y) => (x.cpl == null) - (y.cpl == null) || (x.cpl || 0) - (y.cpl || 0) || y.spent - x.spent);
-    return { h: out("h"), b: out("b"), c: out("c"), n: ads.length };
+    const out = k => Object.entries(groups[k]).map(([key, g]) => Object.assign({ key, cpl: g.leads && g.spent ? g.spent / g.leads : null }, g)).sort((x, y) => (x.cpl == null) - (y.cpl == null) || (x.cpl || 0) - (y.cpl || 0) || y.spent - x.spent);
+    return { h: out("h"), b: out("b"), c: out("c"), n: ads.length, auto: Object.keys(byAd).length };
   }
   const eur = n => n == null ? "–" : (Math.round(n * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }) + " €";
   function perfBlock(title, rows) {
@@ -176,7 +179,8 @@
   function perf() {
     const cid = X.perfClient, p = perfRows(cid);
     return `<section class="card"><div class="card-head"><h2 class="h2">Le coût par lead, version par version</h2>${EM().fsel("st-perfclient", "Client", [["", "Tous les clients"]].concat(clients().map(c => [c.id, c.name])), cid)}</div>
-      <p class="body">Calculé avec la dépense et les leads de chaque pub en cours (fiche client, « Pubs en cours »). Les pubs nommées comme la matrice (CLIENT_A02_C01_CTA1_V1) sont comptées par accroche, par corps et par appel à l'action. On garde ce qui coûte le moins, on coupe le reste.</p>
+      <p class="body">La dépense vient de Meta (chaque nuit) ou des « Pubs en cours » de la fiche client. Les leads sont comptés tout seuls quand ils portent le nom de leur pub, sinon ceux saisis. Les pubs nommées comme la matrice (CLIENT_A02_C01_CTA1_V1) sont comptées par accroche, par corps et par appel à l'action. On garde ce qui coûte le moins, on coupe le reste.</p>
+      ${p.auto ? "" : `<p class="kpi-note">Pour que les leads se comptent seuls : fiche du client › Pub Meta › « Savoir quelle pub a amené chaque lead ».</p>`}
       ${p.n ? "" : `<p class="kpi-note">Aucune pub en cours pour l'instant. Elles arrivent ici quand une vidéo passe « En ligne », ou quand on ajoute une pub sur la fiche du client.</p>`}</section>
       ${perfBlock("Par accroche", p.h)}${perfBlock("Par corps de message", p.b)}${perfBlock("Par appel à l'action", p.c)}`;
   }

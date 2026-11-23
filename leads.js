@@ -202,7 +202,7 @@
       ${L.pick === l.id ? `<div class="q-pick">${TD().clients.map(cl => `<button class="pill" type="button" data-lead-give="${l.id}:${cl.id}">${esc(cl.name)}</button>`).join("")}</div>` : ""}
       <dl class="lp-dl">
         ${l.phone ? row("Téléphone", `<a class="link" href="tel:${esc(String(l.phone).replace(/\s/g, ""))}">${esc(l.phone)}</a>`) : ""}${l.email ? row("E-mail", `<a class="link" href="mailto:${esc(l.email)}">${esc(l.email)}</a>`) : ""}
-        ${l.trade ? row("Projet", esc(l.trade)) : ""}${l.city ? row("Ville", esc(l.city)) : ""}${l.zip ? row("Code postal", esc(l.zip)) : ""}${l.zone ? row("Zone", esc(l.zone)) : ""}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.source ? row("Venu de", esc(l.source)) : ""}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
+        ${l.trade ? row("Projet", esc(l.trade)) : ""}${l.city ? row("Ville", esc(l.city)) : ""}${l.zip ? row("Code postal", esc(l.zip)) : ""}${l.zone ? row("Zone", esc(l.zone)) : ""}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.source ? row("Venu de", esc(l.source)) : ""}${l.ad ? row("Pub", `<span class="tabnum">${esc(l.ad)}</span>`) : ""}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
       </dl>
       ${l.note ? `<section class="lp-box"><p class="lp-label">Son message</p><p class="body">${esc(l.note)}</p></section>` : ""}
       ${window.ENTREMIS_SETTER ? window.ENTREMIS_SETTER.box(l) : ""}

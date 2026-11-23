@@ -10,7 +10,7 @@
   const p2 = n => String(n).padStart(2, "0");
   const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); };
   const fr = iso => `${Number(iso.slice(8, 10))} ${["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."][Number(iso.slice(5, 7)) - 1]}`;
-  const eur = n => Math.round(n).toLocaleString("fr-FR") + " €";
+  const eur = n => Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ") + " €";   // espaces ordinaires : lisibles dans le PDF
   const monday = () => { const d = new Date(today() + "T12:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); };
   const weekKey = cid => cid + "-" + monday();
 

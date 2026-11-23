@@ -81,3 +81,8 @@ Chaque liste a `.list`, `.put(ligne)`, `.remove(id)` et `.init(rendu)`.
 - **Un champ de formulaire nommé `id`** masque l'identifiant du formulaire (`form.id` renvoie le champ). Ne pas l'utiliser.
 - **`<html>` porte `data-zone`** (l'espace affiché) : un sélecteur `closest("[data-zone]")` l'attrape. Toujours vérifier qu'on n'a pas attrapé `document.documentElement`.
 - **Les navigateurs gardent les fichiers 10 minutes** : changer la version avant chaque envoi (`sh outils/version.sh`).
+
+### Ajouts du 23 novembre 2026 (soir)
+- `mois.js` : le compte rendu du mois d'un client en PDF (leads, niveaux, chantiers signés, facture, pub Meta dépensée, vidéos qui marchent, engagement). Fiche client (équipe : PDF ou envoi Gmail, noté dans `comptes-rendus`) et « Leads et facture » (client : PDF).
+- Le lead garde le nom de sa pub (`ad`) : lien de la pub `?source=Facebook&client=ID&pub={{ad.name}}`, lu par `demande.html`, passé à `nouveau_lead` (paramètre `p_pub`) directement ou par la fonction `sms`. Le Studio compte ces leads tout seuls.
+- `supabase/functions/meta-sync` : chaque nuit (pg_cron `entremis-meta`) ou sur le bouton « Mettre à jour depuis Meta », reprend la dépense du mois (`meta.spend`) et chaque pub (`ads`, avec client_id) des comptes reliés. Jeton : secret `META_TOKEN`. Sans jeton, elle répond `{disabled:true}`.
