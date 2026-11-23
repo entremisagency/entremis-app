@@ -20,18 +20,18 @@
     ["ia", "Ton IA et tes outils (MCP)"], ["bot", "Bots et messages"], ["auto", "Automatisations"], ["outils", "Agenda et mail"], ["socle", "Le socle, à l'étape Supabase et GitHub"]
   ];
   const CONNECT = [
-    { id: "claude", group: "ia", name: "Claude", mark: "C", live: true, what: "Branché par la clé MCP ci-dessus : il lit l'app et crée des tâches.", can: ["Lire les leads et les fiches que tu lui ouvres", "Préparer un message, tu valides avant l'envoi"] },
-    { id: "chatgpt", group: "ia", name: "ChatGPT", mark: "G", what: "Un autre assistant, si tu préfères.", can: ["Lire les leads et les fiches que tu lui ouvres", "Préparer un message, tu valides avant l'envoi"] },
+    { id: "claude", brand: "claude", group: "ia", name: "Claude", mark: "C", live: true, what: "Branché par la clé MCP ci-dessus : il lit l'app et crée des tâches.", can: ["Lire les leads et les fiches que tu lui ouvres", "Préparer un message, tu valides avant l'envoi"] },
+    { id: "chatgpt", brand: "openai", group: "ia", name: "ChatGPT", mark: "G", what: "Un autre assistant, si tu préfères.", can: ["Lire les leads et les fiches que tu lui ouvres", "Préparer un message, tu valides avant l'envoi"] },
     { id: "mcp", group: "ia", name: "Serveur MCP", mark: "M", what: "Donne à ton IA un accès à un outil : base, agenda, fichiers.", field: "Adresse du serveur", ph: "https://…", can: ["Ce que le serveur autorise, rien de plus", "Seulement sur ton compte"] },
-    { id: "telegram", group: "bot", name: "Bot Telegram", mark: "T", what: "Tes alertes et tes tâches du jour sur Telegram.", field: "Nom du bot", ph: "@…", can: ["T'envoyer tes alertes", "Noter une tâche quand tu lui écris"] },
-    { id: "whatsapp", group: "bot", name: "WhatsApp Business", mark: "W", what: "Écrire aux particuliers depuis le numéro d'Entremis.", can: ["Envoyer les messages que tu valides", "Recevoir leurs réponses dans Discussions"] },
-    { id: "slack", group: "bot", name: "Slack", mark: "S", what: "Recevoir les alertes dans un canal Slack.", field: "Nom du canal", ph: "#…", can: ["Poster tes alertes dans ce canal"] },
-    { id: "make", group: "auto", name: "Make ou Zapier", mark: "Z", what: "Relier Entremis à d'autres outils, sans code.", field: "Nom du scénario", ph: "Ex. : nouveau lead vers Google Sheets", can: ["Recevoir un signal à chaque événement choisi"] },
-    { id: "n8n", group: "auto", name: "n8n", mark: "N", what: "Des automatisations hébergées chez toi.", field: "Adresse de ton n8n", ph: "https://…", can: ["Recevoir un signal à chaque événement choisi"] },
+    { id: "telegram", brand: "telegram", group: "bot", name: "Bot Telegram", mark: "T", what: "Tes alertes et tes tâches du jour sur Telegram.", field: "Nom du bot", ph: "@…", can: ["T'envoyer tes alertes", "Noter une tâche quand tu lui écris"] },
+    { id: "whatsapp", brand: "whatsapp", group: "bot", name: "WhatsApp Business", mark: "W", what: "Écrire aux particuliers depuis le numéro d'Entremis.", can: ["Envoyer les messages que tu valides", "Recevoir leurs réponses dans Discussions"] },
+    { id: "slack", brand: "slack", group: "bot", name: "Slack", mark: "S", what: "Recevoir les alertes dans un canal Slack.", field: "Nom du canal", ph: "#…", can: ["Poster tes alertes dans ce canal"] },
+    { id: "make", brand: "make", group: "auto", name: "Make ou Zapier", mark: "Z", what: "Relier Entremis à d'autres outils, sans code.", field: "Nom du scénario", ph: "Ex. : nouveau lead vers Google Sheets", can: ["Recevoir un signal à chaque événement choisi"] },
+    { id: "n8n", brand: "n8n", group: "auto", name: "n8n", mark: "N", what: "Des automatisations hébergées chez toi.", field: "Adresse de ton n8n", ph: "https://…", can: ["Recevoir un signal à chaque événement choisi"] },
     { id: "gcal", group: "outils", name: "Google Agenda", brand: "gcal", what: "Tes tâches et les rendez-vous dans ton agenda.", live: true, can: ["Lire ton agenda de la semaine", "Ajouter un événement quand tu le demandes"] },
-    { id: "gmail", group: "outils", name: "Gmail", brand: "google", what: "Envoyer devis, factures et relances depuis ta boîte.", can: ["Préparer un brouillon avec le PDF joint", "Tu cliques sur Envoyer, jamais l'app seule"] },
-    { id: "supabase", group: "socle", name: "Supabase", mark: "S", what: "La vraie base : un compte par personne, données séparées.", later: true, can: ["Un compte et un mot de passe chacun", "Tes connexions rangées sur ton compte, clés chiffrées côté serveur"] },
-    { id: "github", group: "socle", name: "GitHub", mark: "G", what: "Le code de l'app, ses versions et sa mise en ligne.", later: true, can: ["Garder chaque version de l'app", "Mettre en ligne sans perdre les données"] }
+    { id: "gmail", group: "outils", name: "Gmail", brand: "gmail", what: "Envoyer devis, factures et relances depuis ta boîte.", can: ["Préparer un brouillon avec le PDF joint", "Tu cliques sur Envoyer, jamais l'app seule"] },
+    { id: "supabase", brand: "supabase", group: "socle", name: "Supabase", mark: "S", what: "La vraie base : un compte par personne, données séparées.", later: true, can: ["Un compte et un mot de passe chacun", "Tes connexions rangées sur ton compte, clés chiffrées côté serveur"] },
+    { id: "github", brand: "github", group: "socle", name: "GitHub", mark: "G", what: "Le code de l'app, ses versions et sa mise en ligne.", later: true, can: ["Garder chaque version de l'app", "Mettre en ligne sans perdre les données"] }
   ];
   const AUTO = [
     { id: "lead-ia", text: "Quand un lead arrive, mon IA prépare le premier message", needs: ["claude", "chatgpt", "mcp"] },
@@ -130,7 +130,7 @@
   function mcpSection(S) {
     const esc = EM().esc, icon = EM().icon, c = CL();
     if (S.space !== "team") return "";
-    if (!c) return `<section class="set-group"><p class="set-title">Ton Claude (MCP)</p>${row("Brancher ton Claude sur l'app", "Sur le site en ligne : une clé personnelle, puis Claude lit les leads, les clients, les factures et crée des tâches.", `<span class="state state-neutral">Site en ligne</span>`)}</section>`;
+    if (!c) return `<section class="set-group"><p class="set-title set-title-brand">${EM().brand("claude", "Claude")}Ton Claude (MCP)</p>${row("Brancher ton Claude sur l'app", "Sur le site en ligne : une clé personnelle, puis Claude lit les leads, les clients, les factures et crée des tâches.", `<span class="state state-neutral">Site en ligne</span>`)}</section>`;
     if (MC.list === undefined) loadKeys();
     const fresh = MC.fresh ? `<div class="mcp-fresh"><p><b>Ta clé est prête.</b> Elle ne s'affichera qu'une fois : copie l'adresse maintenant.</p>
         <div class="mcp-url"><code>${esc(MC.fresh.url)}</code><button class="btn btn-ghost" type="button" data-copy="${esc(MC.fresh.url)}">${icon("copy")}Copier</button></div>
@@ -141,7 +141,7 @@
         <button class="btn btn-ghost" type="button" data-mcp-done>J'ai copié l'adresse</button></div>` : "";
     const list = MC.list === null ? `<p class="field-help">La liste des clés n'a pas pu être lue : le SQL des connexions Claude n'est peut-être pas encore lancé.</p>`
       : (MC.list || []).map(k => row(esc(k.label), `Créée le ${when(k.created_at)} · dernière utilisation : ${when(k.last_used)}`, `<button class="btn btn-ghost" type="button" data-mcp-del="${esc(k.hash)}">${icon("trash")}Retirer</button>`)).join("");
-    return `<section class="set-group"><p class="set-title">Ton Claude (MCP)</p>
+    return `<section class="set-group"><p class="set-title set-title-brand">${EM().brand("claude", "Claude")}Ton Claude (MCP)</p>
       ${row("Brancher ton propre Claude", "Claude lit les leads, les clients, les rendez-vous, les factures et les documents de travail, et peut créer des tâches. Il ne supprime et n'envoie rien.", `<button class="btn btn-primary" type="button" data-mcp-new ${MC.busy ? "disabled" : ""}>${icon("plus")}Créer une clé</button>`)}
       ${fresh}${list}</section>`;
   }

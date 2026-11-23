@@ -41,7 +41,7 @@
       <p class="body">Identifiant : <b>${esc(d.login)}</b>. Donnez-lui le mot de passe provisoire de vive voix ou par SMS, à part. Il en choisira un à la première connexion.</p>
       <div class="ac-share">
         <a class="btn btn-ghost" href="sms:?&body=${enc}">${icon("chat")}SMS</a>
-        <a class="btn btn-ghost" href="https://wa.me/?text=${enc}" target="_blank" rel="noopener">${icon("wa")}WhatsApp</a>
+        <a class="btn btn-ghost" href="https://wa.me/?text=${enc}" target="_blank" rel="noopener">${window.EM.brand("whatsapp", "WhatsApp")}WhatsApp</a>
         <a class="btn btn-ghost" href="mailto:?subject=${encodeURIComponent("Votre espace Entremis")}&body=${enc}">${icon("mail")}E-mail</a>
         <button class="btn btn-ghost" type="button" data-copy="${esc(text)}">${icon("copy")}Copier le message</button>
       </div>

@@ -28,7 +28,7 @@
   }
   function box(l) {
     const esc = EM().esc, icon = EM().icon, s = SET().list.find(x => x.id === l.id), msgs = (s && s.messages) || [], o = s && OUT[s.outcome];
-    return `<section class="lp-box"><div class="sw-head"><p class="lp-label">Conversation WhatsApp</p>${o ? `<span class="state state-${o[1]}">${o[0]}</span>` : ""}</div>
+    return `<section class="lp-box"><div class="sw-head"><p class="lp-label sw-title">${EM().brand("whatsapp", "WhatsApp")}Conversation WhatsApp</p>${o ? `<span class="state state-${o[1]}">${o[0]}</span>` : ""}</div>
       ${msgs.length ? `<ol class="sw-chat">${msgs.slice(-40).map(m => `<li class="sw-${m.from === "lead" ? "lead" : "setter"}"><p>${esc(m.text)}</p>${m.at ? `<span>${whenShort(m.at)}</span>` : ""}</li>`).join("")}</ol>${msgs.length > 40 ? `<p class="kpi-note">Les 40 derniers messages sur ${msgs.length}.</p>` : ""}`
         : `<p class="body">Pas encore de conversation. Collez-la depuis WhatsApp, ou laissez l'assistant l'envoyer.</p>`}
       ${X.paste === l.id ? `<form id="sw-form" data-sw-lead="${esc(l.id)}"><label class="field"><span>Collez la conversation (une ligne par message : « Nom : texte »)</span><textarea name="raw" rows="6"></textarea></label>

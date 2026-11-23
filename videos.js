@@ -16,6 +16,8 @@
   const okUrl = u => /^https:\/\/[^\s]+$/i.test(String(u || "").trim());
   const clientName = id => (EM().allClients().find(c => c.id === id) || {}).name || "";
   const CHECKS = [["franceRenov", "Mention France Rénov' exacte en bandeau"], ["rge", "RGE et « PAC agréée » visibles"], ["noAmount", "Aucun montant d'aide, ni « 1 € », ni « MaPrimeRénov' »"]];
+  // Le logo de l'endroit où se trouve la vidéo (Drive, Dropbox, WeTransfer…), sinon une flèche de téléchargement
+  const hostMark = u => { const h = String(u || ""), b = /drive\.google|docs\.google/.test(h) ? ["drive", "Google Drive"] : /dropbox/.test(h) ? ["dropbox", "Dropbox"] : /wetransfer|we\.tl/.test(h) ? ["wetransfer", "WeTransfer"] : /youtu/.test(h) ? ["youtube", "YouTube"] : /instagram/.test(h) ? ["instagram", "Instagram"] : /tiktok/.test(h) ? ["tiktok", "TikTok"] : /facebook|fb\.watch/.test(h) ? ["facebook", "Facebook"] : null; return b ? EM().brand(b[0], b[1]) : EM().icon("download"); };
   const allChecked = v => CHECKS.every(([k]) => v[k]);
   // Le nom standard d'une pub (le même que dans « Pubs en cours » et le Gestionnaire de publicités)
   const stdName = (cid, angle, serie) => [String(clientName(cid) || "CLIENT").split(/\s+/)[0], "S" + (Number(serie) || 1), String(angle || "accroche").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 24)].join("_").toUpperCase();
@@ -27,7 +29,7 @@
       <span class="vd-sub">${esc([clientName(v.client), v.angle, v.format].filter(Boolean).join(" · "))}</span>
       ${v.when ? `<span class="vd-when${late ? " is-late" : ""}">${icon("cal")}${v.status === "ligne" ? "En ligne le " + fr(v.postedAt || v.when) : "À poster le " + fr(v.when)}</span>` : ""}
       <div class="vd-foot">${who ? `<span class="who-inline">${TM().avatar(v.poster, "av")}${esc(who.name)}</span>` : `<span class="muted">À attribuer</span>`}
-        <span class="vd-acts">${okUrl(v.url) ? `<a class="icon-btn" href="${esc(v.url)}" target="_blank" rel="noopener" aria-label="Ouvrir ou télécharger la vidéo ${esc(v.name || "")}" title="Ouvrir ou télécharger">${icon("download")}</a>` : ""}
+        <span class="vd-acts">${okUrl(v.url) ? `<a class="icon-btn" href="${esc(v.url)}" target="_blank" rel="noopener" aria-label="Ouvrir ou télécharger la vidéo ${esc(v.name || "")}" title="Ouvrir ou télécharger">${hostMark(v.url)}</a>` : ""}
           <button class="icon-btn" type="button" data-vd-edit="${esc(v.id)}" aria-label="Modifier ${esc(v.name || "")}">${icon("sliders")}</button>
           ${v.status === "monter" ? `<button class="btn btn-ghost btn-xs" type="button" data-vd-move="${esc(v.id)}:pret">Prête ${icon("arrow")}</button>` : v.status === "pret" ? `<button class="btn btn-ghost btn-xs" type="button" data-vd-move="${esc(v.id)}:ligne">En ligne ${icon("arrow")}</button>` : ""}</span></div>
     </li>`;
@@ -60,7 +62,7 @@
       <div class="sheet-grab" aria-hidden="true"></div>
       <div class="sheet-head"><button class="link" type="button" data-vd-close>Annuler</button><b>${X.id ? "La vidéo" : "Nouvelle vidéo"}</b><button class="link strong" type="submit">Enregistrer</button></div>
       ${f("url", "Lien de la vidéo (Drive, WeTransfer, Dropbox…)", v.url, 'type="url" inputmode="url" placeholder="https://…"' + (v.status === "monter" ? "" : " required"))}
-      ${okUrl(v.url) ? `<a class="btn btn-ghost" href="${esc(v.url)}" target="_blank" rel="noopener">${icon("download")}Ouvrir ou télécharger la vidéo</a>` : ""}
+      ${okUrl(v.url) ? `<a class="btn btn-ghost" href="${esc(v.url)}" target="_blank" rel="noopener">${hostMark(v.url)}Ouvrir ou télécharger la vidéo</a>` : ""}
       <div class="field-row">${sel("client", "Client", EM().allClients().map(c => [c.id, c.name]), v.client)}${sel("status", "Étape", COLS, v.status)}</div>
       <div class="field-row">${f("angle", "Accroche ou angle", v.angle, 'maxlength="60" placeholder="Ex. : facture divisée par 3"')}${f("serie", "Série", v.serie || 1, 'type="number" min="1" max="30"')}</div>
       ${f("name", "Nom de la pub (nommage standard)", v.name, 'maxlength="80" placeholder="Laissé vide : rempli tout seul"')}

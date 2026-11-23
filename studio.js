@@ -47,7 +47,7 @@
   const FAM = [["local", "Installateur local"], ["plateforme", "Plateforme nationale"], ["confiance", "Confiance, anti-arnaque"], ["autre", "Autre"]];
   function veille() {
     const esc = EM().esc, icon = EM().icon, list = VEILLE().list.slice().sort((a, b) => String(a.since || "9").localeCompare(String(b.since || "9")));
-    return `<section class="card"><div class="card-head"><h2 class="h2">Chercher dans la bibliothèque Meta</h2><a class="link" href="#documents">La veille de Gianni ${icon("arrow")}</a></div>
+    return `<section class="card"><div class="card-head"><h2 class="h2 h2-brand">${EM().brand("meta", "Meta")}Chercher dans la bibliothèque Meta</h2><a class="link" href="#documents">La veille de Gianni ${icon("arrow")}</a></div>
       <div class="st-search"><label class="crm-search">${icon("search")}<input data-st-q value="${esc(X.q)}" aria-label="Mot-clé" placeholder="Mot-clé ou nom d'un annonceur"></label>
         ${EM().fsel("st-pays", "Pays", PAYS, X.pays)}<a class="btn btn-primary" href="${esc(libUrl(X.q, X.pays))}" target="_blank" rel="noopener" data-st-go>${icon("arrow")}Voir les vidéos actives</a></div>
       <div class="crm-presets">${QUICK.map(q => `<a class="pill" href="${esc(libUrl(q, X.pays))}" target="_blank" rel="noopener">${esc(q)}</a>`).join("")}</div>
@@ -56,7 +56,7 @@
       ${list.length ? `<div class="lg-grid">${list.map(v => { const m = months(v.since); return `<article class="st-ad"><div class="vd-top"><b>${esc(v.advertiser || "Annonceur")}</b>${m >= 6 ? `<span class="state state-ok">${m} mois en ligne</span>` : v.since ? `<span class="muted">depuis ${fr(v.since)}</span>` : ""}</div>
         <span class="vd-sub">${esc([(FAM.find(f => f[0] === v.family) || [, ""])[1], v.format, v.reach ? Number(v.reach).toLocaleString("fr-FR") + " personnes touchées" : ""].filter(Boolean).join(" · "))}</span>
         ${v.hook ? `<p class="st-quote">« ${esc(v.hook)} »</p>` : ""}${v.why ? `<p class="body">${esc(v.why)}</p>` : ""}
-        <div class="vd-foot"><span class="vd-acts">${v.url ? `<a class="icon-btn" href="${esc(v.url)}" target="_blank" rel="noopener" aria-label="Voir la pub">${icon("eye")}</a>` : ""}<button class="icon-btn" type="button" data-st-veille="${esc(v.id)}" aria-label="Modifier">${icon("sliders")}</button></span><button class="btn btn-ghost btn-xs" type="button" data-st-inspire="${esc(v.id)}">S'en inspirer ${icon("arrow")}</button></div></article>`; }).join("")}</div>`
+        <div class="vd-foot"><span class="vd-acts">${v.url ? `<a class="icon-btn" href="${esc(v.url)}" target="_blank" rel="noopener" aria-label="Voir la pub dans la bibliothèque Meta" title="Voir la pub">${EM().brand("meta", "Meta")}</a>` : ""}<button class="icon-btn" type="button" data-st-veille="${esc(v.id)}" aria-label="Modifier">${icon("sliders")}</button></span><button class="btn btn-ghost btn-xs" type="button" data-st-inspire="${esc(v.id)}">S'en inspirer ${icon("arrow")}</button></div></article>`; }).join("")}</div>`
         : `<p class="body">Repérez une pub dans la bibliothèque, puis ajoutez-la ici avec son lien : qui, depuis quand, l'accroche, pourquoi elle marche.</p>`}</section>`;
   }
   function veilleSheet() {

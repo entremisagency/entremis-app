@@ -288,9 +288,9 @@
         <button class="icon-btn" type="button" data-doc-close aria-label="Fermer">${icon("plus")}</button></header>
       <div class="lp-acts doc-acts">
         ${share ? `<button class="lp-act lp-main" type="button" data-doc-share="${d.id}">${icon("share")}<span>Partager</span></button>` : ""}
-        ${gmail ? `<button class="lp-act${share ? "" : " lp-main"}" type="button" data-doc-gmail="${d.id}">${icon("mail")}<span>E-mail</span></button>` : `<a class="lp-act${share ? "" : " lp-main"}" href="${esc(mailto)}" target="_blank" rel="noopener">${icon("mail")}<span>E-mail</span></a>`}
+        ${gmail ? `<button class="lp-act${share ? "" : " lp-main"}" type="button" data-doc-gmail="${d.id}">${EM().brand("gmail", "Gmail")}<span>Gmail</span></button>` : `<a class="lp-act${share ? "" : " lp-main"}" href="${esc(mailto)}" target="_blank" rel="noopener">${icon("mail")}<span>E-mail</span></a>`}
         <a class="lp-act" href="${esc(sms)}" target="_blank" rel="noopener">${icon("chat")}<span>SMS</span></a>
-        <a class="lp-act" href="${esc(wa)}" target="_blank" rel="noopener">${icon("wa")}<span>WhatsApp</span></a>
+        <a class="lp-act" href="${esc(wa)}" target="_blank" rel="noopener">${EM().brand("whatsapp", "WhatsApp")}<span>WhatsApp</span></a>
         <button class="lp-act" type="button" data-doc-pdf="${d.id}">${icon("download")}<span>${d.fileName && !/\.pdf$/i.test(d.fileName) ? "Fichier" : "PDF"}</span></button>
         <button class="lp-act" type="button" data-copy="${esc(x.mail)}">${icon("copy")}<span>Copier</span></button>
       </div>

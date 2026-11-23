@@ -36,7 +36,7 @@
       <div class="tg-date">${s.date ? `<b>${esc(longDate(s.date))}</b><span>${esc(s.time || "heure à fixer")}</span>` : `<b>À planifier</b>`}</div>
       <div class="tg-main"><a class="link strong" href="#fiche-${esc(c.id)}">${esc(c.name)}</a><span class="vd-sub">${esc([s.place, crewNames(s).join(", ") || "équipe à définir"].filter(Boolean).join(" · "))}</span>
         <span class="tg-tags"><span class="state state-${prep === PREP.length ? "ok" : "neutral"}">Préparé ${prep}/${PREP.length}</span>${vals.length ? `<span class="state state-${corr ? "danger" : ok === vals.length ? "ok" : "warn"}">Scripts validés ${ok}/${vals.length}</span>` : `<span class="state state-neutral">Aucun script envoyé</span>`}</span></div>
-      <div class="tg-acts">${url ? `<a class="icon-btn" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Ajouter à Google Agenda" title="Ajouter à Google Agenda">${icon("cal-plus")}</a>` : ""}<button class="btn btn-ghost btn-xs" type="button" data-tg-edit="${esc(c.id)}">${s.date ? "Modifier" : "Planifier"}</button></div></li>`;
+      <div class="tg-acts">${url ? `<a class="icon-btn" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Ajouter à Google Agenda" title="Ajouter à Google Agenda">${EM().brand("gcal", "Google Agenda")}</a>` : ""}<button class="btn btn-ghost btn-xs" type="button" data-tg-edit="${esc(c.id)}">${s.date ? "Modifier" : "Planifier"}</button></div></li>`;
   }
   function viewTeam() {
     const all = clients().filter(c => !c.archived), t = today();
