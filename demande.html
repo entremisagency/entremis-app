@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Outfit:wght@500&display=swap">
-<link rel="stylesheet" href="tokens.css?v=20261123-1455">
+<link rel="stylesheet" href="tokens.css?v=20261123-1817">
 <style>
   /* Page publique de demande (particuliers). Elle reprend les jetons de l'app ; une seule couleur vive : le bouton. */
   html,body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
@@ -50,9 +50,13 @@
   .done{display:grid;gap:var(--space-3);align-content:center;padding:var(--space-6) var(--space-5)}
   .done p{margin:0;color:var(--color-body)}
   .hp{position:absolute;left:-9999px}
+  .code{display:grid;gap:var(--space-4);align-content:start;padding:var(--space-6) var(--space-5)}
+  .code input{font-size:var(--text-app-h2);letter-spacing:.3em;text-align:center}
+  .links{display:flex;gap:var(--space-4);margin:0}
+  button.link{min-height:0;padding:0;background:none;color:var(--color-action);font-weight:var(--weight-strong)}
   @media (max-width:640px){
     .dm{grid-template-columns:minmax(0,1fr);margin:var(--space-3) auto}
-    form,.done{padding:var(--space-4) var(--space-2)}
+    form,.done,.code{padding:var(--space-4) var(--space-2)}
     .row{grid-template-columns:minmax(0,1fr)}
   }
 </style>
@@ -81,6 +85,14 @@
     <p class="msg" role="alert" hidden></p>
     <button type="submit">Être rappelé</button>
   </form>
+  <form class="code" id="code" hidden novalidate>
+    <h1>Votre code</h1>
+    <p class="sub">Nous venons d'envoyer un code à 6 chiffres par SMS au <b data-num></b>. Il confirme que ce numéro est bien le vôtre.</p>
+    <label class="field"><span>Code reçu par SMS</span><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" required></label>
+    <p class="msg" role="alert" hidden></p>
+    <button type="submit">Confirmer ma demande</button>
+    <p class="links"><button class="link" type="button" data-resend>Renvoyer le code</button><button class="link" type="button" data-back>Modifier le numéro</button></p>
+  </form>
   <div class="done" hidden role="status"><h1>Merci, c'est noté</h1><p>Un conseiller Entremis vous rappelle au numéro indiqué pour parler de votre projet.</p></div>
 </main>
 <script>
@@ -107,14 +119,46 @@
     btn.disabled = true; btn.textContent = "Envoi…";
     var body = { p_nom: v("nom"), p_telephone: v("tel"), p_ville: v("ville"), p_code_postal: v("cp"), p_projet: v("projet"),
       p_source: source, p_email: v("email"), p_message: v("message"), p_consentement: true };
-    if (v("pays") !== "FR") body.p_pays = v("pays");   // la France marche aussi avec l'ancienne version de la base
-    fetch(API, { method: "POST", headers: { "apikey": KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (x) {
-        if (!x.ok) { btn.disabled = false; btn.textContent = "Être rappelé"; return say((x.j && x.j.message) || "L'envoi n'a pas marché. Réessayez."); }
-        f.hidden = true; document.querySelector(".done").hidden = false;
-      })
-      .catch(function () { btn.disabled = false; btn.textContent = "Être rappelé"; say("Pas de connexion. Réessayez dans un instant."); });
+    body.p_pays = v("pays");
+    // 1. Un code par SMS (le numéro vérifié de Gianni). Si l'envoi de SMS n'est pas encore branché, la demande part directement.
+    post(SMS, { action: "send", lead: body }).then(function (x) {
+      if (x.ok && x.j && x.j.id) { pending = x.j.id; showCode(v("tel")); return; }
+      if (x.ok && x.j && x.j.disabled) return direct(body);
+      if (x.status >= 500 || x.status === 404 || x.status === 0) return direct(body);   // service absent ou en panne : on ne perd pas la demande
+      reset(); say((x.j && x.j.error) || "L'envoi n'a pas marché. Réessayez.");
+    }).catch(function () { direct(body); });
+  });
+  var SMS = "https://cnhxrhyugghigkozfpde.supabase.co/functions/v1/sms", pending = "", cf = document.getElementById("code"), cmsg = cf.querySelector(".msg"), cbtn = cf.querySelector('button[type="submit"]');
+  var reset = function () { btn.disabled = false; btn.textContent = "Être rappelé"; };
+  var csay = function (t) { cmsg.textContent = t; cmsg.hidden = false; };
+  function post(url, data) {
+    return fetch(url, { method: "POST", headers: { "apikey": KEY, "Content-Type": "application/json" }, body: JSON.stringify(data) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+      .catch(function () { return { ok: false, status: 0, j: {} }; });
+  }
+  function done() { f.hidden = true; cf.hidden = true; document.querySelector(".done").hidden = false; }
+  function direct(body) {
+    var b = Object.assign({}, body); if (b.p_pays === "FR") delete b.p_pays;   // la France marche aussi avec l'ancienne version de la base
+    post(API, b).then(function (x) {
+      if (!x.ok) { reset(); return say(x.status === 0 ? "Pas de connexion. Réessayez dans un instant." : (x.j && x.j.message) || "L'envoi n'a pas marché. Réessayez."); }
+      done();
+    });
+  }
+  function showCode(tel) { f.hidden = true; cf.hidden = false; cf.querySelector("[data-num]").textContent = tel; cmsg.hidden = true; var i = cf.elements.code; i.value = ""; i.focus(); }
+  cf.addEventListener("submit", function (e) {
+    e.preventDefault(); cmsg.hidden = true;
+    var code = String(cf.elements.code.value || "").replace(/\D/g, "");
+    if (code.length !== 6) return csay("Le code a 6 chiffres.");
+    cbtn.disabled = true; cbtn.textContent = "Vérification…";
+    post(SMS, { action: "verify", id: pending, code: code }).then(function (x) {
+      cbtn.disabled = false; cbtn.textContent = "Confirmer ma demande";
+      if (x.ok && x.j && x.j.ok) return done();
+      csay((x.j && x.j.error) || (x.status === 0 ? "Pas de connexion. Réessayez dans un instant." : "La vérification n'a pas marché. Réessayez."));
+    });
+  });
+  cf.addEventListener("click", function (e) {
+    if (e.target.closest("[data-back]")) { cf.hidden = true; f.hidden = false; reset(); return; }
+    if (e.target.closest("[data-resend]")) post(SMS, { action: "resend", id: pending }).then(function (x) { csay(x.ok ? "Un nouveau code est parti." : (x.j && x.j.error) || "Le code n'a pas pu être renvoyé."); });
   });
 })();
 </script>

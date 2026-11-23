@@ -165,7 +165,7 @@
   /* ---------- Cartes des campagnes (page Clients), façon « camions au dépôt » ---------- */
   const PACE = { ahead: ["En avance", "ok"], ontrack: ["Dans les temps", "info"], late: ["En retard", "danger"] };
   function campCard(c) {
-    const esc = EM().esc, icon = EM().icon, f = forClient(c.id), p = f.parcours, pct = Math.round(c.done / c.target * 100), pace = PACE[c.pace] || PACE.ontrack;
+    const esc = EM().esc, icon = EM().icon, f = forClient(c.id), p = f.parcours, pct = c.target ? Math.round(c.done / c.target * 100) : 0, pace = PACE[c.pace] || PACE.ontrack;
     return `<article class="camp" role="listitem">
       <a class="camp-top" href="#fiche-${c.id}" aria-label="Fiche ${esc(c.name)}">
         <span class="camp-tags"><span class="state state-${pace[1]}">${pace[0]}</span>${c.absences ? `<span class="state state-warn">${c.absences} absence</span>` : ""}</span>

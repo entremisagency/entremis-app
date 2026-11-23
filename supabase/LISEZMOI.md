@@ -87,3 +87,10 @@ Pour les deux : dans les réglages de la fonction, désactiver « Verify JWT ».
 
 ## Sauvegarde sur le Drive commun
 Google Cloud (projet de l'app) : activer l'API Google Drive, et ajouter le droit `https://www.googleapis.com/auth/drive` à l'écran de consentement. Puis dans l'app : Réglages › Données et sécurité › Dossier du Drive commun.
+
+## Vérification du numéro par code SMS (23/11/2026)
+1. Créer un compte Brevo (brevo.com), acheter des crédits SMS, créer une clé API (Paramètres › SMS et WhatsApp, ou Clés API).
+2. Supabase › Edge Functions › nouvelle fonction **sms** : coller `functions/sms/index.ts`, Deploy, désactiver « Verify JWT ».
+3. Supabase › Edge Functions › Secrets : `BREVO_API_KEY` (la clé Brevo) et, si besoin, `SMS_SENDER` (11 caractères au plus, « Entremis » par défaut).
+4. SQL : section 11 de `schema.sql` (table `sms_codes`).
+Tant que la clé n'est pas réglée, la page de demande envoie les demandes sans code, comme avant.

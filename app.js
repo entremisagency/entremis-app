@@ -97,7 +97,7 @@
   }
 
   /* ---------- Petits outils ---------- */
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const icon = (id, cls = "icon") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
   /* Coordonnées : un clic ouvre l'appli liée (téléphone, mail, plan), un bouton copie.
      Dans une page claude.ai, l'ouverture du téléphone ou du mail peut ne pas marcher pour tout le monde : le bouton Copier reste toujours là. */
@@ -281,7 +281,7 @@
       lastDay = a.date;
       return sep + apptRow(a, true);
     }).join("");
-    const pct = Math.round(g.done / g.target * 100);
+    const pct = g.target ? Math.round(g.done / g.target * 100) : 0;
     const next = upcoming[0];
     const guideOff = store.get("guide-off", "") === "1";
     const kv = re => (c.kpis.find(k => re.test(k.label)) || {}).value || "—";
@@ -370,8 +370,8 @@
           return `<div class="next-who">${window.ENTREMIS_TEAM.avatar(own, "av av-lg")}<div><b>${esc(m.name)}</b><span>Suit votre campagne et répond à vos questions.</span></div></div>
           ${live ? `<div class="form-actions"><a class="btn btn-ghost" href="#messages">${icon("chat")}Écrire un message</a></div>` : `<div class="clines">${cline("phone", "06 00 00 00 00", "Téléphone")}${cline("email", "richard@entremis.fr", "E-mail")}<p class="kpi-note">Coordonnées d'exemple.</p></div>`}`; })()}
         <div class="contact-help">
-          <p><b>Un rendez-vous s'est mal passé ?</b><span>On en place un autre, sans frais.</span></p>
-          <button class="btn btn-warn" type="button" data-act="absence">${icon("swap")}Signaler une absence</button>
+          <p><b>Un lead ne correspond pas ?</b><span>Locataire, hors zone, doublon, faux numéro : contestez-le sous 7 jours.</span></p>
+          <a class="btn btn-ghost" href="#facturation">${icon("euro")}Leads et facture</a>
         </div>
       </section>
     </div>`;
@@ -543,7 +543,7 @@
         <ol class="steps"><li class="on">Absence reçue – ${rep.at}</li><li>Nouveau ${esc(c.words.one)} placé</li><li>Confirmé dans votre agenda</li></ol>
         <div class="form-actions"><button class="btn btn-ghost" type="button" data-act="undo-absence">Annuler le signalement</button></div>
       </div>`;
-    } else if (S.absenceOpen) {
+    } else if (S.absenceOpen && !(window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on())) {
       absence = `<form class="absence-form" id="absence-form">
         <p><b>Que s'est-il passé ?</b></p>
         <div class="choices">${D.absenceReasons.map((r, i) => `<label class="choice"><input type="radio" name="reason" value="${esc(r)}" ${i === 0 ? "checked" : ""}>${esc(r)}</label>`).join("")}</div>
@@ -555,11 +555,9 @@
         </div>
       </form>`;
     } else {
-      absence = isPast(a)
-        ? `<p class="body">Personne ${esc(c.words.at)} ? On en place un autre, sans frais.</p>
-        <div class="form-actions"><button class="btn btn-warn btn-lg" type="button" data-act="open-absence">${icon("swap")}Signaler une absence</button></div>`
-        : `<p class="body">Possible dès l'heure passée. Sans frais.</p>
-        <div class="form-actions"><button class="btn btn-warn btn-lg" type="button" disabled>${icon("swap")}Signaler une absence</button></div>`;
+      // Le modèle au lead (Gianni) : pas de remplacement de rendez-vous ; un lead qui ne correspond pas se conteste sous 7 jours
+      absence = `<p class="body">Le particulier n'était pas là ? Notez-le dans le résultat de la visite. S'il est locataire, hors de votre zone, en doublon ou si son numéro est faux, contestez le lead sous 7 jours.</p>
+        <div class="form-actions"><a class="btn btn-ghost btn-lg" href="#facturation">${icon("euro")}Contester dans Leads et facture</a></div>`;
     }
 
     const timeline = [
@@ -615,7 +613,7 @@
         ${window.ENTREMIS_CPLUS.resultCard(a)}
         ${window.ENTREMIS_CPLUS.confirmCard(a)}
         <section class="card absence f-abs" aria-label="Absence et remplacement">
-          <h2 class="h2">Absence et remplacement</h2>
+          <h2 class="h2">${a.state === "replaced" || rep ? "Absence et remplacement" : "Un problème avec ce lead ?"}</h2>
           ${absence}
         </section>
         <section class="card f-time">

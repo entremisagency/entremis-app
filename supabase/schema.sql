@@ -221,10 +221,12 @@ alter table public.entrees enable row level security;   -- aucune règle : perso
 
 -- France et pays francophones (21/11/2026) : p_pays (FR, BE, CH, LU, MC, CA, XX). Numéros de 8 chiffres au moins (Luxembourg).
 -- Doublon : même numéro sur 90 jours (règle de facturation de Gianni) = pas de nouveau lead.
+-- p_client (23/11/2026) : le client des formulaires Meta d'où vient le lead (Make ou Zapier). Simple proposition : l'équipe donne le lead.
 drop function if exists public.nouveau_lead(text, text, text, text, text, text, text, text, boolean);
+drop function if exists public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text);
 create or replace function public.nouveau_lead(p_nom text, p_telephone text, p_ville text default '', p_projet text default '',
   p_source text default 'Site', p_email text default '', p_message text default '', p_code_postal text default '', p_consentement boolean default false,
-  p_pays text default 'FR')
+  p_pays text default 'FR', p_client text default '')
   returns text language plpgsql security definer set search_path = public as $$
 declare
   v_tel text := regexp_replace(coalesce(p_telephone, ''), '[^0-9+]', '', 'g');
@@ -244,7 +246,8 @@ begin
     'city', left(trim(coalesce(p_ville, '')), 60), 'zip', left(v_cp, 10), 'country', v_pays,
     'zone', case when v_pays in ('FR', 'MC') then left(v_cp, 2) when v_pays = 'CA' then 'CA-' || left(v_cp, 3) else v_pays || '-' || left(regexp_replace(v_cp, '[^0-9]', '', 'g'), 2) end,
     'trade', left(trim(coalesce(p_projet, '')), 60), 'source', left(coalesce(nullif(trim(p_source), ''), 'Site'), 30), 'note', left(trim(coalesce(p_message, '')), 500),
-    'status', 'nouveau', 'consent', true, 'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
+    'status', 'nouveau', 'consent', true, 'forClient', left(trim(coalesce(p_client, '')), 40),
+    'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
   return v_id;
 end $$;
 
@@ -267,9 +270,9 @@ begin
     'at', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI')), null);
   return v_id;
 end $$;
-revoke all on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text) from public;
+revoke all on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text, text) from public;
 revoke all on function public.demande_site(text, text, text, text, text, text, text, text, text) from public;
-grant execute on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text) to anon, authenticated;
+grant execute on function public.nouveau_lead(text, text, text, text, text, text, text, text, boolean, text, text) to anon, authenticated, service_role;
 grant execute on function public.demande_site(text, text, text, text, text, text, text, text, text) to anon, authenticated;
 
 -- 7. Les comptes de l'équipe ------------------------------------------------------------
@@ -347,3 +350,18 @@ drop policy if exists "mcp : créer (équipe)" on public.mcp_keys;
 create policy "mcp : créer (équipe)" on public.mcp_keys for insert to authenticated with check (user_id = auth.uid() and public.is_team());
 drop policy if exists "mcp : retirer les siennes" on public.mcp_keys;
 create policy "mcp : retirer les siennes" on public.mcp_keys for delete to authenticated using (user_id = auth.uid());
+
+-- ===== 11. Vérification du numéro par code SMS (fonction « sms », voir supabase/functions/sms) =====
+-- Les demandes en attente de leur code (10 minutes). Aucune règle : seule la fonction « sms » y touche.
+create table if not exists public.sms_codes (
+  id uuid primary key,
+  phone text not null,
+  code_hash text not null,
+  payload jsonb not null,
+  expires_at timestamptz not null,
+  attempts int not null default 0,
+  sends int not null default 1,
+  created_at timestamptz not null default now()
+);
+alter table public.sms_codes enable row level security;
+create index if not exists sms_codes_phone on public.sms_codes (phone, created_at);

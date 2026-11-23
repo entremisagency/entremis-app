@@ -37,11 +37,11 @@ function findClient(rows: Row[], q: string) {
   return all.find((c: any) => c.id.toLowerCase() === k) || all.find((c: any) => s(c.name).toLowerCase() === k) || all.find((c: any) => s(c.name).toLowerCase().includes(k));
 }
 function billing(rows: Row[], c: any, m: string) {
-  const contests = asData(rows, "contests"), excl = (l: any) => l.excl || ((contests.find((x: any) => x.id === l.id) || {}).state === "accepte" ? "conteste" : "");
+  const contests = asData(rows, "contests"), excl = (l: any) => l.excl || ((contests.find((x: any) => x.id === l.id) || {}).state === "accepte" ? "conteste" : (l.excl === undefined && l.verified === false ? "faux-numero" : ""));
   const all = asData(rows, "leads").filter((l: any) => l.to === c.id && s(l.givenAt || l.at).slice(0, 7) === m && !l.erased);
   const ok = all.filter((l: any) => l.status !== "perdu" && !excl(l)), price = Number(c.prixLead) || 50, cap = Number(c.plafond) || 0, raw = ok.length * price;
   return { mois: m, leads: all.length, facturables: ok.length, non_factures: all.length - ok.length, prix_par_lead_ht: price, plafond_ht: cap || null, montant_ht: cap ? Math.min(raw, cap) : raw,
-    detail: all.map((l: any) => ({ id: l.id, nom: l.name, date: s(l.givenAt || l.at).slice(0, 10), projet: l.trade, ville: l.city, niveau: l.level || (l.status === "rdv" ? "rdv" : "verifie"), facture: !excl(l) && l.status !== "perdu", motif: excl(l) || null })) };
+    detail: all.map((l: any) => ({ id: l.id, nom: l.name, date: s(l.givenAt || l.at).slice(0, 10), projet: l.trade, ville: l.city, niveau: l.level || (l.status === "rdv" ? "rdv" : "verifie"), facture: !excl(l) && l.status !== "perdu", motif: excl(l) || null, numero_verifie: l.verified ?? null })) };
 }
 const NEED: Record<string, string[]> = {
   resume_du_jour: ["leads", "rdv", "tasks", "documents", "clients"], lister_leads: ["leads", "clients"], lire_lead: ["leads", "contests", "clients"], lister_clients: ["clients"],

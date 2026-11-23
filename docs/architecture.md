@@ -61,6 +61,7 @@ Chaque liste a `.list`, `.put(ligne)`, `.remove(id)` et `.init(rendu)`.
 | `crm.js` | Le CRM (#contacts) : clients et prospects ensemble, recherche, vues, tri, prochaine action et étiquettes (`crm`), actions groupées, import/export CSV, doublons ; glisser-déposer du pipeline |
 | `help.js` | Le petit « i » à côté du titre de chaque page, avec le texte de chaque page |
 | `update.js` | La mise à jour toute seule : compare le numéro ?v= de la page en ligne (outils/version.sh) au sien ; recharge au retour sur l'app si rien n'est en cours, sinon bandeau « Mettre à jour ». Ne pas oublier `sh outils/version.sh` avant chaque envoi |
+| `supabase/functions/sms` | Le code SMS de la page de demande : envoi (Brevo), vérification, puis entrée dans Leads marquée « numéro vérifié ». Un lead `verified: false` n'est pas facturé sauf décision de l'équipe. Factures du mois : `machine.js` (autoInvoices, brouillons le 1er) |
 
 ## Ajouter une page
 

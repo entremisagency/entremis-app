@@ -36,7 +36,9 @@
   const EXCL = { "": "Facturable", locataire: "Locataire", "hors-zone": "Hors zone", doublon: "Doublon (90 jours)", "faux-numero": "Numéro non vérifié", conteste: "Contestation acceptée" };
   const levelOf = l => l.level || (l.status === "rdv" ? "rdv" : ["qualifie", "attribue"].includes(l.status) ? "qualifie" : "verifie");
   const contestOf = l => CONTESTS().list.find(c => c.id === l.id);
-  const exclOf = l => l.excl || ((contestOf(l) || {}).state === "accepte" ? "conteste" : "");
+  // Un numéro marqué non vérifié n'est pas facturé, sauf si l'équipe a tranché à la main (champ « Facturé au client ? »)
+  const exclOf = l => l.excl || ((contestOf(l) || {}).state === "accepte" ? "conteste" : (l.excl === undefined && l.verified === false ? "faux-numero" : ""));
+  const verifPill = l => l.verified === true ? `<span class="state state-ok">${EM().icon("check")}Numéro vérifié${l.verifiedBy === "sms" ? " par SMS" : ""}</span>` : l.verified === false ? `<span class="state state-neutral">Numéro non vérifié</span>` : "";
   const billable = l => !!l.to && l.status !== "perdu" && !l.erased && !exclOf(l);
   const givenAt = l => String(l.givenAt || l.at || "");
   const contestOpen = l => daysBetween(givenAt(l), today()) <= 7;
@@ -54,8 +56,10 @@
   /* ---------- Panneau d'un lead (agence) : niveau, facturation, contestation ---------- */
   function leadBox(l) {
     const esc = EM().esc, ct = contestOf(l);
-    if (!l.to) return `<section class="lp-box"><p class="lp-label">Facturation</p><p class="body">Facturable une fois donné à un client (50 € HT si le numéro est vérifié).</p></section>`;
-    return `<section class="lp-box mc-box"><p class="lp-label">Niveau et facturation</p>
+    const verif = `<div class="mc-verif"><span>${verifPill(l) || `<span class="state state-neutral">Numéro pas encore vérifié</span>`}</span>
+      ${l.verifiedBy === "sms" ? "" : `<span class="mc-verif-acts">${l.verified === true ? "" : `<button class="link" type="button" data-mc-verif="${l.id}:1">Marquer vérifié</button>`}${l.verified === false ? "" : `<button class="link" type="button" data-mc-verif="${l.id}:0">Marquer non vérifié</button>`}</span>`}</div>`;
+    if (!l.to) return `<section class="lp-box"><p class="lp-label">Numéro et facturation</p>${verif}<p class="body">Facturable une fois donné à un client (50 € HT si le numéro est vérifié).</p></section>`;
+    return `<section class="lp-box mc-box"><p class="lp-label">Niveau et facturation</p>${verif}
       <div class="seg seg-lg" role="group" aria-label="Niveau du lead">${Object.keys(LEVEL).map(k => `<button type="button" data-mc-level="${l.id}:${k}" aria-pressed="${levelOf(l) === k}">${LEVEL[k][0]}</button>`).join("")}</div>
       <div class="field"><label for="mc-excl">Facturé au client ?</label><select id="mc-excl" data-fsel="mc-excl">${Object.keys(EXCL).filter(k => k !== "conteste").map(k => `<option value="${l.id}:${k}"${(l.excl || "") === k ? " selected" : ""}>${k ? "Non : " + EXCL[k].toLowerCase() : "Oui, facturable"}</option>`).join("")}</select></div>
       ${ct ? `<div class="mc-contest"><p><b>Contesté par le client</b> le ${esc(ct.at.slice(8, 10) + "/" + ct.at.slice(5, 7))} : « ${esc(ct.why || "")} »</p>
@@ -83,17 +87,38 @@
     </section>`;
   }
   // La facture du mois : une ligne « leads vérifiés exclusifs », en brouillon dans Finances
-  function makeInvoice(cid, S) {
-    const m = X.month || today().slice(0, 7), b = billing(cid, m); if (!b.ok.length) return;
+  // La facture d'un client pour un mois : une ligne « leads vérifiés exclusifs », le plafond, la TVA selon le pays
+  function buildInvoice(cid, m, who) {
+    const b = billing(cid, m); if (!b.ok.length) return null;
     const due = (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); })();
     const lines = [{ d: `Leads vérifiés exclusifs – ${monthLabel(m)} (${b.levels.rdv} RDV pris, ${b.levels.qualifie} qualifiés, ${b.levels.verifie} vérifiés)`, q: b.ok.length, pu: b.price }];
     if (b.capped) lines.push({ d: `Plafond mensuel convenu (${eur(b.cap)} HT)`, q: 1, pu: -(b.raw - b.cap) });
     const vat = vatFor(cid);
-    const d = { id: "d" + Date.now().toString(36), kind: "facture", number: OPS().nextNumber("facture"), client: b.contract.name, to: cid, amount: Math.round(b.amount * 100) / 100, tva: vat.tva,
-      lines, note: `Relevé détaillé joint. 7 jours pour contester un lead selon les exclusions prévues au contrat.${vat.note ? " " + vat.note : ""}`, date: today(), due, status: "brouillon", by: S.who, createdAt: new Date().toISOString().slice(0, 16), made: true, period: m };
+    return { id: "fac-" + cid + "-" + m, kind: "facture", number: OPS().nextNumber("facture"), client: b.contract.name, to: cid, amount: Math.round(b.amount * 100) / 100, tva: vat.tva,
+      lines, note: `Relevé détaillé joint. 7 jours pour contester un lead selon les exclusions prévues au contrat.${vat.note ? " " + vat.note : ""}`, date: today(), due, status: "brouillon", by: who, createdAt: new Date().toISOString().slice(0, 16), made: true, period: m };
+  }
+  const invoiceOf = (cid, m) => OPS().stores.DOCS.list.find(d => d.kind === "facture" && d.to === cid && d.period === m);
+  function makeInvoice(cid, S) {
+    const m = X.month || today().slice(0, 7), ex = invoiceOf(cid, m);
+    if (ex) { location.hash = "#finances"; setTimeout(() => { window.ENTREMIS_GEN.openDoc(ex.id); EM().render(); }, 80); EM().toast(`La facture de ${monthLabel(m)} existe déjà : la voici.`); return; }
+    const d = buildInvoice(cid, m, S.who); if (!d) return;
     OPS().stores.DOCS.put(d); TM().haptic("done");
     location.hash = "#finances"; setTimeout(() => { window.ENTREMIS_GEN.openDoc(d.id); EM().render(); }, 80); EM().toast(`Facture de ${monthLabel(m)} prête en brouillon : vérifiez-la, puis envoyez-la.`);
   }
+  /* Le 1er du mois (et les jours suivants tant que ce n'est pas fait), les factures du mois écoulé se préparent toutes seules,
+     en brouillon, pour chaque client qui a des leads facturables. Une seule par client et par mois (même identifiant pour tous). */
+  let autoDone = false;
+  function autoInvoices() {
+    if (autoDone || !(window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on()) || EM().S.space !== "team" || EM().S.lock) return [];
+    autoDone = true;
+    const m = shiftMonth(today().slice(0, 7), -1), made = [];
+    TD().clients.forEach(c => { if (invoiceOf(c.id, m)) return; const d = buildInvoice(c.id, m, EM().S.who); if (d) { OPS().stores.DOCS.put(d); made.push(c.name); } });
+    if (made.length) EM().toast(`${made.length} facture${made.length > 1 ? "s" : ""} de ${monthLabel(m)} prête${made.length > 1 ? "s" : ""} en brouillon dans Finances : ${made.join(", ")}.`);
+    return made;
+  }
+  if (window.ENTREMIS_CLOUD && window.ENTREMIS_CLOUD.on()) window.ENTREMIS_CLOUD.ready().then(() => setTimeout(() => { try { autoInvoices(); EM().render(); } catch (_) {} }, 9000));
+  // Les brouillons du mois écoulé, pour les notifications de l'équipe
+  const draftsToSend = () => OPS().stores.DOCS.list.filter(d => d.kind === "facture" && d.status === "brouillon" && d.period === shiftMonth(today().slice(0, 7), -1));
 
   /* ---------- Côté client : ses leads du mois, sa facture, contester ---------- */
   function viewClientBilling(S) {
@@ -102,7 +127,7 @@
       const ct = contestOf(l), can = billable(l) && !ct && contestOpen(l);
       return `<li class="ac-row"><span class="av av-md">${esc((l.name || "?").split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase())}</span>
         <span><b>${esc(l.name)}</b><small>${esc(givenAt(l).slice(8, 10) + "/" + givenAt(l).slice(5, 7))} · ${esc(l.trade || "")} · ${esc(l.city || l.zip || "")}${l.phone ? " · " + esc(l.phone) : ""}</small></span>
-        <span class="ac-acts">${pill(l)}${billable(l) ? `<span class="state state-ok">Facturé</span>` : `<span class="state state-neutral">${esc(EXCL[exclOf(l)] || "Non facturé")}</span>`}
+        <span class="ac-acts">${pill(l)}${l.verified === true ? `<span class="state state-neutral">${EM().icon("check")}Vérifié par SMS</span>` : ""}${billable(l) ? `<span class="state state-ok">Facturé</span>` : `<span class="state state-neutral">${esc(EXCL[exclOf(l)] || "Non facturé")}</span>`}
           ${ct ? `<span class="state state-${ct.state === "accepte" ? "ok" : ct.state === "refuse" ? "neutral" : "warn"}">${ct.state === "ouvert" ? "Contestation envoyée" : ct.state === "accepte" ? "Contestation acceptée" : "Contestation refusée"}</span>` : can ? `<button class="link" type="button" data-mc-dispute="${l.id}">Contester</button>` : ""}</span></li>`;
     }).join("");
     return `<div class="head"><div class="head-text"><h1 class="h1">Leads et facture</h1><p class="sub">Vos leads du mois, leur niveau, et ce qui sera facturé. 7 jours pour contester un lead.</p></div></div>
@@ -222,8 +247,9 @@
 
   /* ---------- Clics et envois ---------- */
   function onClick(e, S, render) {
-    const t = e.target.closest("[data-mc-level],[data-mc-excl],[data-mc-contest],[data-mc-month],[data-mc-invoice],[data-mc-list],[data-mc-dispute],[data-mc-call],[data-mc-call-close],[data-mc-scen]"); if (!t) return false;
+    const t = e.target.closest("[data-mc-verif],[data-mc-level],[data-mc-excl],[data-mc-contest],[data-mc-month],[data-mc-invoice],[data-mc-list],[data-mc-dispute],[data-mc-call],[data-mc-call-close],[data-mc-scen]"); if (!t) return false;
     const d = t.dataset, put = (id, patch) => { const l = LEADS().list().find(x => x.id === id); if (l) LEADS().put(Object.assign({}, l, patch)); };
+    if (d.mcVerif) { const [id, v] = d.mcVerif.split(":"); put(id, { verified: v === "1", verifiedAt: new Date().toISOString().slice(0, 16), verifiedBy: S.who }); TM().haptic("tap"); render(); EM().toast(v === "1" ? "Numéro marqué vérifié." : "Numéro marqué non vérifié : le lead ne sera pas facturé."); return true; }
     if (d.mcLevel) { const [id, lv] = d.mcLevel.split(":"); put(id, { level: lv }); TM().haptic("tap"); render(); return true; }
     if (d.mcExcl !== undefined) { const [id, ex] = d.mcExcl.split(":"); put(id, { excl: ex || "" }); TM().haptic("tap"); render(); EM().toast(ex ? "Lead non facturé." : "Lead facturable."); return true; }
     if (d.mcContest) { const [id, st] = d.mcContest.split(":"), c = CONTESTS().list.find(x => x.id === id); if (c) CONTESTS().put(Object.assign({}, c, { state: st, decidedBy: S.who, decidedAt: new Date().toISOString().slice(0, 16) })); TM().haptic(st === "accepte" ? "done" : "tap"); render(); return true; }
@@ -252,6 +278,6 @@
     return true;
   }
 
-  window.ENTREMIS_MACHINE = { PAYS, vatFor, leadBox, billingCard, callCard, callSheet, viewClientBilling, simView, weekPanel, onClick, onSubmit, billing, levelOf, billable,
+  window.ENTREMIS_MACHINE = { autoInvoices, draftsToSend, verifPill, PAYS, vatFor, leadBox, billingCard, callCard, callSheet, viewClientBilling, simView, weekPanel, onClick, onSubmit, billing, levelOf, billable,
     init: render => CONTESTS().init(render), reset: () => { X.call = null; } };
 })();

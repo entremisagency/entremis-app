@@ -6,7 +6,10 @@
 (function () {
   "use strict";
   const EM = () => window.EM, OPS = () => window.ENTREMIS_OPS, TD = () => window.ENTREMIS_DATA.team, FI = () => window.ENTREMIS_FICHE;
-  const ME = { name: "Entremis", email: "contact@entremis.fr", address: "Adresse à compléter", siret: "SIRET à compléter", tva: "N° de TVA à compléter", iban: "IBAN à compléter" };
+  // Les coordonnées d'Entremis : saisies une seule fois dans Documents juridiques › Coordonnées d'Entremis
+  const ME = new Proxy({}, { get: (_, k) => { const v = window.ENTREMIS_LEGAL && window.ENTREMIS_LEGAL.me ? window.ENTREMIS_LEGAL.me() : {};
+    return { name: [v.ent_nom || "Entremis", v.ent_forme && !/…/.test(v.ent_forme) ? v.ent_forme : ""].filter(Boolean).join(", "), email: v.ent_mail || "contact@entremis.fr", address: v.ent_siege || "Adresse à compléter",
+      siret: v.ent_siret ? "SIRET " + v.ent_siret + (v.ent_rcs ? " – RCS " + v.ent_rcs : "") : "SIRET à compléter", tva: v.ent_tva ? "TVA " + v.ent_tva : "N° de TVA à compléter", iban: v.ent_iban || "IBAN à compléter" }[k]; } });
   const TVA = [["20", "20 %"], ["10", "10 %"], ["5.5", "5,5 %"], ["0", "Pas de TVA"]];
   const today = () => window.ENTREMIS_DATA.today.iso;
   const plus = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };

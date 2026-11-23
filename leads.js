@@ -15,6 +15,10 @@
   const when = iso => { if (!iso) return ""; const t = window.ENTREMIS_DATA.today.iso; const d = iso.slice(0, 10); return (d === t ? "aujourd'hui" : `${+d.slice(8, 10)}/${d.slice(5, 7)}`) + " à " + iso.slice(11, 16); };
   // Le client qui correspond le mieux : même métier ET même zone, puis celui qui a le moins de leads ce mois-ci
   function suggest(lead) {
+    // 1. le client des formulaires Meta d'où vient le lead ; 2. le client dont la zone exclusive contient son code postal ; 3. même métier et même zone
+    if (lead.forClient) { const c = TD().clients.find(x => x.id === lead.forClient); if (c) return c; }
+    const zip = String(lead.zip || "").replace(/\s/g, "").toUpperCase();
+    if (zip) { const z = TD().clients.find(c => String(c.zoneCP || "").toUpperCase().split(/[,;\s]+/).filter(Boolean).some(cp => zip === cp || (cp.length === 2 && zip.startsWith(cp)))); if (z) return z; }
     const cov = TD().coverage, all = store().list;
     const ok = TD().clients.filter(c => cov[c.id] && cov[c.id].trades.includes(lead.trade) && cov[c.id].zones.includes(lead.zone));
     return ok.sort((a, b) => all.filter(l => l.to === a.id).length - all.filter(l => l.to === b.id).length)[0] || null;
@@ -90,7 +94,7 @@
       <div class="card-head"><h2 class="h2">À attribuer</h2></div>
       <ul class="queue">${queue.map(l => { const s = suggest(l); return `<li>
         <div class="q-main">${srcIcon(l.source)}<div><button class="lead-name" type="button" data-lead-open="${l.id}">${esc(l.name)}</button><span>${esc(l.trade)} – ${esc(l.city)} – reçu ${when(l.at)}</span></div></div>
-        ${(() => { const [t, k] = STATUS[l.status] || [l.status, "info"]; return `<span class="state state-${k}">${t}</span>`; })()}
+        ${(() => { const [t, k] = STATUS[l.status || "nouveau"] || [l.status, "info"]; return `<span class="state state-${k}">${t}</span>`; })()}
         <div class="q-act">${s ? `<button class="btn btn-give btn-xs" type="button" data-lead-give="${l.id}:${s.id}">${icon("check")}Donner à ${esc(s.name)}</button>` : `<span class="q-sugg muted">Aucun client sur ce métier et cette zone</span>`}
           <button class="link q-other" type="button" data-lead-pick="${l.id}" aria-expanded="${L.pick === l.id}">${s ? "Autre client" : "Choisir un client"}${icon("chev")}</button></div>
         ${L.pick === l.id ? `<div class="q-pick">${TD().clients.map(c => `<button class="pill" type="button" data-lead-give="${l.id}:${c.id}">${esc(c.name)}</button>`).join("")}<button class="pill" type="button" data-lead-lose="${l.id}">Écarter ce lead</button></div>` : ""}
@@ -101,7 +105,7 @@
       <div class="card-head"><h2 class="h2">Derniers leads</h2></div>
       <div class="filters">${EM().fsel("lead-status", "Statut", [["all", "Tous"], ["queue", "À attribuer"], ["qualifie", "Qualifiés"], ["rdv", "Rendez-vous"], ["perdu", "Écartés"]], L.status)}${EM().fsel("lead-client", "Client", [["all", "Tous les clients"]].concat(TD().clients.map(c => [c.id, c.name])), L.client)}</div>
       <table class="table table-leads"><thead><tr><th>Lead</th><th>Source</th><th>Statut</th><th>Donné à</th><th></th></tr></thead>
-      <tbody>${shown.map(l => { const c = client(l.to), [t, k] = STATUS[l.status] || [l.status, "info"]; return `<tr>
+      <tbody>${shown.map(l => { const c = client(l.to), [t, k] = STATUS[l.status || "nouveau"] || [l.status, "info"]; return `<tr>
         <td class="org"><button class="lead-name" type="button" data-lead-open="${l.id}">${esc(l.name)}</button><span>${esc(l.trade)} – ${esc(l.city)} – ${when(l.at)}</span></td>
         <td>${srcTag(l.source)}</td>
         <td><span class="state state-${k}">${t}</span>${(() => { const a = lastAct(l); return a && a.who ? `<button class="why who-trace" type="button" data-lead-open="${l.id}" title="Voir l'historique">par ${esc(TM().member(a.who).name)}, ${whenShort(a.at)}</button>` : l.why ? `<span class="why">${esc(l.why)}</span>` : ""; })()}${l.why && lastAct(l) ? `<span class="why">${esc(l.why)}</span>` : ""}</td>
@@ -183,10 +187,10 @@
   // Panneau de détail d'un lead, à droite (en bas sur téléphone)
   function panel() {
     const l = L.open && store().list.find(x => x.id === L.open); if (!l) return "";
-    const esc = EM().esc, icon = EM().icon, c = client(l.to), s = !l.to ? suggest(l) : null, [t, k] = STATUS[l.status] || [l.status, "info"];
+    const esc = EM().esc, icon = EM().icon, c = client(l.to), s = !l.to ? suggest(l) : null, [t, k] = STATUS[l.status || "nouveau"] || [l.status, "info"];
     const row = (a, b) => `<div><dt>${a}</dt><dd>${b}</dd></div>`;
     return `<div class="lp-scrim" data-lead-close></div><aside class="lead-panel" aria-label="Lead ${esc(l.name)}">
-      <header class="lp-head"><div><h2 class="h2">${esc(l.name)}</h2><div class="lp-tags"><span class="state state-${k}">${t}</span><span class="src">${srcIcon(l.source)}${esc(l.source)}</span></div></div>
+      <header class="lp-head"><div><h2 class="h2">${esc(l.name)}</h2><div class="lp-tags"><span class="state state-${k}">${t}</span><span class="src">${srcIcon(l.source)}${esc(l.source || "Sans source")}</span></div></div>
         <button class="icon-btn" type="button" data-lead-close aria-label="Fermer">${EM().icon("plus")}</button></header>
       <div class="lp-acts">
         ${s ? `<button class="lp-act lp-main" type="button" data-lead-give="${l.id}:${s.id}">${icon("check")}<span>Donner</span></button>` : ""}
@@ -198,7 +202,7 @@
       ${L.pick === l.id ? `<div class="q-pick">${TD().clients.map(cl => `<button class="pill" type="button" data-lead-give="${l.id}:${cl.id}">${esc(cl.name)}</button>`).join("")}</div>` : ""}
       <dl class="lp-dl">
         ${l.phone ? row("Téléphone", `<a class="link" href="tel:${esc(String(l.phone).replace(/\s/g, ""))}">${esc(l.phone)}</a>`) : ""}${l.email ? row("E-mail", `<a class="link" href="mailto:${esc(l.email)}">${esc(l.email)}</a>`) : ""}
-        ${row("Projet", esc(l.trade))}${row("Ville", esc(l.city))}${l.zip ? row("Code postal", esc(l.zip)) : ""}${row("Zone", esc(l.zone))}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.source ? row("Venu de", esc(l.source)) : ""}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
+        ${l.trade ? row("Projet", esc(l.trade)) : ""}${l.city ? row("Ville", esc(l.city)) : ""}${l.zip ? row("Code postal", esc(l.zip)) : ""}${l.zone ? row("Zone", esc(l.zone)) : ""}${l.country && l.country !== "FR" ? row("Pays", esc(window.ENTREMIS_MACHINE.PAYS[l.country] || l.country)) : ""}${row("Reçu", when(l.at))}${l.source ? row("Venu de", esc(l.source)) : ""}${l.why ? row("Écarté parce que", esc(l.why)) : ""}
       </dl>
       ${l.note ? `<section class="lp-box"><p class="lp-label">Son message</p><p class="body">${esc(l.note)}</p></section>` : ""}
       ${window.ENTREMIS_MACHINE.leadBox(l)}

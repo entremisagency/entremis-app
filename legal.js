@@ -16,7 +16,7 @@
   // Les coordonnées d'Entremis, saisies une fois pour tous les modèles
   const ME_FIELDS = [["ent_nom", "Raison sociale", "Entremis"], ["ent_forme", "Forme et capital", "SAS au capital de … €"], ["ent_siege", "Siège social", ""], ["ent_siret", "SIRET", ""],
     ["ent_rcs", "RCS (ville)", ""], ["ent_tva", "N° de TVA intracommunautaire", ""], ["ent_rep", "Représentée par", ""], ["ent_qualite", "Qualité", "Président"], ["ent_mail", "E-mail", ""], ["ent_tel", "Téléphone", ""],
-    ["ent_ics", "Identifiant créancier SEPA (ICS)", ""], ["ent_ville", "Ville (pour « Fait à »)", ""]];
+    ["ent_ics", "Identifiant créancier SEPA (ICS)", ""], ["ent_iban", "IBAN d'Entremis (affiché sur les factures)", ""], ["ent_ville", "Ville (pour « Fait à »)", ""]];
   const me = () => Object.assign({}, ...ME_FIELDS.map(([k, , d]) => ({ [k]: d })), (ACTES().list.find(a => a.id === "me") || {}).vals || {});
 
   // Champs communs aux modèles « client »
@@ -362,5 +362,5 @@
   });
   document.addEventListener("toggle", e => { const s = e.target.closest && e.target.closest("[data-lx-sec]"); if (s) X.shut[s.dataset.lxSec] = !s.open; }, true);
 
-  window.ENTREMIS_LEGAL = { logoPng, view, onClick, onSubmit, TEMPLATES: T, makePdf: pdf, init: render => ACTES().init(render), reset: () => { X.tpl = null; X.vals = {}; X.me = false; X.full = false; } };
+  window.ENTREMIS_LEGAL = { me: () => me(), logoPng, view, onClick, onSubmit, TEMPLATES: T, makePdf: pdf, init: render => ACTES().init(render), reset: () => { X.tpl = null; X.vals = {}; X.me = false; X.full = false; } };
 })();

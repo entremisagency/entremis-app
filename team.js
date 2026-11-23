@@ -266,7 +266,7 @@
     const p = PACE[c.pace];
     return `<a class="row row-client" href="#fiche-${c.id}">
       <span class="who"><b>${EM().esc(c.name)}</b><span>${EM().esc(c.trade)} – ${c.done} / ${c.target}</span></span>
-      <span class="mini-bar" aria-hidden="true"><i style="--p:${Math.round(c.done / c.target * 100)}%"></i></span>
+      <span class="mini-bar" aria-hidden="true"><i style="--p:${(c.target ? Math.round(c.done / c.target * 100) : 0)}%"></i></span>
       ${tone(p[0], p[1])}
     </a>`;
   }
@@ -316,34 +316,35 @@
     const cs = TD().clients;
     return `
     <div class="head">
-      <div class="head-text"><h1 class="h1">Clients</h1><p class="sub">Les installateurs qui achètent nos leads.</p></div>
+      <div class="head-text"><h1 class="h1">Clients</h1><p class="sub">Les installateurs qui achètent nos leads, 50 € HT le lead vérifié.</p></div>
       <div class="head-actions">${EM().sampleTag}<button class="btn btn-primary" type="button" data-live-new="client">${icon("plus")}Nouveau client</button></div>
     </div>
     <div class="kpis kpis-4" role="list">
-      ${kpi("Campagnes en cours", cs.length, `${cs.filter(c => c.pace === "late").length} en retard`)}
-      ${kpi("Livrés sur les campagnes", cs.reduce((a, c) => a + c.done, 0), `sur ${cs.reduce((a, c) => a + c.target, 0)} promis`)}
-      ${kpi("Absences à remplacer", TD().replacements.filter(r => r.status === "searching").length, "garantis ou remplacés", "warn")}
-      ${kpi("Leads ce mois-ci", TD().trades.reduce((a, t) => a + t.value, 0).toLocaleString("fr-FR"), "donnés à ces clients")}
+      ${(() => { const m = window.ENTREMIS_DATA.today.iso.slice(0, 7), B = cs.map(c => window.ENTREMIS_MACHINE.billing(c.id, m)), sum = f => B.reduce((a, b) => a + f(b), 0);
+        return `${kpi("Clients", cs.length, "sous contrat")}
+      ${kpi("Leads facturables ce mois", sum(b => b.ok.length), `${sum(b => b.all.length)} donnés`)}
+      ${kpi("Facturé ce mois", Math.round(sum(b => b.amount)).toLocaleString("fr-FR") + " €", "hors taxes, avant contestations")}
+      ${kpi("Non facturés", sum(b => b.out.length), "locataires, hors zone, doublons, numéros non vérifiés")}`; })()}
     </div>
     <section class="card guide-flow">
       <div class="card-head"><h2 class="h2">Comment on lance un nouveau client</h2></div>
       ${EM().nodeFlow([
-        { icon: "check", title: "Signé", text: "Son métier fixe le parcours : RDV, transfert ou devis.", rows: [["Signés ce mois-ci", String(TD().pipeline.filter(p => p.stage === "won").length)]] },
-        { icon: "signal", title: "Campagne en place", text: "Marc lance les publicités.", rows: [["Délai", "2 jours"]] },
-        { icon: "inbox", title: "Premiers leads", text: "On rappelle et on vérifie 4 critères.", rows: [["À attribuer", String(window.ENTREMIS_LEADS.list().filter(l => !l.to && l.status !== "perdu").length)]] },
-        { icon: "cal", title: "Première livraison", text: "RDV, appel ou devis, selon son parcours.", rows: [["Objectif", "sous 7 jours", "ok"], ["Sinon", "on l'appelle", "bad"]] }
+        { icon: "check", title: "Signé", text: "Contrat, zone exclusive, accès à son compte pub Meta.", rows: [["Signés ce mois-ci", String(TD().pipeline.filter(p => p.stage === "won").length)]] },
+        { icon: "cal", title: "Tournage", text: "Une journée chez lui, puis 20 à 50 vidéos montées.", rows: [["Suivi", "fiche › La machine"]] },
+        { icon: "signal", title: "Campagne en place", text: "Pubs sur son compte, formulaire avec code SMS.", rows: [["Budget", "30 à 50 € par jour"]] },
+        { icon: "inbox", title: "Premiers leads", text: "Vérifiés, rappelés en 2 minutes, donnés à lui seul.", rows: [["À attribuer", String(window.ENTREMIS_LEADS.list().filter(l => !l.to && l.status !== "perdu").length)], ["Facture", "le 1er du mois", "ok"]] }
       ], "Comment on lance un nouveau client")}
     </section>
     ${window.ENTREMIS_SECTORS.campSection(S, list => `<table class="table">
-        <thead><tr><th>Installateur</th><th>Objectif</th><th>Rythme</th><th>Suivi par</th><th>Prochain</th><th></th></tr></thead>
-        <tbody>${list.map(c => `<tr>
+        <thead><tr><th>Installateur</th><th>Leads du mois</th><th>Facturé</th><th>Suivi par</th><th>Prochain</th><th></th></tr></thead>
+        <tbody>${list.map(c => { const b = window.ENTREMIS_MACHINE.billing(c.id, window.ENTREMIS_DATA.today.iso.slice(0, 7)), capN = b.cap ? Math.max(1, Math.floor(b.cap / b.price)) : 0; return `<tr>
           <td class="org"><a class="org-link" href="#fiche-${c.id}"><b>${esc(c.name)}</b></a><span>${esc(c.trade)}</span></td>
-          <td><div class="goal-cell"><span class="tabnum"><b>${c.done}</b> / ${c.target}</span><span class="mini-bar"><i style="--p:${Math.round(c.done / c.target * 100)}%"></i></span><span class="muted">jour ${c.day} / ${c.days}</span></div></td>
-          <td><div class="tones">${tone(PACE[c.pace][0], PACE[c.pace][1])}${c.absences ? tone(c.absences + " absence", "warn") : ""}</div></td>
+          <td><div class="goal-cell"><span class="tabnum"><b>${b.ok.length}</b>${capN ? ` / ${capN}` : ""} facturable${b.ok.length > 1 ? "s" : ""}</span>${capN ? `<span class="mini-bar"><i style="--p:${Math.min(100, Math.round(b.ok.length / capN * 100))}%"></i></span>` : ""}<span class="muted">${b.levels.rdv} avec RDV pris</span></div></td>
+          <td class="tabnum">${Math.round(b.amount).toLocaleString("fr-FR")} €${b.capped ? `<small class="muted"> plafond</small>` : ""}</td>
           <td class="hide-m"><span class="who-inline">${av(c.owner, "av")}${member(c.owner).name}</span></td>
           <td class="hide-m body">${esc(c.next)}</td>
           <td class="hide-m"><a class="link" href="#fiche-${c.id}">Fiche ${icon("arrow")}</a></td>
-        </tr>`).join("")}</tbody>
+        </tr>`; }).join("")}</tbody>
       </table>`)}
     <section class="card">
       <div class="card-head"><h2 class="h2">Remplacements</h2></div>
@@ -437,7 +438,7 @@
       </section>
       <section class="card">
         <div class="card-head"><h2 class="h2">Objectifs du mois</h2></div>
-        <ul class="goal-rings">${TD().goals.map(g => { const p = Math.round(g.done / g.target * 100); return `<li>${EM().tickRing(p, `${g.done}<small>/${g.target}</small>`)}<b>${esc(g.label)}</b></li>`; }).join("")}</ul>
+        <ul class="goal-rings">${TD().goals.map(g => { const p = g.target ? Math.round(g.done / g.target * 100) : 0; return `<li>${EM().tickRing(p, `${g.done}<small>/${g.target}</small>`)}<b>${esc(g.label)}</b></li>`; }).join("")}</ul>
       </section>
     </div>
     <div class="home-main">
