@@ -17,7 +17,7 @@ jobs:
         run: for f in *.js; do node --check "$f" || exit 1; done
       - name: Aucune clé secrète dans le code
         run: |
-          if grep -rnE "sb_secret_[A-Za-z0-9_-]{6,}|service_role|re_[A-Za-z0-9]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY" --exclude-dir=.git --exclude-dir=.github .; then
+          if grep -rnE "sb_secret_[A-Za-z0-9_-]{6,}|eyJhbGciOi[A-Za-z0-9_-]{10,}\.eyJ|re_[A-Za-z0-9]{20,}|xkeysib-[a-f0-9]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY" --exclude-dir=.git --exclude-dir=.github .; then
             echo "Une clé secrète semble être dans le code. Retirez-la avant d'envoyer." && exit 1
           fi
       - name: Les fichiers appelés par index.html existent
