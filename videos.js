@@ -59,7 +59,7 @@
     return `<div class="scrim" data-vd-close></div><form class="sheet pl-sheet" id="vd-form" novalidate>
       <div class="sheet-grab" aria-hidden="true"></div>
       <div class="sheet-head"><button class="link" type="button" data-vd-close>Annuler</button><b>${X.id ? "La vidéo" : "Nouvelle vidéo"}</b><button class="link strong" type="submit">Enregistrer</button></div>
-      ${f("url", "Lien de la vidéo (Drive, WeTransfer, Dropbox…)", v.url, 'type="url" inputmode="url" placeholder="https://…" required')}
+      ${f("url", "Lien de la vidéo (Drive, WeTransfer, Dropbox…)", v.url, 'type="url" inputmode="url" placeholder="https://…"' + (v.status === "monter" ? "" : " required"))}
       ${okUrl(v.url) ? `<a class="btn btn-ghost" href="${esc(v.url)}" target="_blank" rel="noopener">${icon("download")}Ouvrir ou télécharger la vidéo</a>` : ""}
       <div class="field-row">${sel("client", "Client", EM().allClients().map(c => [c.id, c.name]), v.client)}${sel("status", "Étape", COLS, v.status)}</div>
       <div class="field-row">${f("angle", "Accroche ou angle", v.angle, 'maxlength="60" placeholder="Ex. : facture divisée par 3"')}${f("serie", "Série", v.serie || 1, 'type="number" min="1" max="30"')}</div>
@@ -107,7 +107,7 @@
     if (!e.target.getAttribute || e.target.getAttribute("id") !== "vd-form") return false;
     e.preventDefault();
     const fd = new FormData(e.target), g = k => String(fd.get(k) || "").trim(), url = g("url");
-    if (!okUrl(url)) { EM().toast("Collez le lien complet de la vidéo, qui commence par https://"); return true; }
+    if (url ? !okUrl(url) : g("status") !== "monter") { EM().toast("Collez le lien complet de la vidéo, qui commence par https://"); return true; }
     const cur = X.id ? VID().list.find(x => x.id === X.id) || {} : { id: "vd" + Date.now().toString(36), createdAt: nowIso(), by: S.who };
     let v = Object.assign({}, cur, { url, client: g("client"), status: g("status") || "pret", angle: g("angle"), serie: Number(g("serie")) || 1, format: g("format"), poster: g("poster"),
       when: g("whenDate") ? g("whenDate") + (g("whenTime") ? "T" + g("whenTime") : "") : "", caption: String(fd.get("caption") || "").trim(), note: g("note"), updatedAt: nowIso(), updatedBy: S.who });
@@ -121,5 +121,8 @@
   }
   // Fiche client : le nombre de vidéos par étape
   function clientCount(cid) { const l = VID().list.filter(v => v.client === cid); return { monter: l.filter(v => v.status === "monter").length, pret: l.filter(v => v.status === "pret").length, ligne: l.filter(v => v.status === "ligne").length }; }
-  window.ENTREMIS_VIDEOS = { view, sheet, onClick, onSubmit, clientCount, toPost: () => VID().list.filter(v => v.status === "pret"), init: render => VID().init(render), reset: () => { X.sheet = null; X.id = null; } };
+  // Le Studio contenu crée les fiches « à monter » (un script, ou une version de la matrice)
+  function add(o, S) { const v = Object.assign({ id: "vd" + Date.now().toString(36) + (o.suffix != null ? "-" + o.suffix : ""), createdAt: nowIso(), by: S.who, status: "monter", serie: 1, url: "" }, o); delete v.suffix;
+    v.name = v.name || stdName(v.client, v.angle, v.serie); VID().put(v); return v; }
+  window.ENTREMIS_VIDEOS = { view, sheet, onClick, onSubmit, clientCount, add, toPost: () => VID().list.filter(v => v.status === "pret"), init: render => VID().init(render), reset: () => { X.sheet = null; X.id = null; } };
 })();

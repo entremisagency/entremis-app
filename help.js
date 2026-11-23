@@ -19,6 +19,7 @@
     sante: "Les clients à surveiller : retard sur l'objectif, absences, fin d'engagement. Pour agir avant qu'un client parte.",
     "scripts-equipe": "Les scripts d'appel et de visite, à jour pour toute l'équipe et pour les clients.",
     secteurs: "Les métiers (pompes à chaleur, solaire…) et la façon de livrer chacun : rendez-vous, transfert d'appel ou devis.",
+    studio: "Le Studio contenu : voir dans la bibliothèque publicitaire Meta les pubs qui tournent depuis longtemps, écrire les scripts selon le brief de Gianni (les mots interdits sont signalés), puis préparer toutes les versions à monter. « Envoyer au montage » crée la fiche dans Vidéos.",
     juridique: "Les documents juridiques prêts à remplir : contrat, droit à l'image, prélèvement SEPA, RGPD… Ils se remplissent avec la fiche du client. À faire relire avant usage.",
     acces: "Créer l'accès d'un client à son espace, lui redonner un mot de passe provisoire, ou retirer son accès.",
     pipeline: "Les installateurs à signer, étape par étape. Glissez une carte d'une colonne à l'autre ; la prévision pondère chaque prospect selon son étape.",

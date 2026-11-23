@@ -29,6 +29,10 @@ const TOOLS = [
   { name: "lister_taches", description: "Les tâches de l'équipe (Marc, Richard, Gianni), à faire ou faites.", inputSchema: { type: "object", properties: { pour: { type: "string", description: "marc, richard ou gianni" }, faites: { type: "boolean" } } } },
   { name: "creer_tache", description: "Crée une tâche dans l'app Entremis (visible par toute l'équipe).", inputSchema: { type: "object", properties: { titre: { type: "string" }, description: { type: "string", description: "les détails utiles (facultatif)" }, pour: { type: "string", description: "marc, richard ou gianni (par défaut : soi)" }, echeance: { type: "string", description: "AAAA-MM-JJ" }, client: { type: "string" } }, required: ["titre"] } },
   { name: "documents_de_travail", description: "Les documents de l'équipe (argumentaire, brief de tournage, veille…). Sans titre : la liste. Avec titre : le texte.", inputSchema: { type: "object", properties: { titre: { type: "string" } } } },
+  { name: "lister_veille", description: "La veille Meta de l'équipe : les pubs repérées dans la bibliothèque publicitaire Meta (annonceur, en ligne depuis, accroche, pourquoi elle marche, lien). Les plus anciennes d'abord : une pub qui tourne depuis 6 mois et plus est celle qui marche.", inputSchema: { type: "object", properties: {} } },
+  { name: "ajouter_veille", description: "Ajoute une pub repérée à la veille de l'équipe (Studio contenu).", inputSchema: { type: "object", properties: { annonceur: { type: "string" }, lien: { type: "string", description: "lien https de la pub dans la bibliothèque Meta" }, depuis: { type: "string", description: "AAAA-MM-JJ, date de début de diffusion" }, famille: { type: "string", enum: ["local", "plateforme", "confiance", "autre"] }, format: { type: "string" }, accroche: { type: "string" }, pourquoi: { type: "string", description: "pourquoi elle marche, ce qu'on en reprend" } }, required: ["annonceur"] } },
+  { name: "lister_scripts_video", description: "Les scripts vidéo du Studio contenu (titre, client, format, statut, texte).", inputSchema: { type: "object", properties: { client: { type: "string" } } } },
+  { name: "ecrire_script_video", description: "Enregistre un script vidéo en brouillon dans le Studio contenu, pour un client. Suivre le brief de tournage de Gianni (outil documents_de_travail) : accroche 0-3 s, un argument (court 15-45 s) ou le déroulé long (1-2 min), appel à l'action, écran de fin avec la mention France Rénov'. Interdits : « 1 € », « MaPrimeRénov' », montants d'aide, crédit ou financement, fausse urgence.", inputSchema: { type: "object", properties: { client: { type: "string", description: "identifiant ou nom" }, titre: { type: "string" }, format: { type: "string", enum: ["court", "long"] }, accroche: { type: "string" }, texte: { type: "string", description: "le script complet" } }, required: ["client", "texte"] } },
   { name: "chiffres_du_mois", description: "Les chiffres de la machine à leads pour un mois : leads, facturables, RDV pris, pub dépensée, coût par lead, contestations.", inputSchema: { type: "object", properties: { mois: { type: "string", description: "AAAA-MM" } } } }
 ];
 
@@ -46,7 +50,7 @@ function billing(rows: Row[], c: any, m: string) {
 const NEED: Record<string, string[]> = {
   resume_du_jour: ["leads", "rdv", "tasks", "documents", "clients"], lister_leads: ["leads", "clients"], lire_lead: ["leads", "contests", "clients"], lister_clients: ["clients"],
   fiche_client: ["clients", "leads", "contests", "flow", "meta", "ads"], facturation_du_mois: ["clients", "leads", "contests"], lister_rendez_vous: ["rdv", "clients"], lister_taches: ["tasks"],
-  creer_tache: ["clients"], documents_de_travail: ["refs"], chiffres_du_mois: ["clients", "leads", "contests", "meta", "results"]
+  creer_tache: ["clients"], documents_de_travail: ["refs"], lister_veille: ["veille"], ajouter_veille: [], lister_scripts_video: ["scripts-video", "clients"], ecrire_script_video: ["clients"], chiffres_du_mois: ["clients", "leads", "contests", "meta", "results"]
 };
 
 export async function callTool(store: Store, me: { who: string }, name: string, a: Record<string, any>) {
@@ -105,6 +109,29 @@ export async function callTool(store: Store, me: { who: string }, name: string, 
       if (!a.titre) return ds.map((d: any) => ({ titre: d.title, resume: d.what || "", mis_a_jour: d.updatedAt || null }));
       const k = s(a.titre).toLowerCase(), d = ds.find((x: any) => s(x.title).toLowerCase() === k) || ds.find((x: any) => s(x.title).toLowerCase().includes(k));
       if (!d) throw new Error("Document introuvable."); return { titre: d.title, texte: d.text };
+    }
+    case "lister_veille": return asData(rows, "veille").sort((x: any, y: any) => s(x.since || "9").localeCompare(s(y.since || "9"))).slice(0, 200)
+      .map((v: any) => ({ annonceur: v.advertiser, depuis: v.since || null, famille: v.family || null, format: v.format || null, accroche: v.hook || null, pourquoi: v.why || null, lien: v.url || null }));
+    case "ajouter_veille": {
+      const adv = s(a.annonceur).slice(0, 80); if (!adv) throw new Error("Il faut le nom de l'annonceur.");
+      const url = s(a.lien); if (url && !/^https:\/\//i.test(url)) throw new Error("Le lien doit commencer par https://");
+      const now = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 16).replace(" ", "T"), id = "vt" + Date.now().toString(36);
+      await store.insert("veille", id, { id, advertiser: adv, url, since: /^\d{4}-\d{2}-\d{2}$/.test(s(a.depuis)) ? s(a.depuis) : "", family: ["local", "plateforme", "confiance", "autre"].includes(s(a.famille)) ? s(a.famille) : "autre",
+        format: s(a.format).slice(0, 40), hook: s(a.accroche).slice(0, 200), why: s(a.pourquoi).slice(0, 600), reach: 0, by: me.who, via: "claude", createdAt: now, updatedAt: now });
+      return { ok: true, id, annonceur: adv };
+    }
+    case "lister_scripts_video": {
+      const c = a.client ? findClient(rows, a.client) : null, names = Object.fromEntries(asData(rows, "clients").map((x: any) => [x.id, x.name]));
+      return asData(rows, "scripts-video").filter((x: any) => !c || x.client === c.id).slice(0, 100)
+        .map((x: any) => ({ id: x.id, titre: x.title, client: names[x.client] || x.client, format: x.format, statut: x.status || "brouillon", accroche: x.hook, texte: x.text }));
+    }
+    case "ecrire_script_video": {
+      const c = findClient(rows, a.client); if (!c) throw new Error("Client introuvable.");
+      const text = s(a.texte).slice(0, 8000); if (!text) throw new Error("Il faut le texte du script.");
+      const now = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 16).replace(" ", "T"), id = "sv" + Date.now().toString(36);
+      const hook = s(a.accroche).slice(0, 200), title = s(a.titre).slice(0, 80) || `${c.name} – ${hook.slice(0, 40) || "script"}`;
+      await store.insert("scripts-video", id, { id, client: c.id, title, format: s(a.format) === "long" ? "long" : "court", hook, bodies: [], cta: "", text, status: "brouillon", by: me.who, via: "claude", updatedAt: now });
+      return { ok: true, id, titre: title, client: c.name, a_verifier: "Ouvrir le Studio contenu : les mots interdits y sont signalés avant l'envoi au montage." };
     }
     case "chiffres_du_mois": {
       const clients = asData(rows, "clients").filter((c: any) => !c.archived), per = clients.map((c: any) => ({ client: c.name, ...billing(rows, c, m), detail: undefined }));

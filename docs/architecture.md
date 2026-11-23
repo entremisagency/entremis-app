@@ -65,6 +65,7 @@ Chaque liste a `.list`, `.put(ligne)`, `.remove(id)` et `.init(rendu)`.
 | `bilan.js` | Le bilan de la semaine de chaque client : carte sur la fiche (envoi Gmail avec PDF, copier, PDF), « Votre semaine » sur l'accueil client, rappel du lundi ; envois notés dans `bilans` |
 | `sign.js` | La signature en ligne : « Envoyer à signer » depuis Documents juridiques, page client « Documents à signer » (nom, « Lu et approuvé », signature dessinée), enregistrée par la fonction de base `signer_document` ; PDF signé pour l'équipe. Collection `signatures` (portant le client_id) |
 | `videos.js` | Les vidéos des pubs : lien (Drive, WeTransfer…), client, nom standard, accroche, texte, quand, qui poste, vérifications France Rénov' / RGE / montants. Prête avec un posteur : tâche créée ; en ligne : ajoutée aux pubs du client (`ads`). Collection `videos` |
+| `studio.js` | Le Studio contenu : recherches prêtes dans la bibliothèque publicitaire Meta et pubs repérées (`veille`), scripts selon le brief de Gianni avec les mots interdits signalés (`scripts-video`, accroches ajoutées : `accroches`), matrice accroches × corps × appels à l'action. « Envoyer au montage » crée la fiche dans `videos` |
 
 ## Ajouter une page
 
