@@ -237,6 +237,11 @@
         </section>
       </div>
       <div class="fcol">
+        ${(() => { const others = T.list.filter(t => t.status !== "done" && !isFor(t, me.id)).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).slice(0, 6);
+          return `<section class="card">
+          <div class="card-head"><h2 class="h2">Les tâches de l'équipe</h2><a class="link" href="#taches">Tout voir ${icon("arrow")}</a></div>
+          ${!T.ready ? loadingBlock("Chargement des tâches") : others.length ? `<ul class="tasks">${others.map(t => taskRow(t, { showWho: true })).join("")}</ul>` : `<p class="body">Rien en cours chez ${TD().members.filter(m => m.id !== me.id).map(m => m.name).join(" et ")} pour l'instant. Leurs nouvelles tâches s'affichent ici.</p>`}
+        </section>`; })()}
         ${window.ENTREMIS_LEADS.queueCard()}
         ${window.ENTREMIS_GCAL.panel()}
         <section class="card">
@@ -270,7 +275,8 @@
   function viewTasks(S) {
     const esc = EM().esc, icon = EM().icon, narrow = EM().isNarrow();
     const ms = TD().members;
-    const open = T.list.filter(t => t.status !== "done");
+    const addedBy = S.taskBy || "all";   // « Ajoutées par » : voir ce que chacun a mis pour l'équipe
+    const open = T.list.filter(t => t.status !== "done" && (addedBy === "all" || (t.by || t.who) === addedBy));
     const done = T.list.filter(t => t.status === "done").sort((a, b) => (b.doneAt || "") < (a.doneAt || "") ? -1 : 1);
     const journalWho = S.journalWho || "all";
     const journal = done.filter(t => journalWho === "all" || (t.doneBy || t.who) === journalWho).slice(0, 12);
@@ -290,6 +296,7 @@
       <div class="head-actions"><span class="sample sync">${syncNote}</span><button class="btn btn-primary" type="button" data-act="new-task">${icon("plus")}Nouvelle tâche</button></div>
     </div>
 
+    ${T.ready && T.list.length ? `<div class="filters">${EM().fsel("task-by", "Ajoutées par", [["all", "Tout le monde"]].concat(ms.map(m => [m.id, m.name])), addedBy)}</div>` : ""}
     ${!T.ready ? loadingBlock("Chargement des tâches") : !T.list.length ? `<section class="card">${emptyTasks("Aucune tâche pour l'instant. La première que vous ajoutez sera visible par Marc, Richard et Gianni.")}</section>` : narrow ? `
       <div class="seg seg-lg seg-full" role="group" aria-label="Personne">${ms.map(m => `<button type="button" data-board-who="${m.id}" aria-pressed="${mWho === m.id}">${m.name}</button>`).join("")}</div>
       ${col(member(mWho))}` : `<div class="board">${ms.map(col).join("")}</div>`}
@@ -535,7 +542,7 @@
 
   /* ---------- Interactions propres à l'équipe ---------- */
   function onClick(e, S, render) {
-    const t = e.target.closest("[data-deal],[data-pipe-stage],[data-task-toggle],[data-task-del],[data-board-who],[data-journal],[data-who],[data-space],[data-read],[data-open-client],[data-act],[data-task-open]");
+    const t = e.target.closest("[data-task-by],[data-deal],[data-pipe-stage],[data-task-toggle],[data-task-del],[data-board-who],[data-journal],[data-who],[data-space],[data-read],[data-open-client],[data-act],[data-task-open]");
     if (!t) return false;
     const toast = EM().toast;
     if (t.dataset.taskOpen) { S.taskForm = true; S.taskEdit = t.dataset.taskOpen; haptic("tap"); render(); return true; }
@@ -560,6 +567,7 @@
     }
     if (t.dataset.pipeStage) { S.pipeStage = t.dataset.pipeStage; haptic("tap"); render(); return true; }
     if (t.dataset.taskDel) { if (S.taskEdit) { S.taskForm = false; S.taskEdit = null; render(); } deleteTask(t.dataset.taskDel, render); return true; }
+    if (t.dataset.taskBy !== undefined) { S.taskBy = t.dataset.taskBy; haptic("tap"); render(); return true; }
     if (t.dataset.boardWho) { S.boardWho = t.dataset.boardWho; haptic("tap"); render(); return true; }
     if (t.dataset.journal) { S.journalWho = t.dataset.journal; render(); return true; }
     if (t.dataset.who) { if (S.lock) return true; S.who = t.dataset.who; S.boardWho = null; EM().store.set("who", S.who); haptic("tap"); render(); toast(`Portail de ${member(S.who).name}.`); return true; }
