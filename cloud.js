@@ -51,7 +51,7 @@
   let readyResolve; const ready = new Promise(r => { readyResolve = r; });
   const loadLib = () => new Promise((ok, ko) => {
     if (window.supabase && window.supabase.createClient) return ok();
-    const s = document.createElement("script"); s.src = LIB; s.onload = ok; s.onerror = () => ko(new Error("lib")); document.head.appendChild(s);
+    const s = document.createElement("script"); s.crossOrigin = "anonymous"; s.src = LIB; s.onload = ok; s.onerror = () => ko(new Error("lib")); document.head.appendChild(s);
   });
 
   /* ---------- L'écran de connexion ----------
@@ -75,6 +75,7 @@
   function shell(form) {
     let g = document.getElementById("cloud-gate");
     if (!g) { g = document.createElement("div"); g.id = "cloud-gate"; document.body.appendChild(g); }
+    g.classList.remove("is-splash");
     g.innerHTML = `<div class="cg-shell">${ART}${form}</div>`;
     return g;
   }
@@ -95,6 +96,14 @@
       <p class="cg-foot">Pas de compte ? Votre contact Entremis vous le crée.</p>
     </form>`);
     const i = g.querySelector(lastEmail ? 'input[name="password"]' : 'input[name="email"]'); if (i) i.focus();
+  }
+  // L'écran d'ouverture : quand une session est gardée sur l'appareil, on ne montre jamais le formulaire pendant la vérification
+  // (Marc, 23 nov. 2026 : « l'écran de connexion s'affiche 10 secondes puis disparaît »). Juste le logo et une ligne.
+  function splash(msg) {
+    let g = document.getElementById("cloud-gate");
+    if (!g) { g = document.createElement("div"); g.id = "cloud-gate"; document.body.appendChild(g); }
+    g.classList.add("is-splash");
+    g.innerHTML = `<div class="cg-splash" role="status"><svg class="cg-splash-logo" aria-hidden="true"><use href="#logo-e"/></svg><span class="cg-splash-name">ENTREMIS</span><p>${esc_(msg || "Ouverture de votre espace…")}</p></div>`;
   }
   const closeGate = () => { const g = document.getElementById("cloud-gate"); if (g) g.remove(); };
   // Choisir son mot de passe : au premier passage (le mot de passe provisoire ne sert qu'une fois), après une invitation ou un oubli
@@ -126,18 +135,22 @@
   async function afterLogin(session) {
     // Téléphone qui se réveille, réseau qui hésite : on réessaie au lieu d'afficher « compte pas activé » (Marc, 21 nov. 2026)
     let data = null, error = null;
+    // Le compte et les réglages personnels sont demandés en même temps (un aller-retour de moins à l'ouverture)
+    const privQ = client.from("private_docs").select("collection, id, data");
     for (let i = 0; i < 4; i++) {
       ({ data, error } = await client.from("members").select("who, role, client_id").eq("user_id", session.user.id).maybeSingle());
-      if (!error) break;
-      gate("Connexion à la base…", "ok"); await wait(1500 * (i + 1));
+      if (!error || !isNetwork(error)) break;
+      splash("Connexion à la base…"); await wait(1500 * (i + 1));
     }
-    if (error) { gate("Pas de réseau pour l'instant. L'app réessaie dès que la connexion revient.", "ok"); retryLater(); return; }
+    // Session refusée par la base (expirée, retirée) : retour au formulaire, jamais bloqué sur l'écran d'ouverture
+    if (error && !isNetwork(error)) { try { await client.auth.signOut({ scope: "local" }); } catch (_) {} gate("Votre session a expiré. Reconnectez-vous."); return; }
+    if (error) { splash("Pas de réseau pour l'instant. L'app réessaie dès que la connexion revient."); retryLater(); return; }
     if (!data) { gate("Ce compte n'est pas encore activé. Demandez à Marc de l'ajouter à l'équipe (dernière étape du fichier schema.sql)."); return; }
     me = { id: session.user.id, email: session.user.email, who: data.who, role: data.role, client: data.client_id };
     // Premier passage : le mot de passe provisoire donné par Marc ne sert qu'une fois, on en choisit un à soi
     const provisional = String(session.user.email || "").endsWith("@" + LOGIN_DOMAIN);   // compte à identifiant : mot de passe donné par Marc
     if (provisional && !pwOk && !((session.user && session.user.user_metadata) || {}).pw_set) { pwMode = "first"; passwordGate(""); return; }
-    const p = await client.from("private_docs").select("collection, id, data");
+    const p = await privQ;
     priv = {}; (p.data || []).forEach(r => { priv[r.collection + "/" + r.id] = r.data; });
     closeGate(); readyResolve(me);
     setTimeout(pushSubscribe, 3000);   // déjà autorisé sur cet appareil : on renouvelle l'abonnement
@@ -162,8 +175,9 @@
   async function start() {
     if (!on) return;
     document.documentElement.classList.add("is-cloud");
-    gate("Connexion à la base…", "ok");
-    try { await loadLib(); } catch (_) { gate("La base ne répond pas. Vérifiez la connexion, puis rechargez la page."); return; }
+    const saved = hasSaved();
+    if (saved) splash(); else gate("", "ok");
+    try { await loadLib(); } catch (_) { if (saved) { splash("La base ne répond pas. L'app réessaie dès que la connexion revient."); retryLater(); } else gate("La base ne répond pas. Vérifiez la connexion, puis rechargez la page."); return; }
     client = window.supabase.createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: STORE_KEY } });
     // Rester connecté : la session reste sur l'appareil. Si le réseau manque au démarrage, on réessaie ; on ne renvoie à
     // l'écran de connexion que si la base dit vraiment que la session n'est plus valable.
@@ -173,7 +187,7 @@
       if (!error || !isNetwork(error)) break;
       await wait(1500 * (i + 1));
     }
-    if (error && isNetwork(error) && hasSaved()) { gate("Pas de réseau pour l'instant. L'app réessaie dès que la connexion revient.", "ok"); retryLater(); return; }
+    if (error && isNetwork(error) && hasSaved()) { splash("Pas de réseau pour l'instant. L'app réessaie dès que la connexion revient."); retryLater(); return; }
     if (data && data.session && LINK) { passwordGate(""); return; }
     if (data && data.session) await afterLogin(data.session);
     else gate(LINK ? "Ce lien n'est plus valable. Demandez une nouvelle invitation, ou « Mot de passe oublié »." : "");

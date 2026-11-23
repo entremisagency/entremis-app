@@ -3127,3 +3127,10 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .lp-act .brand{width:var(--icon);height:var(--icon)}
 .icon-btn .brand{width:var(--icon);height:var(--icon)}
 .set-title-brand{display:flex;align-items:center;gap:var(--space-2)} .set-title-brand .brand{width:var(--icon-sm);height:var(--icon-sm)}
+
+/* L'écran d'ouverture (session gardée sur l'appareil) : le logo et une ligne, jamais le formulaire */
+#cloud-gate.is-splash{place-items:center;overflow:hidden}
+.cg-splash{display:grid;justify-items:center;gap:var(--space-3);text-align:center;color:var(--color-ink)}
+.cg-splash-logo{width:var(--space-8);height:var(--space-8);color:var(--color-ink)}
+.cg-splash-name{font-family:var(--font-charte);font-size:var(--text-caption);font-weight:var(--weight-strong);letter-spacing:.2em}
+.cg-splash p{margin:0;max-width:calc(var(--space-8) * 5);font-size:var(--text-small);color:var(--color-muted)}
