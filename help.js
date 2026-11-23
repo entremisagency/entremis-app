@@ -12,6 +12,7 @@
     appel: "Le poste pour rappeler les leads : le script, les critères à vérifier, et le résultat de l'appel en un clic.",
     leads: "Les particuliers qui demandent une étude. Chaque lead va à un seul client. Ici : le donner, fixer son niveau, dire s'il est facturé, traiter une contestation.",
     "rendez-vous": "Tous les rendez-vous placés chez tous les clients. Marquez la visite faite, signalez une absence, placez un remplaçant.",
+    videos: "Les vidéos des pubs, du montage à la mise en ligne : le lien pour la télécharger, le texte à poster, qui la poste et quand. Prête avec quelqu'un pour la poster : il reçoit une tâche. En ligne : elle rejoint les pubs en cours du client.",
     zones: "Qui travaille où. Une zone = un seul client : c'est ici qu'on vérifie l'exclusivité avant de signer.",
     contacts: "Le CRM : clients et prospects au même endroit. Cherchez, filtrez, planifiez la prochaine relance, étiquetez, attribuez à quelqu'un, importez ou exportez une liste.",
     clients: "Les installateurs qui achètent nos leads : leur campagne, leur rythme, qui les suit. Ouvrez une fiche pour tout le détail.",

@@ -46,6 +46,7 @@
       <ol class="pl-steps">${rows}</ol>
       <dl class="lp-dl">
         <div><dt>Tournage</dt><dd>${shoot || "à planifier"}</dd></div>
+        ${(() => { const n = window.ENTREMIS_VIDEOS ? window.ENTREMIS_VIDEOS.clientCount(cid) : null; return n ? `<div><dt>Vidéos</dt><dd><a class="link" href="#videos">${n.pret} prête${n.pret > 1 ? "s" : ""} à poster · ${n.ligne} en ligne${n.monter ? ` · ${n.monter} en montage` : ""}</a></dd></div>` : ""; })()}
         <div><dt>Autorisations signées</dt><dd>${s.consents ? esc(String(s.consents)) : "aucune"}</dd></div>
         <div><dt>Engagement</dt><dd>${eg.end ? `${eg.months} mois, jusqu'au ${fr(eg.end)}` : "à définir (Campagne et suivi)"}</dd></div>
         <div><dt>Départ avant la fin</dt><dd>rachat du tournage ${eur(eg.rachat)} HT</dd></div>
@@ -258,6 +259,6 @@
   document.addEventListener("input", e => { if (!e.target.matches || !e.target.matches("[data-pl-doc-q]")) return; X.q = e.target.value; const pos = e.target.selectionStart; EM().render(); const i = document.querySelector("[data-pl-doc-q]"); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (_) {} } });
   function sheet(S) { return X.sheet === "shoot" ? shootSheet() : X.sheet === "ad" ? adSheet() : X.sheet === "doc" ? docSheet(S) : ""; }
 
-  window.ENTREMIS_PILOT = { flowCard, adsCard, riskPanel, viewDocs, backupRows, backupDue, sheet, onClick, onSubmit, rule, flowOf, engagement,
+  window.ENTREMIS_PILOT = { addAd: a => ADS().put(a), flowCard, adsCard, riskPanel, viewDocs, backupRows, backupDue, sheet, onClick, onSubmit, rule, flowOf, engagement,
     init: render => [FLOW, ADS, REFS, BACK].forEach(s => s().init(render)), reset: () => { X.sheet = null; X.id = null; X.doc = null; X.q = ""; } };
 })();

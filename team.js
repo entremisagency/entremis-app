@@ -703,7 +703,7 @@
 
   window.ENTREMIS_TEAM = {
     avatar: av, taskSheet,
-    TEAM_ROUTES, SHARED_ROUTES, T, initTasks, pipe: () => pipe(), STAGES, setStage, initSwipe, onClick, onChange, onSubmit, member, haptic, hapticTry, hapticMode: () => hMode(), photoUrl, photoBusy: () => P.busy,
+    TEAM_ROUTES, SHARED_ROUTES, T, initTasks, addTask: t => putTask(t), completeTask: (id, who) => { const t = T.list.find(x => x.id === id); if (t && t.status !== "done") putTask(Object.assign({}, t, { status: "done", doneAt: nowIso(), doneBy: who })); }, pipe: () => pipe(), STAGES, setStage, initSwipe, onClick, onChange, onSubmit, member, haptic, hapticTry, hapticMode: () => hMode(), photoUrl, photoBusy: () => P.busy,
     views: { equipe: viewPortal, taches: viewTasks, clients: viewClients, pipeline: viewPipeline, avancement: viewProgress, notifications: viewNotifications, reglages: S => window.ENTREMIS_SETTINGS.view(S) },
     unreadCount: S => notifs(S.space).filter(n => !(S.read || {})[n.id]).length
   };
