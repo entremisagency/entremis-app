@@ -94,3 +94,9 @@ Google Cloud (projet de l'app) : activer l'API Google Drive, et ajouter le droit
 3. Supabase › Edge Functions › Secrets : `BREVO_API_KEY` (la clé Brevo) et, si besoin, `SMS_SENDER` (11 caractères au plus, « Entremis » par défaut).
 4. SQL : section 11 de `schema.sql` (table `sms_codes`).
 Tant que la clé n'est pas réglée, la page de demande envoie les demandes sans code, comme avant.
+
+## Protection des données (23/11/2026)
+- **Corbeille** : toute ligne supprimée est gardée 30 jours dans `docs_corbeille`.
+- **Garde-fou** : la base refuse de supprimer plus de 50 lignes d'un coup. Pour un vidage voulu, mettre `set local entremis.vidage = 'oui';` dans la même transaction, juste avant le `delete`.
+- **Sauvegarde de nuit** : chaque nuit (pg_cron), toute la table `docs` est copiée dans `docs_sauvegardes`, gardée 14 jours. Plus la sauvegarde sur le Drive commun (Réglages › Données et sécurité).
+- **Remettre des données** : `prototypes/supabase-en-cas-d-erreur.sql` (hors du dépôt), un bloc à la fois. Rien n'y efface : on remet seulement ce qui manque.

@@ -385,3 +385,78 @@ begin
 end $$;
 revoke all on function public.signer_document(text, text, text) from public;
 grant execute on function public.signer_document(text, text, text) to authenticated;
+
+-- ===== 13. Protection des données : corbeille 30 jours, garde-fou des suppressions en masse, sauvegarde de nuit 14 jours =====
+
+-- ===== 1. La corbeille =====
+create table if not exists public.docs_corbeille (
+  n bigserial primary key,
+  collection text not null,
+  id text not null,
+  data jsonb,
+  client_id text,
+  deleted_at timestamptz not null default now(),
+  deleted_by uuid
+);
+alter table public.docs_corbeille enable row level security;
+drop policy if exists "corbeille : l'équipe lit" on public.docs_corbeille;
+create policy "corbeille : l'équipe lit" on public.docs_corbeille for select to authenticated using (public.is_team());
+create index if not exists docs_corbeille_quand on public.docs_corbeille (deleted_at);
+
+create or replace function public.docs_vers_corbeille() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.docs_corbeille (collection, id, data, client_id, deleted_by) values (old.collection, old.id, old.data, old.client_id, auth.uid());
+  return old;
+end $$;
+drop trigger if exists docs_corbeille on public.docs;
+create trigger docs_corbeille after delete on public.docs for each row execute function public.docs_vers_corbeille();
+
+-- ===== 2. Le garde-fou contre les suppressions en masse =====
+create or replace function public.docs_garde_fou() returns trigger
+language plpgsql set search_path = public as $$
+declare v_n int;
+begin
+  select count(*) into v_n from anciennes;
+  if v_n > 50 and coalesce(current_setting('entremis.vidage', true), '') <> 'oui' then
+    raise exception 'Garde-fou Entremis : % lignes allaient être supprimées d''un coup. Rien n''a été supprimé. (Pour un vidage voulu : set local entremis.vidage = ''oui''; avant le delete.)', v_n;
+  end if;
+  return null;
+end $$;
+drop trigger if exists docs_garde_fou on public.docs;
+create trigger docs_garde_fou after delete on public.docs referencing old table as anciennes for each statement execute function public.docs_garde_fou();
+
+-- ===== 3. La sauvegarde de chaque nuit (gardée 14 jours) =====
+create table if not exists public.docs_sauvegardes (
+  jour date primary key,
+  lignes int not null,
+  contenu jsonb not null,
+  faite_le timestamptz not null default now()
+);
+alter table public.docs_sauvegardes enable row level security;   -- aucune règle : lue seulement depuis le SQL Editor
+
+create or replace function public.sauvegarde_du_jour() returns int
+language plpgsql security definer set search_path = public as $$
+declare v_n int;
+begin
+  insert into public.docs_sauvegardes (jour, lignes, contenu)
+    select current_date, count(*), coalesce(jsonb_agg(jsonb_build_object('collection', collection, 'id', id, 'data', data, 'client_id', client_id)), '[]'::jsonb) from public.docs
+  on conflict (jour) do update set lignes = excluded.lignes, contenu = excluded.contenu, faite_le = now();
+  delete from public.docs_sauvegardes where jour < current_date - 14;
+  delete from public.docs_corbeille where deleted_at < now() - interval '30 days';
+  select lignes into v_n from public.docs_sauvegardes where jour = current_date;
+  return v_n;
+end $$;
+revoke all on function public.sauvegarde_du_jour() from public, anon, authenticated;
+
+-- Chaque nuit à 3 h (heure UTC, soit 4 h à Paris l'hiver) grâce à pg_cron, inclus dans Supabase
+do $$ begin
+  create extension if not exists pg_cron with schema pg_catalog;
+exception when others then raise notice 'pg_cron : à activer dans Database › Extensions, puis relancer ce bloc.';
+end $$;
+do $$ begin
+  perform cron.unschedule('entremis-sauvegarde') where exists (select 1 from cron.job where jobname = 'entremis-sauvegarde');
+  perform cron.schedule('entremis-sauvegarde', '0 3 * * *', 'select public.sauvegarde_du_jour()');
+exception when others then raise notice 'Sauvegarde de nuit pas programmée : %', sqlerrm;
+end $$;
+
