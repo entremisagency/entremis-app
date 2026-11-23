@@ -62,6 +62,8 @@ Chaque liste a `.list`, `.put(ligne)`, `.remove(id)` et `.init(rendu)`.
 | `help.js` | Le petit « i » à côté du titre de chaque page, avec le texte de chaque page |
 | `update.js` | La mise à jour toute seule : compare le numéro ?v= de la page en ligne (outils/version.sh) au sien ; recharge au retour sur l'app si rien n'est en cours, sinon bandeau « Mettre à jour ». Ne pas oublier `sh outils/version.sh` avant chaque envoi |
 | `supabase/functions/sms` | Le code SMS de la page de demande : envoi (Brevo), vérification, puis entrée dans Leads marquée « numéro vérifié ». Un lead `verified: false` n'est pas facturé sauf décision de l'équipe. Factures du mois : `machine.js` (autoInvoices, brouillons le 1er) |
+| `bilan.js` | Le bilan de la semaine de chaque client : carte sur la fiche (envoi Gmail avec PDF, copier, PDF), « Votre semaine » sur l'accueil client, rappel du lundi ; envois notés dans `bilans` |
+| `sign.js` | La signature en ligne : « Envoyer à signer » depuis Documents juridiques, page client « Documents à signer » (nom, « Lu et approuvé », signature dessinée), enregistrée par la fonction de base `signer_document` ; PDF signé pour l'équipe. Collection `signatures` (portant le client_id) |
 
 ## Ajouter une page
 

@@ -42,6 +42,7 @@
     rdv: "Tout sur ce rendez-vous : le projet du particulier, ses réponses, le mot d'Entremis. Notez le résultat après la visite.",
     comptes: "Les demandes qui vous ont été transmises, et où en est chacune.",
     facturation: "Vos leads du mois, leur niveau et ce qui sera facturé. Vous avez 7 jours pour contester un lead.",
+    signer: "Les contrats et documents envoyés par Entremis. Lisez-les, puis signez en ligne avec le doigt ou la souris.",
     resultats: "Le résultat de chaque visite (signé, devis, pas intéressé) : il aide Entremis à mieux cibler vos leads.",
     messages: "Vos échanges avec Entremis.",
     scripts: "Les scripts conseillés pour vos visites.",

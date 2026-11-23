@@ -86,7 +86,7 @@
     if (S.lock || !allClients().some(x => x.id === id)) return;
     S.viewAs = id; store.set("as", id); S.space = "client"; store.set("space", "client");
     S.step = "all"; S.filter = "all"; S.acc = null; S.mDay = D.today.iso;
-    if (!/^#(accueil|agenda|comptes|resultats|facturation|dispos|parrainage|scripts|aide|menu|notifications|reglages)$/.test(location.hash)) location.hash = "#accueil";
+    if (!/^#(accueil|agenda|comptes|resultats|facturation|signer|dispos|parrainage|scripts|aide|menu|notifications|reglages)$/.test(location.hash)) location.hash = "#accueil";
     render(); toast(`Vue client : ${viewClient().name}.`);
   }
 
@@ -193,7 +193,7 @@
     const c = C(), team = S.space === "team", U = viewUser();
     const TD_ = () => window.ENTREMIS_DATA.team;
     const section = route.name === "script" ? "scripts" : route.name === "rdv" ? "agenda" : route.name === "fiche" ? (TD_().clients.some(x => x.id === route.id) ? "clients" : "pipeline") : route.name;
-    const tabSection = !team && ["facturation", "messages", "scripts", "dispos", "parrainage", "notifications", "aide", "reglages", "menu"].includes(section) ? "menu" : team && ["appels", "marketing", "avancement", "notifications", "reglages", "chiffres", "scripts-equipe", "pipeline", "finances", "guide", "processus", "discussions", "secteurs", "acces", "documents", "juridique", "contacts", "appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite"].includes(section) ? "plus" : section === "fiche" ? "clients" : section;
+    const tabSection = !team && ["facturation", "signer", "messages", "scripts", "dispos", "parrainage", "notifications", "aide", "reglages", "menu"].includes(section) ? "menu" : team && ["appels", "marketing", "avancement", "notifications", "reglages", "chiffres", "scripts-equipe", "pipeline", "finances", "guide", "processus", "discussions", "secteurs", "acces", "documents", "juridique", "contacts", "appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite"].includes(section) ? "plus" : section === "fiche" ? "clients" : section;
     document.documentElement.dataset.zone = S.space;   // pas « data-space » : ce nom sert aux boutons, et <html> les attraperait tous
     const campBox = $("#space").closest(".camp"); if (campBox) campBox.hidden = S.lock;
     $("#space").innerHTML = S.lock ? "" : [["client", "Client"], ["team", "Agence"]].map(([v, l]) =>
@@ -210,7 +210,7 @@
       "Trouver des clients", ["pipeline", "users", "Prospection"], ["propositions", "euro", "Propositions"], ["etudes", "check", "Études de cas"], ["appels", "phone", "Appels"], ["marketing", "signal", "Marketing"],
       "Pilotage", ["chiffres", "gauge", "Chiffres"], ["documents", "book", "Documents de travail"], ["avancement", "chart", "Avancement"], ["finances", "euro", "Finances"], ["marge", "chart", "Marge"], ["conformite", "shield", "Conformité"]
     ] : [
-      ["accueil", "home", "Accueil"], ["agenda", "cal", "Agenda"], ["resultats", "chart", "Résultats"], ["facturation", "euro", "Leads et facture"], ["comptes", "inbox", c.words.accounts], ["messages", "chat", "Messages", replies], ["scripts", "book", "Scripts"], ["dispos", "clock", "Disponibilités"], ["parrainage", "users", "Parrainer"], ["notifications", "bell", "Notifications", unread], ["aide", "info", "Comment ça marche"]
+      ["accueil", "home", "Accueil"], ["agenda", "cal", "Agenda"], ["resultats", "chart", "Résultats"], ["facturation", "euro", "Leads et facture"], ["signer", "check", "Documents à signer", window.ENTREMIS_SIGN.pendingCount(viewId())], ["comptes", "inbox", c.words.accounts], ["messages", "chat", "Messages", replies], ["scripts", "book", "Scripts"], ["dispos", "clock", "Disponibilités"], ["parrainage", "users", "Parrainer"], ["notifications", "bell", "Notifications", unread], ["aide", "info", "Comment ça marche"]
     ];
     // Groupes du menu, repliables (on se souvient de ce qui est replié). Celui de la page ouverte reste ouvert.
     const link = ([r, i, l, n]) => `<a href="#${r}" ${section === r ? 'aria-current="page"' : ""}>${icon(i)}<span>${esc(l)}</span>${n ? `<span class="count">${n}</span>` : ""}</a>`;
@@ -235,7 +235,7 @@
     document.querySelectorAll(".bell .dot").forEach(d => { d.hidden = !unread; });
     const pt = document.getElementById("promise-text"); if (pt && !team) pt.textContent = "Vérifiés par code SMS, réservés à vous seul. 7 jours pour contester un lead.";
 
-    const names = { accueil: "Accueil", agenda: "Agenda", comptes: c.words.accounts, messages: "Messages", equipe: "Mon portail", taches: "Tâches", clients: "Clients", pipeline: "Prospection", avancement: "Avancement", finances: "Finances", appels: "Appels", marketing: "Marketing", plus: "Plus", chiffres: "Chiffres", leads: "Leads", generer: "Nouveau document", guide: "Guide", processus: "Processus", discussions: "Discussions", secteurs: "Secteurs", documents: "Documents de travail", contacts: "Contacts", juridique: "Documents juridiques", acces: "Accès clients", appel: "Poste d'appel", "rendez-vous": "Rendez-vous", zones: "Zones", sante: "Santé et suivi", propositions: "Propositions", etudes: "Études de cas", marge: "Marge", conformite: "Conformité", aide: "Comment ça marche", resultats: "Résultats", facturation: "Leads et facture", dispos: "Disponibilités", parrainage: "Parrainage", menu: "Plus", scripts: "Scripts", "scripts-equipe": "Scripts", notifications: "Notifications", reglages: "Réglages" };
+    const names = { accueil: "Accueil", agenda: "Agenda", comptes: c.words.accounts, messages: "Messages", equipe: "Mon portail", taches: "Tâches", clients: "Clients", pipeline: "Prospection", avancement: "Avancement", finances: "Finances", appels: "Appels", marketing: "Marketing", plus: "Plus", chiffres: "Chiffres", leads: "Leads", generer: "Nouveau document", guide: "Guide", processus: "Processus", discussions: "Discussions", secteurs: "Secteurs", documents: "Documents de travail", contacts: "Contacts", juridique: "Documents juridiques", acces: "Accès clients", appel: "Poste d'appel", "rendez-vous": "Rendez-vous", zones: "Zones", sante: "Santé et suivi", propositions: "Propositions", etudes: "Études de cas", marge: "Marge", conformite: "Conformité", aide: "Comment ça marche", resultats: "Résultats", facturation: "Leads et facture", signer: "Documents à signer", dispos: "Disponibilités", parrainage: "Parrainage", menu: "Plus", scripts: "Scripts", "scripts-equipe": "Scripts", notifications: "Notifications", reglages: "Réglages" };
     const fe = route.name === "fiche" ? (TD_().clients.find(x => x.id === route.id) || TD_().pipeline.find(x => x.id === route.id)) : null;
     const crumbs = route.name === "script" ? ["Scripts", (window.ENTREMIS_SCRIPTS && document.title) ? "Script" : "Script"] : route.name === "rdv" ? ["Agenda", route.appt ? route.appt.name : ""] : route.name === "fiche" ? [fe && fe.camp !== undefined || (fe && TD_().clients.includes(fe)) ? "Clients" : "Prospection", fe ? fe.name : "Fiche"] : route.name === "generer" ? ["Finances", "Nouveau document"] : [names[route.name]];
     $("#crumbs").innerHTML = `<span>${team ? "Espace agence" : esc(U.company) + " – " + esc(c.name)}</span>` + crumbs.map((x, i) =>
@@ -346,6 +346,7 @@
     </div>
 
     ${isNarrow() ? guideHtml : ""}
+    ${window.ENTREMIS_BILAN.clientCard(viewId())}
     <div class="kpis kpis-4" role="list">
       ${[
         { label: "Leads reçus", value: String(B.all.length), note: "ce mois-ci", ticks: [] },
@@ -676,9 +677,9 @@
   // « Plus » côté client (téléphone) : toutes les pages qui ne sont pas dans les onglets
   function viewClientMenu() {
     const c = C(), replies = c.messages.filter(m => m.status === "replied").length, unread = TM().unreadCount(S);
-    const ALL = { accueil: ["home", "Accueil"], agenda: ["cal", "Agenda"], resultats: ["chart", "Résultats"], facturation: ["euro", "Leads et facture"], comptes: ["inbox", c.words.accounts], messages: ["chat", "Messages"], scripts: ["book", "Scripts"], dispos: ["clock", "Disponibilités"], parrainage: ["users", "Parrainer un installateur"], notifications: ["bell", "Notifications"], reglages: ["user", "Réglages"], aide: ["info", "Comment ça marche"] };
+    const ALL = { accueil: ["home", "Accueil"], agenda: ["cal", "Agenda"], resultats: ["chart", "Résultats"], facturation: ["euro", "Leads et facture"], signer: ["check", "Documents à signer"], comptes: ["inbox", c.words.accounts], messages: ["chat", "Messages"], scripts: ["book", "Scripts"], dispos: ["clock", "Disponibilités"], parrainage: ["users", "Parrainer un installateur"], notifications: ["bell", "Notifications"], reglages: ["user", "Réglages"], aide: ["info", "Comment ça marche"] };
     const favG = window.ENTREMIS_HELP.favs("client").filter(r => ALL[r]).map(r => [r, ALL[r][0], ALL[r][1]]);
-    const groups = (favG.length ? [["Favoris", favG]] : []).concat([["Votre campagne", [["facturation", "euro", "Leads et facture"], ["messages", "chat", "Messages", replies], ["scripts", "book", "Scripts"]]],
+    const groups = (favG.length ? [["Favoris", favG]] : []).concat([["Votre campagne", [["facturation", "euro", "Leads et facture"], ["signer", "check", "Documents à signer", window.ENTREMIS_SIGN.pendingCount(viewId())], ["messages", "chat", "Messages", replies], ["scripts", "book", "Scripts"]]],
       ["Votre organisation", [["dispos", "clock", "Disponibilités"], ["parrainage", "users", "Parrainer un installateur"]]],
       ["Compte", [["notifications", "bell", "Notifications", unread], ["reglages", "user", "Réglages"], ["aide", "info", "Comment ça marche"]]]]);
     return `<div class="head"><div class="head-text"><h1 class="h1">Plus</h1><p class="sub">Toutes vos pages.</p></div></div>
@@ -764,7 +765,7 @@
     else if (h.startsWith("fiche-")) { name = "fiche"; id = h.slice(6); }
     else if (h.startsWith("script-")) { name = "script"; id = h.slice(7); }
     const GROWTH_ROUTES = ["appel", "rendez-vous", "zones", "sante", "propositions", "etudes", "marge", "conformite", "acces"];
-    const CLIENT_ROUTES = ["accueil", "agenda", "rdv", "comptes", "messages", "scripts", "script", "aide", "resultats", "dispos", "parrainage", "menu", "facturation"];
+    const CLIENT_ROUTES = ["accueil", "agenda", "rdv", "comptes", "messages", "scripts", "script", "aide", "resultats", "dispos", "parrainage", "menu", "facturation", "signer"];
     const OPS = window.ENTREMIS_OPS;
     if (S.lock) {
       // Compte client : jamais l'agence. Une autre adresse ramène à son accueil.
@@ -787,9 +788,9 @@
     S.keepAbsence = false;
     renderChrome(r);
     if (key !== lastKey) { S.taskForm = false; S.acc = null; }
-    if (key !== lastKey) { window.ENTREMIS_OPS.resetSheet(); window.ENTREMIS_METRICS.resetSheet(); window.ENTREMIS_FICHE.reset(); window.ENTREMIS_SCRIPTS.reset(); window.ENTREMIS_GEN.closeDoc(); window.ENTREMIS_SETTINGS.reset(); window.ENTREMIS_GROWTH.reset(); window.ENTREMIS_ACCESS.reset(); window.ENTREMIS_LIVE.reset(); window.ENTREMIS_MACHINE.reset(); window.ENTREMIS_PILOT.reset(); window.ENTREMIS_LEGAL.reset(); window.ENTREMIS_CRM.reset(); window.ENTREMIS_LEADS.closePanel(); }
+    if (key !== lastKey) { window.ENTREMIS_OPS.resetSheet(); window.ENTREMIS_METRICS.resetSheet(); window.ENTREMIS_FICHE.reset(); window.ENTREMIS_SCRIPTS.reset(); window.ENTREMIS_GEN.closeDoc(); window.ENTREMIS_SETTINGS.reset(); window.ENTREMIS_GROWTH.reset(); window.ENTREMIS_ACCESS.reset(); window.ENTREMIS_LIVE.reset(); window.ENTREMIS_MACHINE.reset(); window.ENTREMIS_PILOT.reset(); window.ENTREMIS_LEGAL.reset(); window.ENTREMIS_CRM.reset(); window.ENTREMIS_LEADS.closePanel(); window.ENTREMIS_SIGN.reset(); }
     const tv = TM().views[r.name] || window.ENTREMIS_OPS.views[r.name] || (r.name === "chiffres" ? window.ENTREMIS_METRICS.view : null) || (r.name === "fiche" ? s => window.ENTREMIS_FICHE.view(s, r.id) : null)
-      || (r.name === "scripts" ? window.ENTREMIS_SCRIPTS.viewList : r.name === "script" ? s => window.ENTREMIS_SCRIPTS.viewScript(s, r.id) : r.name === "scripts-equipe" ? window.ENTREMIS_SCRIPTS.viewTeam : r.name === "leads" ? window.ENTREMIS_LEADS.view : r.name === "generer" ? window.ENTREMIS_GEN.view : r.name === "guide" ? window.ENTREMIS_GUIDE.viewTeam : r.name === "processus" ? window.ENTREMIS_PROCESS.view : r.name === "discussions" ? window.ENTREMIS_CHAT.view : r.name === "secteurs" ? window.ENTREMIS_SECTORS.view : r.name === "acces" ? window.ENTREMIS_ACCESS.view : r.name === "documents" ? window.ENTREMIS_PILOT.viewDocs : r.name === "contacts" ? window.ENTREMIS_CRM.view : r.name === "juridique" ? window.ENTREMIS_LEGAL.view : window.ENTREMIS_GROWTH.views[r.name] ? window.ENTREMIS_GROWTH.views[r.name] : r.name === "aide" ? window.ENTREMIS_GUIDE.viewClient : r.name === "resultats" ? window.ENTREMIS_CPLUS.viewResults : r.name === "dispos" ? window.ENTREMIS_CPLUS.viewDispos : r.name === "parrainage" ? window.ENTREMIS_CPLUS.viewParrainage : r.name === "facturation" ? window.ENTREMIS_MACHINE.viewClientBilling : r.name === "menu" ? viewClientMenu : null);
+      || (r.name === "scripts" ? window.ENTREMIS_SCRIPTS.viewList : r.name === "script" ? s => window.ENTREMIS_SCRIPTS.viewScript(s, r.id) : r.name === "scripts-equipe" ? window.ENTREMIS_SCRIPTS.viewTeam : r.name === "leads" ? window.ENTREMIS_LEADS.view : r.name === "generer" ? window.ENTREMIS_GEN.view : r.name === "guide" ? window.ENTREMIS_GUIDE.viewTeam : r.name === "processus" ? window.ENTREMIS_PROCESS.view : r.name === "discussions" ? window.ENTREMIS_CHAT.view : r.name === "secteurs" ? window.ENTREMIS_SECTORS.view : r.name === "acces" ? window.ENTREMIS_ACCESS.view : r.name === "documents" ? window.ENTREMIS_PILOT.viewDocs : r.name === "contacts" ? window.ENTREMIS_CRM.view : r.name === "juridique" ? window.ENTREMIS_LEGAL.view : window.ENTREMIS_GROWTH.views[r.name] ? window.ENTREMIS_GROWTH.views[r.name] : r.name === "aide" ? window.ENTREMIS_GUIDE.viewClient : r.name === "resultats" ? window.ENTREMIS_CPLUS.viewResults : r.name === "dispos" ? window.ENTREMIS_CPLUS.viewDispos : r.name === "parrainage" ? window.ENTREMIS_CPLUS.viewParrainage : r.name === "facturation" ? window.ENTREMIS_MACHINE.viewClientBilling : r.name === "signer" ? window.ENTREMIS_SIGN.view : r.name === "menu" ? viewClientMenu : null);
     const v = tv ? tv(S) : { accueil: viewHome, agenda: viewAgenda, rdv: () => viewRdv(r.appt), comptes: viewAccounts, messages: () => viewMessages(r.id) }[r.name]();
     if (key !== lastKey && r.name !== "fiche") { S.ctxClient = null; S.ctxContact = null; }
     let html = v;
@@ -826,6 +827,8 @@
     const na = e.target.closest("[data-n-act]"); if (na) S.read = Object.assign({}, S.read, { [na.dataset.nAct]: true });   // agir sur une notification la marque comme lue
     if (window.ENTREMIS_GCAL.onClick(e)) return;
     if (window.ENTREMIS_MACHINE.onClick(e, S, render)) return;
+    if (window.ENTREMIS_BILAN.onClick(e, S, render)) return;
+    if (window.ENTREMIS_SIGN.onClick(e, S, render)) return;
     if (window.ENTREMIS_CRM.onClick(e, S, render)) return;
     if (window.ENTREMIS_PILOT.onClick(e, S, render)) return;
     if (window.ENTREMIS_LEGAL.onClick(e, S, render)) return;
@@ -900,6 +903,7 @@
     if (window.ENTREMIS_SETTINGS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_ACCESS.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_MACHINE.onSubmit(e, S, render)) return;
+    if (e.target.getAttribute && e.target.getAttribute("id") === "sign-form") { window.ENTREMIS_SIGN.onSubmit(e, S, render); return; }
     if (window.ENTREMIS_CRM.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_PILOT.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_LEGAL.onSubmit(e, S, render)) return;
@@ -1026,6 +1030,8 @@
   window.ENTREMIS_MACHINE.init(() => render());
   window.ENTREMIS_PILOT.init(() => render());
   window.ENTREMIS_CRM.init(() => render());
+  window.ENTREMIS_BILAN.init(() => render());
+  window.ENTREMIS_SIGN.init(() => render());
   window.ENTREMIS_LEGAL.init(() => render());
   window.ENTREMIS_PROCESS.init(() => render());
   window.ENTREMIS_CHAT.bind(S, render);

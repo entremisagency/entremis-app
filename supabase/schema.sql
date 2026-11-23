@@ -365,3 +365,23 @@ create table if not exists public.sms_codes (
 );
 alter table public.sms_codes enable row level security;
 create index if not exists sms_codes_phone on public.sms_codes (phone, created_at);
+
+-- ===== 12. Signature en ligne des documents (sign.js) =====
+-- Le client signe un document qui lui est destiné et pas encore signé ; la base note son nom, sa signature et l'heure du serveur.
+create or replace function public.signer_document(p_id text, p_nom text, p_signature text)
+  returns text language plpgsql security definer set search_path = public as $$
+declare r public.docs%rowtype;
+begin
+  select * into r from public.docs where collection = 'signatures' and id = p_id;
+  if not found then raise exception 'Document introuvable.'; end if;
+  if r.client_id is null or r.client_id is distinct from public.my_client() then raise exception 'Ce document ne vous est pas destiné.'; end if;
+  if coalesce(r.data->>'status', '') <> 'a-signer' then raise exception 'Ce document est déjà signé.'; end if;
+  if length(trim(coalesce(p_nom, ''))) < 2 then raise exception 'Écrivez votre prénom et votre nom.'; end if;
+  if p_signature is null or left(p_signature, 22) <> 'data:image/png;base64,' or length(p_signature) > 300000 then raise exception 'Signature illisible. Recommencez.'; end if;
+  update public.docs set data = r.data || jsonb_build_object('status', 'signe', 'signerName', left(trim(p_nom), 80), 'signature', p_signature,
+      'signedAt', to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD"T"HH24:MI:SS'), 'signedBy', auth.uid()::text)
+    where collection = 'signatures' and id = p_id;
+  return 'ok';
+end $$;
+revoke all on function public.signer_document(text, text, text) from public;
+grant execute on function public.signer_document(text, text, text) to authenticated;

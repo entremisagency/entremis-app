@@ -3028,3 +3028,19 @@ body{font-feature-settings:"ss01" 0,"cv11" 1}
 .meta-make{margin-top:var(--space-3);font-size:var(--text-small)}
 .meta-make summary{cursor:pointer;font-weight:var(--weight-strong);color:var(--color-ink)}
 .meta-make[open] summary{margin-bottom:var(--space-3)}
+
+/* Bilan de la semaine (bilan.js) : la carte du client */
+.bl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3)}
+.bl-grid div{display:grid;gap:var(--space-1);padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-white);box-shadow:inset 0 0 0 1px var(--color-hairline)}
+.bl-grid b{font-size:var(--text-app-h2);font-weight:var(--weight-strong);color:var(--color-ink)}
+.bl-grid span{font-size:var(--text-caption);color:var(--color-muted)}
+@container app (max-width:640px){ .bl-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+
+/* Signature en ligne (sign.js) */
+.sg{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:var(--space-4);align-items:start}
+.sg-doc .lx-paper{max-height:none}
+.sg-pad{position:sticky;top:var(--sticky-top)}
+.sg-pad form{display:grid;gap:var(--space-4)}
+.sg-canvas{display:block;width:100%;aspect-ratio:3 / 1;border-radius:var(--radius-md);background:var(--color-white);box-shadow:inset 0 0 0 1px var(--color-hairline-strong);touch-action:none;cursor:crosshair}
+.sg-img{width:100%;max-width:calc(var(--space-8) * 5);border-radius:var(--radius-sm);background:var(--color-white)}
+@container app (max-width:1080px){ .sg{grid-template-columns:minmax(0,1fr)} .sg-pad{position:static} }

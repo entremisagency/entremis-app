@@ -278,6 +278,6 @@
     return true;
   }
 
-  window.ENTREMIS_MACHINE = { autoInvoices, draftsToSend, verifPill, PAYS, vatFor, leadBox, billingCard, callCard, callSheet, viewClientBilling, simView, weekPanel, onClick, onSubmit, billing, levelOf, billable,
+  window.ENTREMIS_MACHINE = { contests: () => CONTESTS().list, autoInvoices, draftsToSend, verifPill, PAYS, vatFor, leadBox, billingCard, callCard, callSheet, viewClientBilling, simView, weekPanel, onClick, onSubmit, billing, levelOf, billable,
     init: render => CONTESTS().init(render), reset: () => { X.call = null; } };
 })();

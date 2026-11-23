@@ -106,6 +106,7 @@
       const id = EM().viewId();
       rdvFor(id).filter(r => r.state !== "cancel" && r.date >= t && r.date <= addDays(t, 7)).sort((a, b) => (a.date + a.start) < (b.date + b.start) ? -1 : 1)
         .forEach(r => add("r-" + r.id, r.date === t ? "warn" : "info", "cal", `Rendez-vous : ${r.name}, ${r.role || "projet"}, ${dayLabel(r.date)} à ${r.start}`, r.date === t ? "Aujourd'hui" : "Bientôt", short(r.at || r.date), { label: "Voir le RDV", href: "#rdv-" + r.id }));
+      (window.ENTREMIS_SIGN ? window.ENTREMIS_SIGN.notifs("client") : []).forEach(n => add(n.id, "warn", "check", n.text, "À faire", "", { label: "Signer", href: n.href }));
       const res = window.ENTREMIS_CPLUS ? window.ENTREMIS_CPLUS.results() : [];
       rdvFor(id).filter(r => r.state !== "replaced" && r.state !== "cancel" && isPast(r) && !res.some(x => x.id === r.id))
         .forEach(r => add("f-" + r.id, "warn", "check", `Comment s'est passée la visite chez ${r.name} ? Notez le résultat en 10 secondes.`, "À faire", short(r.date), { label: "Renseigner", href: "#resultats" }));
@@ -122,6 +123,8 @@
     DOCS().list.filter(d => d.kind === "facture" && d.status !== "paye" && d.due && d.due < t).forEach(d => add("d-" + d.id, "warn", "euro", `Facture ${d.number || ""} de ${d.client || ""} : échéance passée le ${short(d.due)}`, "À faire", short(d.due), { label: "Relancer", doc: d.id }));
     (window.ENTREMIS_CRM ? window.ENTREMIS_CRM.dueList() : []).forEach(r => add("crm-" + r.id + "-" + r.nextAt, r.nextAt < t ? "warn" : "info", "phone", `Relancer ${r.name}${r.nextText ? " : " + r.nextText : ""}`, r.nextAt < t ? "En retard" : "Aujourd'hui", short(r.nextAt), { label: "Voir la fiche", href: "#fiche-" + r.id }));
     (window.ENTREMIS_MACHINE ? window.ENTREMIS_MACHINE.draftsToSend() : []).forEach(d => add("fd-" + d.id, "info", "euro", `Facture ${d.number || ""} de ${d.client || ""} prête en brouillon : à vérifier et envoyer`, "À faire", short(d.date), { label: "Ouvrir", doc: d.id }));
+    (window.ENTREMIS_SIGN ? window.ENTREMIS_SIGN.notifs("team") : []).forEach(n => add(n.id, "info", "check", n.text, "Signé", "", { label: "Voir la fiche", href: n.href }));
+    { const bl = window.ENTREMIS_BILAN ? window.ENTREMIS_BILAN.due() : []; if (bl.length && new Date(t + "T12:00:00").getDay() === 1) add("bl-" + t, "info", "mail", `Bilans de la semaine à envoyer : ${bl.map(c => c.name).join(", ")}`, "À faire", "", { label: "Ouvrir la première fiche", href: "#fiche-" + bl[0].id }); }
     const bd = window.ENTREMIS_PILOT && window.ENTREMIS_PILOT.backupDue();
     if (bd !== null && bd !== undefined) add("bk-" + t, "info", "download", bd < 0 ? "Aucune sauvegarde sur le Drive commun pour l'instant" : `Dernière sauvegarde sur le Drive il y a ${bd} jours`, "À faire", "", { label: "Sauvegarder", href: "#reglages" });
     clients.filter(c => c.pace === "late").forEach(c => add("p-" + c.id + "-" + c.done, "info", "chart", `${c.name} est en retard sur son objectif : ${c.done} sur ${c.target}, jour ${c.day} sur ${c.days}`, "À suivre", "", { label: "Voir la fiche", href: "#fiche-" + c.id }));

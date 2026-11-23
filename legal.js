@@ -256,7 +256,7 @@
         </form>
         <section class="lx-doc">
           <header class="lx-bar"><div><b>Document</b><span>${esc(t.name)} · ${esc(party(t, v))} · Réf. ${esc(refNo())}</span></div>
-            <div class="lx-acts"><button class="icon-btn lx-btn" type="button" data-lx-copy aria-label="Copier le texte">${icon("copy")}</button><button class="icon-btn lx-btn" type="button" data-lx-full aria-label="Plein écran">${icon("eye")}</button><button class="btn btn-primary" type="submit" form="legal-form">${icon("download")}PDF</button></div></header>
+            <div class="lx-acts">${X.cid ? `<button class="btn btn-ghost" type="button" data-lx-sign>${icon("check")}Envoyer à signer</button>` : ""}<button class="icon-btn lx-btn" type="button" data-lx-copy aria-label="Copier le texte">${icon("copy")}</button><button class="icon-btn lx-btn" type="button" data-lx-full aria-label="Plein écran">${icon("eye")}</button><button class="btn btn-primary" type="submit" form="legal-form">${icon("download")}PDF</button></div></header>
           <div class="lx-scroll" data-legal-preview>${paper(t, v)}</div>
         </section>
       </div>
@@ -326,12 +326,14 @@
   }
 
   function onClick(e, S, render) {
-    const t = e.target.closest("[data-legal-tpl],[data-legal-back],[data-legal-me],[data-legal-for],[data-lx-copy],[data-lx-full],[data-lx-save],[data-lx-load],[data-lx-del]"); if (!t) return false;
+    const t = e.target.closest("[data-lx-sign],[data-legal-tpl],[data-legal-back],[data-legal-me],[data-legal-for],[data-lx-copy],[data-lx-full],[data-lx-save],[data-lx-load],[data-lx-del]"); if (!t) return false;
     const d = t.dataset;
     if (d.legalFor) { X.cid = d.legalFor; X.tpl = null; return false; }   // le lien de la fiche client : on garde le client, la navigation continue
     if (d.legalTpl) { X.tpl = d.legalTpl; X.vals = {}; X.mname = ""; render(); window.scrollTo(0, 0); return true; }
     if ("legalBack" in d) { X.tpl = null; X.vals = {}; render(); return true; }
     if ("legalMe" in d) { X.me = !X.me; render(); return true; }
+    if ("lxSign" in d) { const t = tpl(), v = vals(); window.ENTREMIS_SIGN.create({ cid: X.cid, tpl: t.id, title: t.name, ref: refNo(), party: party(t, v), html: paper(t, v), text: plain(t, v) }, S);
+      ACTES().put({ id: "a" + Date.now().toString(36), ref: refNo(), tpl: t.id, name: t.name + " (envoyé à signer)", client: (cl(X.cid) || {}).name || "", cid: X.cid, at: new Date().toISOString().slice(0, 16), by: S.who }); return true; }
     if ("lxCopy" in d) { const txt = plain(tpl(), vals()); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => EM().toast("Texte copié."), () => EM().toast("La copie n'a pas marché.")); return true; }
     if ("lxFull" in d) { X.full = !X.full; render(); return true; }
     if ("lxSave" in d) { const name = (X.mname || "").trim() || "Standard", keepV = Object.assign({}, X.vals);
