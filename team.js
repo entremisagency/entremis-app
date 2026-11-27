@@ -213,7 +213,7 @@
     const weekDone = T.list.filter(doneThisWeek);
     return `
     <div class="head">
-      <div class="head-text"><h1 class="h1">Bonjour ${esc(me.name)}</h1><p class="sub">${window.ENTREMIS_DATA.today.label.charAt(0).toUpperCase() + window.ENTREMIS_DATA.today.label.slice(1)} – ${esc(me.role)}</p></div>
+      <div class="head-text"><h1 class="h1">Mon portail</h1><p class="sub">${window.ENTREMIS_DATA.today.label.charAt(0).toUpperCase() + window.ENTREMIS_DATA.today.label.slice(1)} – ${esc(me.role)}</p></div>
       <div class="head-actions">${EM().sampleTag}<button class="btn btn-primary" type="button" data-act="new-task">${icon("plus")}Nouvelle tâche</button></div>
     </div>
 

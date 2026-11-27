@@ -127,6 +127,7 @@
   --text-app-h2:18px;                /* titre de panneau */
   --text-app-num:44px;               /* chiffre d'objectif */
   --text-app-kpi:36px;               /* chiffre d'une tuile (plus gros, Marc 20 nov.) */
+  --text-app-kpi-mobile:30px;        /* chiffre d'une tuile sur téléphone, deux tuiles côte à côte (27 nov.) */
   --weight-app-number:600;           /* chiffres : gras, plus de graisse fine */
   --text-app-mobile-h1:24px;
 
