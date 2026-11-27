@@ -505,8 +505,8 @@
   // Le bouton d'action d'une notification : la tâche, le devis ou la facture (ouvert en vrai PDF, prêt à relancer), la fiche ou le rendez-vous
   function notifAction(n) {
     const a = n.act; if (!a) return "";
-    const btn = (attr, val) => `<button class="btn btn-ghost btn-xs n-act" type="button" ${attr}="${val}" data-n-act="${n.id}">${EM().esc(a.label)}</button>`;
-    const link = href => `<a class="btn btn-ghost btn-xs n-act" href="${href}" data-n-act="${n.id}">${EM().esc(a.label)}</a>`;
+    const btn = (attr, val) => `<button class="btn btn-ghost btn-xs n-act" type="button" ${attr}="${EM().esc(val)}" data-n-act="${EM().esc(n.id)}">${EM().esc(a.label)}</button>`;
+    const link = href => `<a class="btn btn-ghost btn-xs n-act" href="${EM().esc(href)}" data-n-act="${EM().esc(n.id)}">${EM().esc(a.label)}</a>`;
     if (a.doc) { const d = window.ENTREMIS_OPS.stores.DOCS.list.find(x => x.number === a.doc); return d ? btn("data-doc-open", d.id) : link("#finances"); }
     if (a.task) { const t = T.list.find(x => x.title === a.task); return t ? btn("data-task-open", t.id) : link("#taches"); }
     return link(a.href);
@@ -525,7 +525,7 @@
     </div>
     <div class="home-main">
       <section class="card">
-        ${groups.map(g => `<p class="day-sep">${g}</p><ul class="notifs">${list.filter(n => n.day === g).map(n => `<li class="${read[n.id] ? "" : "unread"}"><span class="n-ico n-${n.kind}">${icon(n.icon)}</span><button type="button" data-read="${n.id}"><b>${esc(n.text)}</b><span>${esc(n.at)}</span></button>${notifAction(n)}</li>`).join("")}</ul>`).join("")}
+        ${groups.map(g => `<p class="day-sep">${g}</p><ul class="notifs">${list.filter(n => n.day === g).map(n => `<li class="${read[n.id] ? "" : "unread"}"><span class="n-ico n-${n.kind}">${icon(n.icon)}</span><button type="button" data-read="${esc(n.id)}"><b>${esc(n.text)}</b><span>${esc(n.at)}</span></button>${notifAction(n)}</li>`).join("")}</ul>`).join("")}
       </section>
       <section class="card">
         <div class="card-head"><h2 class="h2">Ce qui vous prévient</h2></div>

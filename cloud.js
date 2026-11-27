@@ -235,6 +235,14 @@
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && SUBS.length) resync(); });
   window.addEventListener("online", () => { if (SUBS.length) resync(true); });
   setInterval(() => { if (SUBS.length && document.visibilityState === "visible") resync(); }, 60000);
+  // Ce qu'un client écrit lui-même : on se fie à la colonne client_id de la ligne (posée et vérifiée par la base),
+  // jamais au client_id qu'il aurait glissé dans ses données, pour qu'il ne puisse pas se faire passer pour un autre.
+  const CLIENT_WRITES = ["results", "avis", "dispos", "referrals", "prep", "validations", "contests"];
+  function fromRow(name, r) {
+    const out = Object.assign({ id: r.id }, r.data);
+    if (CLIENT_WRITES.includes(name) && r.client_id) out.client_id = r.client_id;
+    return out;
+  }
   function collection(name) {
     return {
       // Lit tout, puis suit les changements en temps réel
@@ -242,9 +250,9 @@
         await ready;
         let rows = [], sig = "";
         const load = async () => {
-          const { data, error } = await client.from("docs").select("id, data").eq("collection", name);
+          const { data, error } = await client.from("docs").select("id, data, client_id").eq("collection", name);
           if (error) return error;
-          const next = (data || []).map(r => Object.assign({ id: r.id }, r.data)), s = JSON.stringify(next);
+          const next = (data || []).map(r => fromRow(name, r)), s = JSON.stringify(next);
           if (s !== sig) { sig = s; rows = next; onRows(rows.slice()); }   // on ne réaffiche que si quelque chose a changé
           return null;
         };
@@ -256,7 +264,7 @@
         client.channel("docs-" + name + "-" + Math.random().toString(36).slice(2, 8))
           .on("postgres_changes", { event: "*", schema: "public", table: "docs", filter: "collection=eq." + name }, p => {
             if (p.eventType === "DELETE") rows = rows.filter(r => r.id !== (p.old && p.old.id));
-            else { const r = Object.assign({ id: p.new.id }, p.new.data), i = rows.findIndex(x => x.id === r.id); if (i >= 0) rows[i] = r; else rows.push(r); }
+            else { const r = fromRow(name, p.new), i = rows.findIndex(x => x.id === r.id); if (i >= 0) rows[i] = r; else rows.push(r); }
             sig = JSON.stringify(rows); onRows(rows.slice());
           }).subscribe(status => { if (status === "SUBSCRIBED") { if (!first) load(); first = false; } });   // reconnexion : on rattrape ce qui a été manqué
       },

@@ -77,7 +77,7 @@
   function resultForm(id, r) {
     const pick = X.res === id && X.pick ? X.pick : r ? r.outcome : "";
     return `<div class="res-pick" role="group" aria-label="Résultat">${Object.entries(OUT).map(([k, [l]]) => `<button type="button" class="btn btn-ghost${pick === k ? " is-on" : ""}" data-res-set="${id}:${k}" aria-pressed="${pick === k}">${l}</button>`).join("")}</div>
-      ${pick === "signe" ? `<form class="res-amount" id="res-form" data-res-id="${id}"><label class="field"><span>Montant signé, hors taxes</span><input name="amount" inputmode="decimal" required placeholder="Ex. 12 500" value="${r && r.amount ? r.amount : ""}"></label><button class="btn btn-primary" type="submit">Enregistrer</button></form>` : ""}`;
+      ${pick === "signe" ? `<form class="res-amount" id="res-form" data-res-id="${id}"><label class="field"><span>Montant signé, hors taxes</span><input name="amount" inputmode="decimal" required placeholder="Ex. 12 500" value="${r && r.amount ? EM().esc(String(r.amount)) : ""}"></label><button class="btn btn-primary" type="submit">Enregistrer</button></form>` : ""}`;
   }
   // Carte de l'accueil : les visites passées sans résultat
   function homeCard() {
@@ -107,7 +107,7 @@
     ${todo.length ? `<section class="card"><div class="card-head"><h2 class="h2">À renseigner <span class="muted tabnum">${todo.length}</span></h2></div><ul class="res-list">${todo.map(row).join("")}</ul></section>` : ""}
     <section class="card"><div class="card-head"><h2 class="h2">Toutes les visites</h2></div>${done.length ? `<ul class="res-list">${done.map(row).join("")}</ul>` : `<p class="body">Rien encore. Chaque visite renseignée s'ajoute ici.</p>`}</section>
     <section class="card avis-card"><div class="card-head"><h2 class="h2">Votre avis sur la campagne</h2>${av ? `<span class="state state-ok">Merci</span>` : ""}</div>
-      ${av && !X.avisEdit ? `<p class="avis-done"><span class="stars" aria-label="${av.note} sur 5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= av.note ? "on" : ""}"></i>`).join("")}</span>« ${esc(av.text || "")} »</p><p class="kpi-note">${av.publish ? "Vous acceptez qu'on cite votre avis." : "Votre avis reste entre nous."} <button class="link" type="button" data-avis-edit>Modifier</button></p>`
+      ${av && !X.avisEdit ? `<p class="avis-done"><span class="stars" aria-label="${Number(av.note) || 0} sur 5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= av.note ? "on" : ""}"></i>`).join("")}</span>« ${esc(av.text || "")} »</p><p class="kpi-note">${av.publish ? "Vous acceptez qu'on cite votre avis." : "Votre avis reste entre nous."} <button class="link" type="button" data-avis-edit>Modifier</button></p>`
         : `<form class="avis-form" id="avis-form"><div class="stars-pick" role="radiogroup" aria-label="Votre note">${[1, 2, 3, 4, 5].map(i => `<button type="button" role="radio" aria-checked="${(X.star || (av && av.note) || 0) === i}" class="${i <= (X.star || (av && av.note) || 0) ? "on" : ""}" data-star="${i}" aria-label="${i} sur 5"><i></i></button>`).join("")}</div>
           <label class="field"><span>En une phrase</span><textarea name="text" rows="2" maxlength="280" placeholder="Ce qui a marché, ce qu'on peut faire mieux">${esc(av ? av.text || "" : "")}</textarea></label>
           <label class="check-line"><input type="checkbox" name="publish" ${av && av.publish ? "checked" : ""}><span>J'accepte qu'Entremis cite mon avis, avec le nom de mon entreprise</span></label>
@@ -132,7 +132,7 @@
         <div class="stepper"><button type="button" class="icon-btn" data-dispo-max="-1" aria-label="Une de moins">−</button><b class="tabnum">${d.max || 6}</b><button type="button" class="icon-btn" data-dispo-max="1" aria-label="Une de plus">+</button></div>
         <p class="kpi-note">Au-delà, Richard décale à la semaine suivante.</p></section>
       <section class="card"><div class="card-head"><h2 class="h2">Congés et absences</h2></div>
-        ${(d.off || []).length ? `<ul class="off-list">${d.off.map(o => `<li><span>${icon("cal")}Du ${short(o.from)} au ${short(o.to)}</span><button class="icon-btn" type="button" data-off-del="${o.id}" aria-label="Retirer">${icon("trash")}</button></li>`).join("")}</ul>` : `<p class="body">Aucun congé prévu.</p>`}
+        ${(d.off || []).length ? `<ul class="off-list">${d.off.map(o => `<li><span>${icon("cal")}Du ${short(o.from)} au ${short(o.to)}</span><button class="icon-btn" type="button" data-off-del="${esc(o.id)}" aria-label="Retirer">${icon("trash")}</button></li>`).join("")}</ul>` : `<p class="body">Aucun congé prévu.</p>`}
         <form class="off-form" id="off-form"><div class="field-row"><label class="field"><span>Du</span><input name="from" type="date" required value="${today()}"></label><label class="field"><span>Au</span><input name="to" type="date" required value="${today()}"></label></div>
           <button class="btn btn-ghost" type="submit">${icon("plus")}Ajouter</button></form></section>
     </div>`;
