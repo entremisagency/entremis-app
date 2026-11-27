@@ -62,7 +62,7 @@
     return `<section class="lp-box mc-box"><p class="lp-label">Niveau et facturation</p>${verif}
       <div class="seg seg-lg" role="group" aria-label="Niveau du lead">${Object.keys(LEVEL).map(k => `<button type="button" data-mc-level="${l.id}:${k}" aria-pressed="${levelOf(l) === k}">${LEVEL[k][0]}</button>`).join("")}</div>
       <div class="field"><label for="mc-excl">Facturé au client ?</label><select id="mc-excl" data-fsel="mc-excl">${Object.keys(EXCL).filter(k => k !== "conteste").map(k => `<option value="${l.id}:${k}"${(l.excl || "") === k ? " selected" : ""}>${k ? "Non : " + EXCL[k].toLowerCase() : "Oui, facturable"}</option>`).join("")}</select></div>
-      ${ct ? `<div class="mc-contest"><p><b>Contesté par le client</b> le ${esc(ct.at.slice(8, 10) + "/" + ct.at.slice(5, 7))} : « ${esc(ct.why || "")} »</p>
+      ${ct ? `<div class="mc-contest"><p><b>Contesté par le client</b> le ${esc(String(ct.at || "").slice(8, 10) + "/" + String(ct.at || "").slice(5, 7))} : « ${esc(ct.why || "")} »</p>
         ${ct.state === "ouvert" ? `<div class="form-actions"><button class="btn btn-ghost" type="button" data-mc-contest="${l.id}:accepte">Accepter (non facturé)</button><button class="btn btn-ghost" type="button" data-mc-contest="${l.id}:refuse">Refuser</button></div>` : `<span class="state state-${ct.state === "accepte" ? "ok" : "neutral"}">${ct.state === "accepte" ? "Acceptée : non facturé" : "Refusée : facturé"}</span>`}</div>` : ""}
     </section>`;
   }

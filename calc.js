@@ -51,7 +51,7 @@
     const s = c();
     return `
     <div class="calc">
-      <form class="card calc-form" id="calc-form" autocomplete="off" onsubmit="return false">
+      <form class="card calc-form" id="calc-form" autocomplete="off">
         <div class="card-head"><h2 class="h2">Vos chiffres</h2><button class="link" type="button" data-calc-reset>Réinitialiser</button></div>
         <div class="seg seg-full" role="group" aria-label="Sens du calcul">${[["budget", "J'ai un budget"], ["goal", "J'ai un objectif"]].map(([k, l]) => `<button type="button" data-calc-mode="${k}" aria-pressed="${s.mode === k}">${l}</button>`).join("")}</div>
         ${s.mode === "budget" ? field("budget", "Budget pub par mois", s.budget, "€", 0, 10000, 50) : field("goal", "Rendez-vous voulus par mois", s.goal, "rdv", 1, 100, 1)}

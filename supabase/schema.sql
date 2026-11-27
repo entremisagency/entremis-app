@@ -553,3 +553,36 @@ language sql security definer set search_path = public as $$
 $$;
 revoke all on function public.sms_essai(uuid) from public, anon, authenticated;
 grant execute on function public.sms_essai(uuid) to service_role;
+
+-- ===== 16. Suite securite (27 nov. 2026). Ecrit sans accent : il passe tel quel par le copier-coller. =====
+-- 1. Le journal des mails envoyes par la fonction send-email (plafond de 100 par jour). Aucune regle : seule la fonction y touche.
+create table if not exists public.mails_envoyes (
+  id bigserial primary key,
+  user_id uuid,
+  destinataire text not null,
+  objet text,
+  at timestamptz not null default now()
+);
+alter table public.mails_envoyes enable row level security;
+create index if not exists mails_envoyes_at on public.mails_envoyes (at);
+
+-- 2. Connexion en deux etapes : pour qui l'a activee (Reglages), la base ne donne rien tant que le code
+--    du telephone n'a pas ete tape (session de niveau aal2). Qui ne l'a pas activee n'est pas touche.
+--    Telephone perdu : Supabase > Authentication > Users > la personne > supprimer son facteur MFA.
+create or replace function public.aal_ok() returns boolean
+  language sql stable security definer set search_path = public, auth as $$
+  select coalesce(auth.jwt()->>'aal', 'aal1') = 'aal2'
+      or not exists (select 1 from auth.mfa_factors f where f.user_id = auth.uid() and f.status = 'verified');
+$$;
+create or replace function public.is_team() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.members m where m.user_id = auth.uid() and m.role = 'team') and public.aal_ok();
+$$;
+create or replace function public.my_client() returns text
+  language sql stable security definer set search_path = public as $$
+  select m.client_id from public.members m where m.user_id = auth.uid() and m.role = 'client' and public.aal_ok();
+$$;
+create or replace function public.is_member() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.members m where m.user_id = auth.uid()) and public.aal_ok();
+$$;
