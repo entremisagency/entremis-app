@@ -143,7 +143,7 @@
   let JSPDF = null;
   function loadPdf() {
     if (JSPDF) return JSPDF;
-    JSPDF = new Promise((ok, ko) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; sc.onload = () => ok(window.jspdf.jsPDF); sc.onerror = () => { JSPDF = null; ko(new Error("load")); }; document.head.appendChild(sc); });
+    JSPDF = new Promise((ok, ko) => { const sc = document.createElement("script"); sc.crossOrigin = "anonymous"; sc.integrity = "sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"; sc.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; sc.onload = () => ok(window.jspdf.jsPDF); sc.onerror = () => { JSPDF = null; ko(new Error("load")); }; document.head.appendChild(sc); });
     return JSPDF;
   }
   // Fabrique le vrai PDF (A4) et le rend sous forme de fichier : { blob, filename }
@@ -224,7 +224,7 @@
   function loadPdfJs() {
     if (PDFJS) return PDFJS;
     const base = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
-    PDFJS = new Promise((ok, ko) => { const sc = document.createElement("script"); sc.src = base + "pdf.min.js";
+    PDFJS = new Promise((ok, ko) => { const sc = document.createElement("script"); sc.crossOrigin = "anonymous"; sc.integrity = "sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"; sc.src = base + "pdf.min.js";
       sc.onload = () => { const lib = window.pdfjsLib; if (!lib) { PDFJS = null; ko(new Error("lib")); return; } lib.GlobalWorkerOptions.workerSrc = base + "pdf.worker.min.js"; ok(lib); };
       sc.onerror = () => { PDFJS = null; ko(new Error("load")); }; document.head.appendChild(sc); });
     return PDFJS;

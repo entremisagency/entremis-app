@@ -119,7 +119,7 @@
         <span class="rv-who"><b>${esc(a.name)}</b><small>${esc(a.role)} – ${esc(a.city)}</small></span>
         <a class="rv-client" href="#fiche-${a.client}">${esc(c.name)}</a>
         <span class="rv-conf" aria-label="Rappels : ${cf.reply || "pas encore envoyés"}">${a.state === "replaced" ? `<span class="state state-warn">Absent, remplacé</span>` : `<span class="rv-dots">${dot(cf.veille)}${dot(cf.matin)}</span><small>${cf.reply ? cf.reply : "rappels prévus"}</small>`}</span>
-        <span class="rv-res">${a.state === "replaced" ? "" : r ? `<span class="state state-${CP().OUT[r.outcome][1]}">${CP().OUT[r.outcome][0]}</span>${r.outcome === "signe" && r.amount ? `<b class="tabnum">${euros(r.amount)}</b>` : ""}` : past ? `<span class="muted">à renseigner</span>` : `<span class="muted">à venir</span>`}</span>
+        <span class="rv-res">${a.state === "replaced" ? "" : r ? `<span class="state state-${(CP().OUT[r.outcome] || CP().OUT.devis)[1]}">${(CP().OUT[r.outcome] || CP().OUT.devis)[0]}</span>${r.outcome === "signe" && r.amount ? `<b class="tabnum">${euros(r.amount)}</b>` : ""}` : past ? `<span class="muted">à renseigner</span>` : `<span class="muted">à venir</span>`}</span>
         <span class="rv-acts">${a.state === "replaced" ? "" : `<button class="btn btn-ghost btn-xs" type="button" data-copy="${esc(past ? sms.matin : sms.veille)}">${icon("copy")}SMS</button>`}${past && !r && a.state !== "replaced" ? `<button class="btn btn-ghost btn-xs" type="button" data-rv-ask="${a.id}">Demander le résultat</button>` : ""}${a.by !== undefined ? liveActs(a, past) : ""}</span>
       </li>`;
     };
@@ -208,7 +208,7 @@
       ${kpi("À risque", cs.filter(x => x.level === 2).length, "retard ou impayé", cs.some(x => x.level === 2) ? "danger" : "")}
       ${kpi("À surveiller", cs.filter(x => x.level === 1).length, "absences, silence, avis moyen")}
       ${kpi("Fins de campagne", cs.filter(x => x.left <= 7).length, "dans les 7 jours")}
-      ${kpi("Avis moyen", avs.length ? (avs.reduce((s, a) => s + a.note, 0) / avs.length).toFixed(1).replace(".", ",") + " / 5" : "–", avs.length ? `${avs.length} avis reçu${avs.length > 1 ? "s" : ""}` : "pas encore d'avis")}
+      ${kpi("Avis moyen", avs.length ? (avs.reduce((s, a) => s + (Number(a.note) || 0), 0) / avs.length).toFixed(1).replace(".", ",") + " / 5" : "–", avs.length ? `${avs.length} avis reçu${avs.length > 1 ? "s" : ""}` : "pas encore d'avis")}
     </div>
     ${todo.length ? `<section class="card"><div class="card-head"><h2 class="h2">À traiter cette semaine <span class="muted tabnum">${todo.length}</span></h2></div><ul class="hs-list">${todo.map(tile).join("")}</ul></section>` : ""}
     ${ok.length ? `<section class="card"><div class="card-head"><h2 class="h2">Tout va bien <span class="muted tabnum">${ok.length}</span></h2></div><ul class="hs-list">${ok.map(tile).join("")}</ul></section>` : ""}`;

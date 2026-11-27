@@ -71,7 +71,7 @@
     const icon = EM().icon, r = result(a.id);
     if (!isPast(a)) return `<section class="card f-res"><h2 class="h2">Résultat de la visite</h2><p class="body">Après la visite, dites-nous comment ça s'est passé : 10 secondes.</p></section>`;
     return `<section class="card f-res"><div class="card-head"><h2 class="h2">Résultat de la visite</h2>${r ? `<button class="link" type="button" data-res-edit="${a.id}">Modifier</button>` : ""}</div>
-      ${r && X.res !== a.id ? `<p class="res-done"><span class="state state-${OUT[r.outcome][1]}">${OUT[r.outcome][0]}</span>${r.outcome === "signe" && r.amount ? `<b class="tabnum">${euros(r.amount)} HT</b>` : ""}</p>` : resultForm(a.id, r)}
+      ${r && X.res !== a.id ? `<p class="res-done"><span class="state state-${(OUT[r.outcome] || OUT.devis)[1]}">${(OUT[r.outcome] || OUT.devis)[0]}</span>${r.outcome === "signe" && r.amount ? `<b class="tabnum">${euros(r.amount)} HT</b>` : ""}</p>` : resultForm(a.id, r)}
       <p class="kpi-note">Ces chiffres restent entre vous et Entremis. Ils nous aident à mieux cibler vos demandes.</p></section>`;
   }
   function resultForm(id, r) {
@@ -94,7 +94,7 @@
     const amount = signed.reduce((s, a) => s + (Number(result(a.id).amount) || 0), 0), todo = past.filter(a => !result(a.id));
     const kpi = (l, v, n) => `<article class="kpi" role="listitem"><p class="kpi-label">${l}</p><div><p class="kpi-value">${v}</p><p class="kpi-note">${n}</p></div></article>`;
     const row = a => { const r = result(a.id); return `<li class="res-row"><a href="#rdv-${a.id}"><b>${esc(a.name)}</b><span>${esc(a.role)} – ${dlabel(a.date)}</span></a>
-      ${r && X.res !== a.id ? `<span class="res-out"><span class="state state-${OUT[r.outcome][1]}">${OUT[r.outcome][0]}</span>${r.outcome === "signe" && r.amount ? `<b class="tabnum">${euros(r.amount)}</b>` : ""}<button class="link" type="button" data-res-edit="${a.id}">Modifier</button></span>` : `<div class="res-inline">${resultForm(a.id, r)}</div>`}</li>`; };
+      ${r && X.res !== a.id ? `<span class="res-out"><span class="state state-${(OUT[r.outcome] || OUT.devis)[1]}">${(OUT[r.outcome] || OUT.devis)[0]}</span>${r.outcome === "signe" && r.amount ? `<b class="tabnum">${euros(r.amount)}</b>` : ""}<button class="link" type="button" data-res-edit="${a.id}">Modifier</button></span>` : `<div class="res-inline">${resultForm(a.id, r)}</div>`}</li>`; };
     const av = AVIS().list.find(x => x.id === me());
     return `
     <div class="head"><div class="head-text"><h1 class="h1">Vos résultats</h1><p class="sub">Ce que nos rendez-vous vous ont rapporté.</p></div><div class="head-actions">${EM().sampleTag}</div></div>

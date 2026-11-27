@@ -135,7 +135,7 @@
 
   const av = (id, cls = "av av-md") => {
     const m = member(id), src = photoUrl(m.id);
-    return `<span class="${cls} av-${m.id}${src ? " has-photo" : ""}" title="${m.name}">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ""}<em>${String(m.name || m.initials || "?").charAt(0).toUpperCase()}</em></span>`;
+    return `<span class="${cls} av-${m.id}${src ? " has-photo" : ""}" title="${m.name}">${src ? `<img src="${EM().esc(src)}" alt="" loading="lazy" data-hide-broken>` : ""}<em>${String(m.name || m.initials || "?").charAt(0).toUpperCase()}</em></span>`;
   };
   const PACE = { ahead: ["En avance", "ok"], ontrack: ["Dans les temps", "info"], late: ["En retard", "danger"] };
   const tone = (label, kind) => `<span class="state state-${kind}">${label}</span>`;

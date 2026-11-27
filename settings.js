@@ -7,7 +7,7 @@
 (function () {
   "use strict";
   const EM = () => window.EM, TM = () => window.ENTREMIS_TEAM, TD = () => window.ENTREMIS_DATA.team;
-  const X = { sec: null, cx: null, pw: false };   // rubrique ouverte, connexion ouverte dans la fenêtre, fenêtre du mot de passe
+  const X = { sec: null, cx: null, pw: false, mfa: null };   // rubrique ouverte, connexion ouverte dans la fenêtre, fenêtre du mot de passe
 
   // La police : Inter Tight (style AgentOps) ou Outfit (la charte). Gardée dans ce navigateur.
   const FONT_KEY = "entremis-app-font";
@@ -64,13 +64,13 @@
       const u = EM().viewUser(), owner = TM().member(EM().viewClient().owner || "richard");
       return `<section class="set-group"><div class="set-me"><span class="av av-xl">${esc(u.initials)}</span><div><b>${esc(u.name)}</b><span>${esc(u.role)} – ${esc(u.company)}</span></div></div>
         ${row("Votre contact chez Entremis", `${esc(owner.name)} place vos rendez-vous et répond à vos questions.`, `<a class="btn btn-ghost" href="#messages">${EM().icon("chat")}Écrire</a>`)}</section>
-      ${S.lock && CL() ? `<section class="set-group">${row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`)}${pwRow()}</section>` : ""}`;
+      ${S.lock && CL() ? `<section class="set-group">${row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`)}${pwRow()}${mfaRow()}</section>` : ""}`;
     }
     const me = TM().member(S.who), url = TM().photoUrl(S.who), busy = TM().photoBusy();
     return `<section class="set-group">
       <div class="set-me">${TM().avatar(S.who, "av av-xl")}<div><b>${esc(me.name)}</b><span>${esc(me.role || "")}</span></div>
         <div class="set-me-acts"><label class="btn btn-ghost${busy ? " is-busy" : ""}"><input class="sr" type="file" accept="image/png,image/jpeg,image/webp,image/heic" data-photo>${EM().icon("user")}${busy ? "Envoi…" : url ? "Changer la photo" : "Choisir une photo"}</label>${url ? `<button class="link" type="button" data-act="photo-remove">Retirer</button>` : ""}</div></div>
-      ${CL() ? row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`) + pwRow()
+      ${CL() ? row("Connecté", esc((CL().me() || {}).email || ""), `<button class="btn btn-ghost" type="button" data-cloud-out>Se déconnecter</button>`) + pwRow() + mfaRow()
           + (S.shared ? row("C'est moi", "Compte de l'agence, partagé : choisis ton portail (tes tâches, tes clients, tes alertes).", seg("data-who", TD().members.map(m => [m.id, m.name]), S.who)) : "")
         : row("C'est moi", "Ton portail : tes tâches, tes clients, tes alertes, tes connexions.", seg("data-who", TD().members.map(m => [m.id, m.name]), S.who))}
     </section>
@@ -85,6 +85,34 @@
   // Le mot de passe : seulement sur le site en ligne, pour la personne connectée
   const pwRow = () => row("Mot de passe", "Remplacez le mot de passe provisoire par le vôtre.", `<button class="btn btn-ghost" type="button" data-pw-open>${EM().icon("lock")}Changer</button>`);
   const pwField = (name, label, auto) => `<label class="field"><span>${label}</span><span class="cg-pw"><input name="${name}" type="password" required${name === "current" ? "" : ' minlength="8"'} autocomplete="${auto}"><button class="cg-eye" type="button" data-cloud-eye aria-label="Afficher le mot de passe" aria-pressed="false">${EM().icon("eye")}</button></span></label>`;
+  // La connexion en deux étapes (27 nov. 2026) : un code de l'application du téléphone en plus du mot de passe
+  const mfaRow = () => row("Connexion en deux étapes", "Un code du téléphone en plus du mot de passe.", `<button class="btn btn-ghost" type="button" data-mfa-open>${EM().icon("lock")}Régler</button>`);
+  function mfaSheet() {
+    const m = X.mfa; if (!m || !CL()) return "";
+    const esc = EM().esc, msg = m.msg ? `<p class="cg-msg" role="alert">${esc(m.msg)}</p>` : "";
+    const head = (right) => `<div class="sheet-grab" aria-hidden="true"></div><div class="sheet-head"><button class="link" type="button" data-mfa-close>Fermer</button><b>Deux étapes</b>${right || "<span></span>"}</div>`;
+    if (m.step === "scan") return `<div class="scrim" data-mfa-close></div>
+    <form class="sheet" id="mfa-form" aria-label="Activer la connexion en deux étapes" novalidate>${head('<button class="link strong" type="submit">Valider</button>')}
+      <p class="body">1. Sur votre téléphone, ouvrez une application d'authentification (Google Authenticator, 1Password, ou Mots de passe sur iPhone) et scannez ce code.</p>
+      <img class="mfa-qr" src="${esc(m.qr)}" alt="Code QR à scanner avec l'application d'authentification">
+      ${m.uri ? `<a class="btn btn-ghost" href="${esc(m.uri)}">Sur ce téléphone : ouvrir l'application</a>` : ""}
+      <p class="field-help">Impossible de scanner ? Tapez cette clé dans l'application : <code class="mfa-secret">${esc(m.secret)}</code></p>
+      <label class="field"><span>2. Le code à 6 chiffres affiché par l'application</span><input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+      ${msg}
+    </form>`;
+    const on = (m.factors || []).length > 0;
+    return `<div class="scrim" data-mfa-close></div>
+    <div class="sheet" role="dialog" aria-label="Connexion en deux étapes">${head()}
+      ${m.loading ? `<p class="body">Un instant…</p>` : on
+        ? `<p class="body"><span class="state state-ok">Activée</span> À chaque connexion, l'app vous demande le code de votre application, en plus du mot de passe.</p>
+           <p class="field-help">Téléphone perdu ou changé : désactivez ici depuis un appareil encore connecté, puis réactivez avec le nouveau. Sinon, Marc peut la retirer depuis Supabase.</p>
+           <button class="btn btn-ghost" type="button" data-mfa-remove="${esc(m.factors[0].id)}">Désactiver</button>`
+        : `<p class="body">Un mot de passe peut se faire voler. Avec la connexion en deux étapes, il faut aussi le code qui change toutes les 30 secondes sur votre téléphone. Sans lui, personne n'entre, même avec votre mot de passe.</p>
+           <button class="btn btn-primary" type="button" data-mfa-start>Activer</button>`}
+      ${msg}
+    </div>`;
+  }
+  async function mfaLoad(render) { X.mfa = { loading: true }; render(); const factors = await CL().mfaList().catch(() => []); X.mfa = { factors }; render(); }
   function pwSheet() {
     if (!X.pw || !CL()) return "";
     return `<div class="scrim" data-pw-close></div>
@@ -214,7 +242,7 @@
     return `
     <div class="head"><div class="head-text"><h1 class="h1">Réglages</h1><p class="sub">${S.space === "team" ? "Ton profil, ton espace et tes connexions." : "Votre profil et votre espace."}</p></div></div>
     <div class="set${cur ? " has-main" : ""}">${narrow ? (cur ? main : nav) : nav + main}</div>
-    ${cxSheet(S)}${pwSheet()}`;
+    ${cxSheet(S)}${pwSheet()}${mfaSheet()}`;
   }
 
   function onClick(e, S, render) {
@@ -225,6 +253,21 @@
     if (e.target.closest("[data-alerts-on]")) { window.ENTREMIS_LIVE.askAlerts().then(r => { render(); EM().toast(r === "granted" ? "Alertes activées sur cet appareil." : "Alertes non activées."); }); return true; }
     if (e.target.closest("[data-pw-open]")) { X.pw = true; render(); setTimeout(() => { const i = document.querySelector('#pw-form input[name="current"]'); if (i) i.focus(); }, 60); return true; }
     if (e.target.closest("[data-pw-close]")) { X.pw = false; render(); return true; }
+    if (e.target.closest("[data-mfa-open]")) { mfaLoad(render); return true; }
+    if (e.target.closest("[data-mfa-close]")) { X.mfa = null; render(); return true; }
+    if (e.target.closest("[data-mfa-start]")) {
+      CL().mfaStart().then(r => { X.mfa = r.error ? { factors: [], msg: "L'activation n'a pas marché. Réessayez dans un instant." } : { step: "scan", id: r.id, qr: r.qr, secret: r.secret, uri: r.uri }; render();
+        setTimeout(() => { const i = document.querySelector('#mfa-form input[name="code"]'); if (i) i.focus(); }, 60); });
+      return true;
+    }
+    const mr = e.target.closest("[data-mfa-remove]");
+    if (mr) {
+      EM().confirm({ title: "Désactiver les deux étapes ?", text: "Le mot de passe seul suffira de nouveau pour entrer.", ok: "Désactiver" }).then(yes => {
+        if (!yes) return;
+        CL().mfaRemove(mr.dataset.mfaRemove).then(err => { if (err) { X.mfa.msg = "Impossible pour l'instant. Reconnectez-vous avec votre code, puis réessayez."; render(); return; } TM().haptic("done"); EM().toast("Connexion en deux étapes désactivée."); mfaLoad(render); });
+      });
+      return true;
+    }
     const t = e.target.closest("[data-set-sec],[data-set-back],[data-set-font],[data-set-haptics],[data-cx-open],[data-cx-close]"); if (!t) return false;
     const d = t.dataset;
     if (d.setSec) { X.sec = d.setSec; TM().haptic("tap"); render(); window.scrollTo(0, 0); const ap = document.querySelector(".app"); if (ap) ap.scrollTop = 0; return true; }
@@ -242,6 +285,16 @@
     return true;
   }
   function onSubmit(e, S, render) {
+    if (e.target.id === "mfa-form") {
+      e.preventDefault();
+      const code = String(new FormData(e.target).get("code") || "").replace(/\D/g, "");
+      if (code.length !== 6) { X.mfa.msg = "Le code fait 6 chiffres."; render(); return true; }
+      CL().mfaConfirm(X.mfa.id, code).then(err => {
+        if (err) { X.mfa.msg = "Ce code n'est pas le bon. Attendez le suivant et réessayez."; render(); return; }
+        TM().haptic("done"); EM().toast("Connexion en deux étapes activée."); mfaLoad(render);
+      });
+      return true;
+    }
     if (e.target.id === "pw-form") {
       e.preventDefault();
       const f = e.target, fd = new FormData(f), cur = String(fd.get("current") || ""), nx = String(fd.get("next") || ""), again = String(fd.get("again") || "");

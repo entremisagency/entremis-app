@@ -267,7 +267,7 @@
       ${groups.length ? groups.map(g => `<p class="day-sep">${dayLabel(g.k)}</p><ul class="gcal-list">${g.items.map(e => `<li>
         <time class="tabnum">${e.allDay ? "Journée" : `<b>${hhmm(e.start)}</b>${hhmm(e.end)}`}</time>
         <div><b>${esc(e.title)}</b>${e.where ? `<span>${esc(e.where)}</span>` : ""}</div>
-        ${e.link ? `<a class="icon-btn" href="${esc(e.link)}" target="_blank" rel="noopener" aria-label="Ouvrir dans Google Agenda : ${esc(e.title)}">${icon("arrow")}</a>` : ""}
+        ${EM().safeUrl(e.link) ? `<a class="icon-btn" href="${esc(EM().safeUrl(e.link))}" target="_blank" rel="noopener" aria-label="Ouvrir dans Google Agenda : ${esc(e.title)}">${icon("arrow")}</a>` : ""}
       </li>`).join("")}</ul>`).join("") : `<p class="body">Rien dans votre agenda pour les 7 prochains jours.</p>`}
     </section>`;
   }

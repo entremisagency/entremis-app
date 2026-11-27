@@ -51,7 +51,7 @@
   let readyResolve; const ready = new Promise(r => { readyResolve = r; });
   const loadLib = () => new Promise((ok, ko) => {
     if (window.supabase && window.supabase.createClient) return ok();
-    const s = document.createElement("script"); s.crossOrigin = "anonymous"; s.src = LIB; s.onload = ok; s.onerror = () => ko(new Error("lib")); document.head.appendChild(s);
+    const s = document.createElement("script"); s.crossOrigin = "anonymous"; s.integrity = "sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"; s.src = LIB; s.onload = ok; s.onerror = () => ko(new Error("lib")); document.head.appendChild(s);
   });
 
   /* ---------- L'écran de connexion ----------
@@ -132,7 +132,61 @@
     i.focus();
   });
 
+  /* ---------- Connexion en deux étapes (27 nov. 2026) ----------
+     Pour qui l'a activée (Réglages › Connexion en deux étapes) : après le mot de passe, un code à 6 chiffres
+     donné par une application du téléphone (Google Authenticator, 1Password, l'app Mots de passe de l'iPhone…).
+     La base refuse aussi les données à une session qui n'a pas donné ce code (schema.sql, section 16) :
+     un mot de passe volé ne suffit plus. */
+  async function needsCode() {
+    try { const { data } = await client.auth.mfa.getAuthenticatorAssuranceLevel(); return !!data && data.nextLevel === "aal2" && data.currentLevel !== "aal2"; }
+    catch (_) { return false; }
+  }
+  function codeGate(msg) {
+    const g = shell(`<form class="cg-card" id="cloud-mfa" autocomplete="off">
+      <svg class="cg-mark" aria-hidden="true"><use href="#logo-e"/></svg>
+      <div class="cg-head"><h1 class="cg-title">Code de sécurité</h1><p class="cg-sub">Ouvrez votre application d'authentification et tapez le code à 6 chiffres d'Entremis.</p></div>
+      <label class="field"><span>Code</span><input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+      ${msgLine(msg)}
+      <button class="btn btn-primary cg-go" type="submit">Valider</button>
+      <button class="link cg-forgot" type="button" data-cloud-other>Changer de compte</button>
+    </form>`);
+    const i = g.querySelector('input[name="code"]'); if (i) i.focus();
+  }
+  document.addEventListener("submit", async e => {
+    if (e.target.id !== "cloud-mfa") return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const code = String(new FormData(e.target).get("code") || "").replace(/\D/g, ""), btn = e.target.querySelector(".cg-go");
+    if (code.length !== 6) { codeGate("Le code fait 6 chiffres."); return; }
+    if (btn) { btn.disabled = true; btn.textContent = "Vérification…"; }
+    const { data: f } = await client.auth.mfa.listFactors(), factor = f && f.totp && f.totp[0];
+    if (!factor) { codeGate("Aucune application reliée à ce compte. Demandez à Marc."); return; }
+    const { error } = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+    if (error) { codeGate(/rate|too many/i.test(String(error.message || "")) ? "Trop d'essais. Attendez quelques minutes." : "Ce code n'est pas le bon. Attendez le suivant et réessayez."); return; }
+    const { data } = await client.auth.getSession();
+    if (data && data.session) await afterLogin(data.session); else gate("Reconnectez-vous.");
+  }, true);
+  document.addEventListener("click", async e => {
+    if (!e.target.closest("[data-cloud-other]")) return;
+    try { await client.auth.signOut({ scope: "local" }); } catch (_) {}
+    gate("");
+  });
+  // Pour les réglages : voir, activer, retirer l'application d'authentification
+  async function mfaList() { if (!client) return []; const { data } = await client.auth.mfa.listFactors(); return (data && data.totp) || []; }
+  async function mfaStart() {
+    if (!client) return { error: "off" };
+    const { data: all } = await client.auth.mfa.listFactors();   // un essai abandonné (QR jamais validé) est retiré avant d'en refaire un
+    for (const f of ((all && all.all) || []).filter(x => x.factor_type === "totp" && x.status !== "verified")) await client.auth.mfa.unenroll({ factorId: f.id });
+    const { data, error } = await client.auth.mfa.enroll({ factorType: "totp", friendlyName: "Entremis " + new Date().toISOString().slice(0, 10) });
+    if (error || !data) return { error: "enroll" };
+    const qr = String(data.totp.qr_code || "");
+    return { id: data.id, secret: data.totp.secret, uri: /^otpauth:\/\//.test(String(data.totp.uri || "")) ? data.totp.uri : "", qr: qr.startsWith("data:") ? qr : "data:image/svg+xml;utf-8," + encodeURIComponent(qr) };
+  }
+  async function mfaConfirm(id, code) { const { error } = await client.auth.mfa.challengeAndVerify({ factorId: id, code }); return error ? "code" : ""; }
+  async function mfaRemove(id) { const { error } = await client.auth.mfa.unenroll({ factorId: id }); return error ? "remove" : ""; }
+
   async function afterLogin(session) {
+    // Connexion en deux étapes activée : le code d'abord, rien d'autre avant
+    if (await needsCode()) { codeGate(""); return; }
     // Téléphone qui se réveille, réseau qui hésite : on réessaie au lieu d'afficher « compte pas activé » (Marc, 21 nov. 2026)
     let data = null, error = null;
     // Le compte et les réglages personnels sont demandés en même temps (un aller-retour de moins à l'ouverture)
@@ -238,10 +292,24 @@
   // Ce qu'un client écrit lui-même : on se fie à la colonne client_id de la ligne (posée et vérifiée par la base),
   // jamais au client_id qu'il aurait glissé dans ses données, pour qu'il ne puisse pas se faire passer pour un autre.
   const CLIENT_WRITES = ["results", "avis", "dispos", "referrals", "prep", "validations", "contests"];
+  // Et on remet chaque valeur dans la forme attendue : une valeur bizarre écrite par un client
+  // (une note qui n'est pas un chiffre, un résultat inconnu) ne doit jamais faire planter une page de l'équipe.
+  const str = v => (typeof v === "string" ? v : v == null ? "" : String(v));
+  const num = (v, min, max) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min; };
+  const SHAPE = {
+    results: o => ["signe", "devis", "perdu"].includes(o.outcome) ? Object.assign(o, { amount: num(o.amount, 0, 1e8), at: str(o.at) }) : null,
+    avis: o => Object.assign(o, { note: Math.round(num(o.note, 0, 5)), text: str(o.text), at: str(o.at) }),
+    dispos: o => Object.assign(o, { slots: o.slots && typeof o.slots === "object" && !Array.isArray(o.slots) ? o.slots : {}, max: num(o.max, 0, 50),
+      off: (Array.isArray(o.off) ? o.off : []).filter(x => x && typeof x === "object").map(x => ({ id: str(x.id), from: str(x.from), to: str(x.to) })) }),
+    contests: o => Object.assign(o, { at: str(o.at), why: str(o.why), state: str(o.state), lead: str(o.lead) }),
+    validations: o => Object.assign(o, { status: str(o.status), answeredAt: str(o.answeredAt), sentAt: str(o.sentAt), comment: str(o.comment), answeredName: str(o.answeredName) }),
+    referrals: o => Object.assign(o, { name: str(o.name), fromName: str(o.fromName), trade: str(o.trade), city: str(o.city), note: str(o.note), phone: str(o.phone), status: str(o.status), at: str(o.at) }),
+  };
   function fromRow(name, r) {
-    const out = Object.assign({ id: r.id }, r.data);
-    if (CLIENT_WRITES.includes(name) && r.client_id) out.client_id = r.client_id;
-    return out;
+    const out = Object.assign({}, r.data && typeof r.data === "object" ? r.data : {}, { id: r.id });
+    if (!CLIENT_WRITES.includes(name)) return out;
+    if (r.client_id) out.client_id = r.client_id;
+    return SHAPE[name] ? SHAPE[name](out) : out;
   }
   function collection(name) {
     return {
@@ -252,7 +320,7 @@
         const load = async () => {
           const { data, error } = await client.from("docs").select("id, data, client_id").eq("collection", name);
           if (error) return error;
-          const next = (data || []).map(r => fromRow(name, r)), s = JSON.stringify(next);
+          const next = (data || []).map(r => fromRow(name, r)).filter(Boolean), s = JSON.stringify(next);
           if (s !== sig) { sig = s; rows = next; onRows(rows.slice()); }   // on ne réaffiche que si quelque chose a changé
           return null;
         };
@@ -264,7 +332,7 @@
         client.channel("docs-" + name + "-" + Math.random().toString(36).slice(2, 8))
           .on("postgres_changes", { event: "*", schema: "public", table: "docs", filter: "collection=eq." + name }, p => {
             if (p.eventType === "DELETE") rows = rows.filter(r => r.id !== (p.old && p.old.id));
-            else { const r = fromRow(name, p.new), i = rows.findIndex(x => x.id === r.id); if (i >= 0) rows[i] = r; else rows.push(r); }
+            else { const r = fromRow(name, p.new), i = rows.findIndex(x => x.id === p.new.id); if (!r) { if (i >= 0) rows.splice(i, 1); } else if (i >= 0) rows[i] = r; else rows.push(r); }
             sig = JSON.stringify(rows); onRows(rows.slice());
           }).subscribe(status => { if (status === "SUBSCRIBED") { if (!first) load(); first = false; } });   // reconnexion : on rattrape ce qui a été manqué
       },
@@ -293,7 +361,7 @@
     const a = await client.auth.signInWithPassword({ email: me.email, password: current });
     if (a.error) return "current";
     const { error } = await client.auth.updateUser({ password: next, data: { pw_set: true } });
-    if (!error) return "";
+    if (!error) { if (await needsCode()) codeGate("Mot de passe changé. Tapez votre code pour continuer."); return ""; }
     const m = String(error.code || "") + " " + String(error.message || "");
     return /same_password|different from the old/i.test(m) ? "same" : /weak|short|at least/i.test(m) ? "weak" : "other";
   }
@@ -334,6 +402,6 @@
   }
   async function signOut() { if (client) await client.auth.signOut(); try { sessionStorage.removeItem("entremis-cloud"); } catch (_) {} location.reload(); }
 
-  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start, pushSubscribe, dumpAll, mcpKeys, mcpCreate, mcpDelete, invoke, resync: () => resync(true) };
+  window.ENTREMIS_CLOUD = { on: () => on, ready: () => ready, me: () => me, key: () => KEY, collection, privGet, privSet, changePassword, listMembers, rpc, signOut, start, pushSubscribe, dumpAll, mcpKeys, mcpCreate, mcpDelete, mfaList, mfaStart, mfaConfirm, mfaRemove, invoke, resync: () => resync(true) };
   if (on) { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start(); }
 })();

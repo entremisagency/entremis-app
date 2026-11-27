@@ -98,6 +98,8 @@
 
   /* ---------- Petits outils ---------- */
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Un lien collé ou reçu d'ailleurs : seulement une vraie adresse https (jamais « javascript: » ni autre chose qui lancerait du code)
+  const safeUrl = u => { const v = String(u == null ? "" : u).trim(); return /^https:\/\/[^\s]+$/i.test(v) ? v : ""; };
   const icon = (id, cls = "icon") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
   /* Coordonnées : un clic ouvre l'appli liée (téléphone, mail, plan), un bouton copie.
      Dans une page claude.ai, l'ouverture du téléphone ou du mail peut ne pas marcher pour tout le monde : le bouton Copier reste toujours là. */
@@ -903,6 +905,10 @@
     const r = e.key === "Enter" && e.target.matches && e.target.matches("[data-acc-open]") ? e.target : null;
     if (r) { e.preventDefault(); S.acc = r.dataset.accOpen; render(); }
   });
+  // Le calculateur se met à jour en direct : son formulaire ne s'envoie jamais (avant : onsubmit dans le HTML)
+  document.addEventListener("submit", e => { if (e.target && e.target.id === "calc-form") e.preventDefault(); }, true);
+  // Une photo qui ne charge pas disparaît (avant : onerror dans le HTML, interdit par le verrou du navigateur)
+  document.addEventListener("error", e => { const t = e.target; if (t && t.tagName === "IMG" && t.hasAttribute("data-hide-broken")) t.remove(); }, true);
   document.addEventListener("submit", e => {
     if (window.ENTREMIS_GEN.onSubmit(e, S, render)) return;
     if (window.ENTREMIS_CPLUS.onSubmit(e, S, render)) return;
@@ -1025,7 +1031,7 @@
     setTimeout(() => el.classList.add("out"), 1250);
     setTimeout(() => el.remove(), 1700);
   }
-  window.EM = { D, S, C, baseC, allClients, viewId, viewClient, viewUser, pickClient, esc, icon, fileIcon, brand, cline, confirm: o => askConfirm(o), toast, store, isNarrow: () => isNarrow(), sampleTag, loader, nodeFlow, tickRing, fsel, render: () => render() };
+  window.EM = { D, S, C, baseC, allClients, viewId, viewClient, viewUser, pickClient, esc, safeUrl, icon, fileIcon, brand, cline, confirm: o => askConfirm(o), toast, store, isNarrow: () => isNarrow(), sampleTag, loader, nodeFlow, tickRing, fsel, render: () => render() };
   splash();
 
   applyTheme();
