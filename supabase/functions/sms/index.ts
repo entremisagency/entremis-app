@@ -27,6 +27,11 @@ export function intl(phone: string, pays: string): string {
   return d;
 }
 
+// Seulement les pays où Entremis travaille (pas de numéros surtaxés à l'étranger) : France et Monaco, Belgique, Suisse, Luxembourg, Canada
+export function paysAutorise(to: string): boolean {
+  return /^(33[1-9]\d{8}|377\d{8,9}|32\d{8,9}|41\d{9}|352\d{6,9}|1\d{10})$/.test(to);
+}
+
 async function sendSms(to: string, text: string) {
   const key = Deno.env.get("BREVO_API_KEY")!;
   const r = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", { method: "POST", headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" },
@@ -44,9 +49,12 @@ Deno.serve(async req => {
       const l = p.lead || {}, to = intl(l.p_telephone, l.p_pays);
       if (!l.p_consentement) return json({ error: "Il faut accepter d'être rappelé." }, 400);
       if (s(l.p_nom).length < 2 || to.length < 8 || to.length > 15) return json({ error: "Le numéro de téléphone est incomplet." }, 400);
+      if (!paysAutorise(to)) return json({ error: "Ce numéro n'est pas d'un pays où nous intervenons." }, 400);
       const hourAgo = new Date(Date.now() - 3600e3).toISOString(), dayAgo = new Date(Date.now() - 86400e3).toISOString();
-      const { count: perPhone } = await db.from("sms_codes").select("id", { count: "exact", head: true }).eq("phone", to).gte("created_at", hourAgo);
-      if ((perPhone || 0) >= 3) return json({ error: "Trop de codes demandés pour ce numéro. Réessayez dans une heure." }, 429);
+      // On compte les SMS vraiment envoyés (renvois compris), pas seulement les demandes
+      const { data: recent } = await db.from("sms_codes").select("sends").eq("phone", to).gte("created_at", hourAgo);
+      const perPhone = (recent || []).reduce((n: number, r: { sends: number }) => n + (r.sends || 1), 0);
+      if (perPhone >= 3) return json({ error: "Trop de codes demandés pour ce numéro. Réessayez dans une heure." }, 429);
       const { count: perDay } = await db.from("sms_codes").select("id", { count: "exact", head: true }).gte("created_at", dayAgo);
       if ((perDay || 0) >= 300) return json({ error: "Trop de demandes aujourd'hui. Réessayez demain." }, 429);
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0"), id = crypto.randomUUID();
@@ -60,6 +68,8 @@ Deno.serve(async req => {
       const { data: row } = await db.from("sms_codes").select("*").eq("id", s(p.id, 40)).maybeSingle();
       if (!row) return json({ error: "Ce code a expiré. Recommencez la demande." }, 400);
       if (p.action === "resend") {
+        const { data: recent } = await db.from("sms_codes").select("sends").eq("phone", row.phone).gte("created_at", new Date(Date.now() - 3600e3).toISOString());
+        if ((recent || []).reduce((n: number, r: { sends: number }) => n + (r.sends || 1), 0) >= 5) return json({ error: "Trop de codes demandés pour ce numéro. Réessayez dans une heure." }, 429);
         if (row.sends >= 3) return json({ error: "Trois codes envoyés : réessayez plus tard." }, 429);
         const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
         await db.from("sms_codes").update({ code_hash: await sha(row.id + code), expires_at: new Date(Date.now() + 600e3).toISOString(), attempts: 0, sends: row.sends + 1 }).eq("id", row.id);
@@ -67,14 +77,15 @@ Deno.serve(async req => {
         return json({ ok: true });
       }
       if (new Date(row.expires_at) < new Date()) return json({ error: "Ce code a expiré. Demandez-en un nouveau." }, 400);
-      if (row.attempts >= 5) return json({ error: "Trop d'essais. Demandez un nouveau code." }, 429);
-      if ((await sha(row.id + s(p.code, 6).replace(/\D/g, ""))) !== row.code_hash) {
-        await db.from("sms_codes").update({ attempts: row.attempts + 1 }).eq("id", row.id);
-        return json({ error: "Ce code n'est pas le bon. Vérifiez le SMS reçu." }, 400);
-      }
+      // L'essai est compté AVANT de comparer, en une seule opération dans la base : des essais lancés en même temps
+      // ne peuvent pas passer entre les gouttes (5 essais au plus par code, quoi qu'il arrive).
+      const { data: hash } = await db.rpc("sms_essai", { p_id: row.id });
+      if (!hash) return json({ error: "Trop d'essais. Demandez un nouveau code." }, 429);
+      if ((await sha(row.id + s(p.code, 6).replace(/\D/g, ""))) !== hash) return json({ error: "Ce code n'est pas le bon. Vérifiez le SMS reçu." }, 400);
       // Bon code : la demande entre dans Leads par la même porte que les autres (doublons, limites), puis on la marque vérifiée
       const { data: leadId, error } = await db.rpc("nouveau_lead", row.payload);
-      if (error) return json({ error: error.message || "La demande n'a pas pu être enregistrée." }, 400);
+      // On ne montre que nos propres messages (« Écrivez votre nom. »…), jamais une erreur technique de la base
+      if (error) return json({ error: error.code === "P0001" ? error.message : "La demande n'a pas pu être enregistrée." }, 400);
       if (leadId && leadId !== "deja") {
         const { data: d } = await db.from("docs").select("data").eq("collection", "leads").eq("id", leadId).maybeSingle();
         if (d) await db.from("docs").update({ data: { ...d.data, verified: true, verifiedAt: new Date().toISOString().slice(0, 16), verifiedBy: "sms" } }).eq("collection", "leads").eq("id", leadId);
@@ -84,6 +95,7 @@ Deno.serve(async req => {
     }
     return json({ error: "Action inconnue." }, 400);
   } catch (e) {
-    return json({ error: "Le SMS n'a pas pu partir. Réessayez dans un instant.", detail: String((e as Error).message || e).slice(0, 120) }, 502);
+    console.error(e);   // le détail reste dans les journaux de Supabase, pas dans la réponse
+    return json({ error: "Le SMS n'a pas pu partir. Réessayez dans un instant." }, 502);
   }
 });

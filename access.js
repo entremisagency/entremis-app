@@ -30,7 +30,7 @@
     X.loading = false; render();
   }
 
-  const pwInput = (name, label) => `<label class="field"><span>${label}</span><span class="cg-pw"><input name="${name}" type="password" required minlength="6" autocomplete="new-password"><button class="cg-eye" type="button" data-cloud-eye aria-label="Afficher le mot de passe" aria-pressed="false">${EM().icon("eye")}</button></span></label>`;
+  const pwInput = (name, label) => `<label class="field"><span>${label}</span><span class="cg-pw"><input name="${name}" type="password" required minlength="8" autocomplete="new-password"><button class="cg-eye" type="button" data-cloud-eye aria-label="Afficher le mot de passe" aria-pressed="false">${EM().icon("eye")}</button></span></label>`;
 
   function shareBox(d) {
     const esc = EM().esc, icon = EM().icon;
@@ -58,7 +58,7 @@
       <p class="body">Pour <b>${esc(X.reset)}</b>. Il s'en servira une fois, puis choisira le sien.</p>
       ${pwInput("password", "Mot de passe provisoire")}
       <p class="cg-msg ac-reset-msg" role="alert" hidden></p>
-      <p class="field-help">6 caractères au moins. Donnez-le-lui de vive voix ou par SMS.</p>
+      <p class="field-help">8 caractères au moins. Donnez-le-lui de vive voix ou par SMS.</p>
     </form>`;
   }
 
@@ -166,7 +166,7 @@
       e.preventDefault();
       const f = e.target, fd = new FormData(f), login = slug(String(fd.get("login") || "")), pw = String(fd.get("password") || ""), say = m => { const p = f.querySelector(".ac-team-msg"); p.textContent = m; p.hidden = false; };
       if (!LOGIN_OK.test(login)) { say("Identifiant : lettres et chiffres, sans espace ni accent."); return true; }
-      if (pw.length < 6) { say("6 caractères au moins."); return true; }
+      if (pw.length < 8) { say("8 caractères au moins."); return true; }
       const go = f.querySelector('button[type="submit"]'); go.disabled = true; go.textContent = "Création…";
       CL().rpc("creer_compte_equipe", { p_login: login, p_password: pw, p_who: X.team }).then(({ error }) => {
         if (error) { go.disabled = false; go.textContent = "Créer"; say(error.message || "Pas créé. Réessayez."); return; }
@@ -177,7 +177,7 @@
     if (e.target.id === "ac-reset") {
       e.preventDefault();
       const f = e.target, pw = String(new FormData(f).get("password") || ""), say = m => { const p = f.querySelector(".ac-reset-msg"); p.textContent = m; p.hidden = false; };
-      if (pw.length < 6) { say("6 caractères au moins."); return true; }
+      if (pw.length < 8) { say("8 caractères au moins."); return true; }
       const go = f.querySelector('button[type="submit"]'); go.disabled = true; go.textContent = "Envoi…";
       CL().rpc("nouveau_mot_de_passe_client", { p_login: X.reset, p_password: pw }).then(({ error }) => {
         if (error) { go.disabled = false; go.textContent = "Enregistrer"; say(error.message || "Pas enregistré. Réessayez."); return; }
@@ -197,7 +197,7 @@
     if (!X.pick) return fail("Choisissez d'abord le client.");
     if (isNew && !name) return fail("Écrivez le nom de l'entreprise.");
     if (!LOGIN_OK.test(login)) return fail("Identifiant : 2 caractères au moins, lettres et chiffres, sans espace ni accent.");
-    if (pw.length < 6) return fail("Mot de passe provisoire : 6 caractères au moins.");
+    if (pw.length < 8) return fail("Mot de passe provisoire : 8 caractères au moins.");
     const cid = isNew ? (slug(name) || login) : X.pick;
     if (isNew && clients.some(c => c.id === cid)) return fail("Ce client existe déjà : choisissez-le dans la liste.");
     if (!CL()) { X.err = ""; render(); EM().toast("Maquette : sur le site en ligne, l'accès serait créé dans la base."); return true; }

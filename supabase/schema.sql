@@ -471,3 +471,77 @@ select cron.schedule('entremis-meta', '30 3 * * *', $job$
     body := '{}'::jsonb,
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-entremis-hook', (select hook_secret from public.push_config where id = 1)));
 $job$);
+
+-- ===== 15. Sécurité renforcée (27 nov. 2026, audit des 14 failles des applis « vibe codées ») =====
+-- À coller seul dans une NOUVELLE requête du SQL Editor. On peut le relancer sans danger.
+
+-- 1. Ce qu'écrit un client ou un visiteur est nettoyé par la base : < > et " deviennent ‹ › et '.
+--    Un texte ne peut donc jamais devenir du code dans les pages de l'équipe (attaque du « script dans le pseudo »).
+--    L'équipe n'est pas touchée. Les signatures non plus (la base les écrit elle-même, voir signer_document).
+create or replace function public.texte_sur(j jsonb) returns jsonb
+language plpgsql immutable set search_path = public as $$
+begin
+  case jsonb_typeof(j)
+    when 'string' then return to_jsonb(translate(j #>> '{}', '<>"', '‹›'''));
+    when 'object' then return coalesce((select jsonb_object_agg(translate(k, '<>"', '‹›'''), public.texte_sur(v)) from jsonb_each(j) as e(k, v)), '{}'::jsonb);
+    when 'array'  then return coalesce((select jsonb_agg(public.texte_sur(v) order by n) from jsonb_array_elements(j) with ordinality as e(v, n)), '[]'::jsonb);
+    else return j;
+  end case;
+end $$;
+create or replace function public.docs_nettoie() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if public.is_team() or new.collection = 'signatures' then return new; end if;
+  new.data := public.texte_sur(new.data);
+  return new;
+end $$;
+drop trigger if exists docs_nettoie on public.docs;
+create trigger docs_nettoie before insert or update on public.docs for each row execute function public.docs_nettoie();
+
+-- 2. Un client n'écrit que sous un identifiant propre (lettres, chiffres, - _ . :), son avis et ses disponibilités
+--    sous son propre nom, et une contestation seulement sur un lead qui lui a été donné : il ne peut pas se faire
+--    passer pour un autre client ni bloquer la contestation d'un autre.
+create or replace function public.lead_du_client(p_id text) returns boolean
+  language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.docs l where l.collection = 'leads' and l.id = p_id and l.client_id is not null and l.client_id = public.my_client());
+$$;
+drop policy if exists "docs : un client ajoute les siens" on public.docs;
+create policy "docs : un client ajoute les siens" on public.docs
+  for insert to authenticated
+  with check (client_id = public.my_client() and id ~ '^[A-Za-z0-9_.:-]{1,80}$'
+    and (collection not in ('avis', 'dispos') or id = public.my_client())
+    and (collection in ('results', 'avis', 'dispos', 'referrals', 'prep', 'validations')
+      or (collection = 'contests' and data->>'state' = 'ouvert' and public.lead_du_client(id))));
+drop policy if exists "docs : un client modifie les siens" on public.docs;
+create policy "docs : un client modifie les siens" on public.docs
+  for update to authenticated
+  using (client_id = public.my_client() and collection in ('results', 'avis', 'dispos', 'referrals', 'prep', 'validations'))
+  with check (client_id = public.my_client() and id ~ '^[A-Za-z0-9_.:-]{1,80}$'
+    and (collection not in ('avis', 'dispos') or id = public.my_client())
+    and collection in ('results', 'avis', 'dispos', 'referrals', 'prep', 'validations'));
+
+-- 3. Un compte qui n'est ni de l'équipe ni un client (créé en douce) n'écrit plus rien nulle part
+drop policy if exists "privé : seulement soi" on public.private_docs;
+create policy "privé : seulement soi" on public.private_docs
+  for all to authenticated using (user_id = auth.uid() and public.is_member()) with check (user_id = auth.uid() and public.is_member());
+drop policy if exists "push : les siens" on public.push_subs;
+create policy "push : les siens" on public.push_subs for all to authenticated
+  using (user_id = auth.uid() and public.is_member()) with check (user_id = auth.uid() and public.is_member());
+
+-- 4. Les fichiers : 15 Mo au plus, et seulement des PDF, des images et des documents de bureau (pas de page web ni de programme)
+update storage.buckets set file_size_limit = 15728640,
+  allowed_mime_types = array['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/gif',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/msword', 'application/vnd.ms-excel', 'text/csv']
+  where id = 'files';
+
+-- 5. Le code SMS : l'essai est compté avant de comparer, en une seule opération (5 essais au plus, même lancés en même temps).
+--    Seule la fonction « sms » s'en sert.
+create or replace function public.sms_essai(p_id uuid) returns text
+language sql security definer set search_path = public as $$
+  update public.sms_codes set attempts = attempts + 1
+   where id = p_id and attempts < 5 and expires_at > now()
+  returning code_hash;
+$$;
+revoke all on function public.sms_essai(uuid) from public, anon, authenticated;
+grant execute on function public.sms_essai(uuid) to service_role;
