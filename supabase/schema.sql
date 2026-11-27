@@ -480,14 +480,18 @@ $job$);
 --    L'équipe n'est pas touchée. Les signatures non plus (la base les écrit elle-même, voir signer_document).
 create or replace function public.texte_sur(j jsonb) returns jsonb
 language plpgsql immutable set search_path = public as $$
+declare cible text := chr(8249) || chr(8250) || chr(39);
 begin
   case jsonb_typeof(j)
-    when 'string' then return to_jsonb(translate(j #>> '{}', '<>"', '‹›'''));
-    when 'object' then return coalesce((select jsonb_object_agg(translate(k, '<>"', '‹›'''), public.texte_sur(v)) from jsonb_each(j) as e(k, v)), '{}'::jsonb);
+    when 'string' then return to_jsonb(translate(j #>> '{}', '<>"', cible));
+    when 'object' then return coalesce((select jsonb_object_agg(translate(k, '<>"', cible), public.texte_sur(v)) from jsonb_each(j) as e(k, v)), '{}'::jsonb);
     when 'array'  then return coalesce((select jsonb_agg(public.texte_sur(v) order by n) from jsonb_array_elements(j) with ordinality as e(v, n)), '[]'::jsonb);
     else return j;
   end case;
 end $$;
+revoke all on function public.texte_sur(jsonb) from public, anon;
+grant execute on function public.texte_sur(jsonb) to authenticated, service_role;
+
 create or replace function public.docs_nettoie() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
@@ -521,8 +525,12 @@ create policy "docs : un client modifie les siens" on public.docs
     and collection in ('results', 'avis', 'dispos', 'referrals', 'prep', 'validations'));
 
 -- 3. Un compte qui n'est ni de l'équipe ni un client (créé en douce) n'écrit plus rien nulle part
-drop policy if exists "privé : seulement soi" on public.private_docs;
-create policy "privé : seulement soi" on public.private_docs
+do $$ declare p text; begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'private_docs' loop
+    execute format('drop policy %I on public.private_docs', p);
+  end loop;
+end $$;
+create policy "prive : seulement soi (membres)" on public.private_docs
   for all to authenticated using (user_id = auth.uid() and public.is_member()) with check (user_id = auth.uid() and public.is_member());
 drop policy if exists "push : les siens" on public.push_subs;
 create policy "push : les siens" on public.push_subs for all to authenticated
