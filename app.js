@@ -304,8 +304,8 @@
     return `
     <div class="head">
       <div class="head-text">
-        <h1 class="h1">Bonjour ${esc(viewUser().first)}</h1>
-        <p class="sub">Voici où en est votre campagne « ${esc(c.name)} ».</p>
+        <h1 class="h1">Votre campagne</h1>
+        <p class="sub">« ${esc(c.name)} » : vos rendez-vous, vos leads et ce qu'il reste à faire.</p>
       </div>
       <div class="head-actions">${sampleTag}</div>
     </div>
@@ -320,7 +320,7 @@
         <div class="next-who"><span class="av av-lg">${next.initials}</span><div><b>${esc(next.name)}</b><span>${esc(next.role)}</span><span>${esc(next.org)} – ${esc(next.city)}</span></div></div>
         ${next.note ? `<div class="note"><b>${icon("info")}À savoir avant d'y aller</b><span>${esc(next.note)}</span></div>` : ""}
         <div class="form-actions">
-          <a class="btn btn-primary" href="#rdv-${next.id}">Voir la fiche ${icon("arrow")}</a>
+          <a class="btn btn-ghost" href="#rdv-${next.id}">Voir la fiche ${icon("arrow")}</a>
           <button class="btn btn-ghost" type="button" data-gcal-rdv="${next.id}" ${gst ? "disabled" : ""}>${gst === "done" ? icon("check") : brand("gcal", "Google Agenda")}${gst === "done" ? "Dans votre agenda" : "Ajouter à mon agenda"}</button>
         </div>
       </section>` : `<section class="card next"><h2 class="h2">Pas de rendez-vous prévu</h2><p class="body">Vous serez prévenu dès qu'il arrive.</p></section>`}
